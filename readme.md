@@ -113,4 +113,4 @@ Dự án áp dụng các biện pháp kiểm soát chi phí và kỹ thuật ngh
 *   **Local Development:** Sử dụng mô hình Open-source (Ollama) trong giai đoạn phát triển.
 
 ---
-*© 2024 Project Management Course Deliverable.*
+*© 2026 Project Management Course Deliverable.*

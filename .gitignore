@@ -3,4 +3,8 @@ data/vn_law_corpus.csv
 data/thuvienphapluat_full.parquet
 .agent
 .github
+.env
 docs
+
+
+__pycache__/
