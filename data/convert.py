@@ -1,9 +1,13 @@
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+import os
 
-csv_file = 'vbpl_crawl_2.csv'
-parquet_file = 'legal_dataset.parquet'
+dataset_dir = 'dataset'
+if not os.path.exists(dataset_dir):
+    os.makedirs(dataset_dir)
+csv_file = os.path.join(dataset_dir, 'vbpl_crawl_2.csv')
+parquet_file = os.path.join(dataset_dir, 'legal_dataset.parquet')
 chunk_size = 50000  # Điều chỉnh số dòng tùy theo RAM của bạn
 
 print("Đang bắt đầu chuyển đổi theo từng chunk...")
