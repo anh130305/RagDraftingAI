@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from database import engine, Base, get_db
+from app.db.session import engine, Base, get_db
 
 app = FastAPI(title="RagDraftingAI API", version="1.0.0")
 

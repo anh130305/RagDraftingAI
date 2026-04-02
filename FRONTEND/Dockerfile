@@ -1,10 +1,11 @@
-FROM node:20-alpine
+FROM node:20-slim
 
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
+COPY package.json ./
 
-RUN npm install
+# Remove package-lock to avoid host-container os mismatch bindings
+RUN rm -f package-lock.json && npm install
 
 COPY . .
 
