@@ -1,0 +1,23 @@
+@reference "./base.css";
+
+@layer components {
+  .glass-card {
+    @apply bg-surface-highest/40 backdrop-blur-3xl border border-outline-variant/10 transition-colors duration-300;
+  }
+
+  .gradient-primary {
+    @apply bg-gradient-to-br from-primary to-primary-container;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-outline-variant/30 rounded-full;
+  }
+}

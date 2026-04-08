@@ -1,19 +1,33 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Chat from './Chat';
-import Settings from './Settings';
-import Register from './Register';
-import Login from './Login';
+import React, { Suspense, lazy } from 'react';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+
+const AdminConsoleApp = lazy(() => import('./AdminConsoleApp'));
+const Chat = lazy(() => import('./Chat'));
+const Login = lazy(() => import('./Login'));
+const Register = lazy(() => import('./Register'));
+const WorkspaceSettings = lazy(() => import('./Settings'));
 
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Chat />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
-      </Routes>
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center bg-background text-on-surface">
+            <p className="text-sm tracking-wide text-on-surface-variant uppercase">Loading workspace...</p>
+          </div>
+        }
+      >
+        <Routes>
+          <Route path="/" element={<Navigate to="/admin" replace />} />
+          <Route path="/admin" element={<AdminConsoleApp />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/settings" element={<WorkspaceSettings />} />
+          <Route path="/chat/settings" element={<WorkspaceSettings />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="*" element={<Navigate to="/admin" replace />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
