@@ -18,14 +18,14 @@ export default function App() {
         }
       >
         <Routes>
-          <Route path="/" element={<Navigate to="/admin" replace />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/admin" element={<AdminConsoleApp />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/settings" element={<WorkspaceSettings />} />
           <Route path="/chat/settings" element={<WorkspaceSettings />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="*" element={<Navigate to="/admin" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

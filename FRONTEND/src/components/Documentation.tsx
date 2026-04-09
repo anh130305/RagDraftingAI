@@ -95,7 +95,7 @@ export default function Documentation() {
                     onClick={handleCopy}
                     className="p-1.5 rounded-md hover:bg-surface-variant text-on-surface-variant transition-colors"
                   >
-                    {copied ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                    {copied ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
                   </button>
                 </div>
                 <div className="p-4 overflow-x-auto">

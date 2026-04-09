@@ -221,7 +221,7 @@ export default function MLOpsConfig() {
       {/* Floating Status */}
       <div className="fixed bottom-8 right-8 flex items-center gap-6 bg-surface-high/80 backdrop-blur-xl px-8 py-4 rounded-full border border-outline-variant shadow-2xl z-50">
         <div className="flex items-center gap-3">
-          <span className="w-2.5 h-2.5 rounded-full bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.6)]"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-success shadow-[0_0_10px_var(--color-success)]"></span>
           <span className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Engine: Online</span>
         </div>
         <div className="h-4 w-px bg-outline-variant"></div>

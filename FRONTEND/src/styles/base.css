@@ -22,6 +22,7 @@
   --color-on-surface-variant: var(--on-surface-variant);
   --color-outline-variant: var(--outline-variant);
   --color-error: var(--error);
+  --color-success: var(--success);
 
   --color-on-background: var(--on-surface);
   --color-on-primary-fixed: #000000;
@@ -69,6 +70,9 @@
   --color-on-error: #490006;
   --color-on-error-container: #ffa8a3;
 
+  --color-on-success: #ffffff;
+  --color-on-success-container: #bbf7d0;
+
   --color-inverse-surface: #fcf9f8;
   --color-inverse-on-surface: #565555;
   --color-inverse-primary: #005bc2;
@@ -94,6 +98,7 @@
     --secondary: #8b5cf6;
     --tertiary: #d946ef;
     --error: #ef4444;
+    --success: #22c55e;
   }
 
   .dark {
@@ -110,6 +115,7 @@
     --secondary: #c180ff;
     --tertiary: #fbb4ff;
     --error: #ff716c;
+    --success: #4ade80;
   }
 
   body {

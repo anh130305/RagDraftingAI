@@ -63,7 +63,7 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
               "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
               activeView === item.id 
                 ? "bg-surface-highest text-primary font-bold shadow-sm" 
-                : "text-on-surface-variant hover:bg-surface-highest/50 hover:text-on-surface"
+                : "text-on-surface-variant hover:bg-surface-highest/50 hover:backdrop-blur-xl hover:text-on-surface hover:shadow-sm"
             )}
           >
             <item.icon className={cn("w-5 h-5", activeView === item.id && "fill-primary/10")} />
@@ -87,7 +87,7 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
           </div>
         </div>
         <button 
-          className="w-full mt-2 flex items-center justify-center gap-2 px-2 py-2.5 text-sm rounded-xl text-error bg-error/10 hover:bg-error hover:text-white transition-all font-bold tracking-wide"
+          className="w-full mt-2 flex items-center justify-center gap-2 px-2 py-2.5 text-sm rounded-xl text-error bg-error/10 hover:bg-error hover:text-on-error transition-all font-bold tracking-wide"
         >
           <LogOut className="w-4 h-4" />
           <span>Log Out</span>
