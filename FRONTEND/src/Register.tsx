@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Lock, Monitor, Moon, Sparkles, Sun, User, Building2, Eye, EyeOff } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from './lib/AuthContext';
 import './styles/chat-auth.css';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
 export default function Register() {
-  const { register } = useAuth();
+  const { register, googleLogin } = useAuth();
   const navigate = useNavigate();
 
   const [theme, setTheme] = useState<ThemeMode>(() => {
@@ -126,6 +127,24 @@ export default function Register() {
     }
   };
 
+  const onGoogleSuccess = async (response: any) => {
+    setIsSubmitting(true);
+    setErrors({});
+    try {
+      // Pass the selected department if available
+      const { needs_onboarding } = await googleLogin(response.credential, department || undefined);
+      if (needs_onboarding) {
+        navigate('/settings', { replace: true, state: { onboarding: true } });
+      } else {
+        navigate('/chat', { replace: true });
+      }
+    } catch (err: any) {
+      setErrors({ general: err.message || 'Đăng ký Google thất bại' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
 
   return (
@@ -142,7 +161,7 @@ export default function Register() {
             <div className="w-10 h-10 rounded-lg primary-gradient flex items-center justify-center glow-shadow">
               <Sparkles className="w-5 h-5 text-on-primary-fixed" />
             </div>
-            <span className="text-2xl font-black text-white font-headline tracking-tighter">Obsidian Nebula</span>
+            <span className="text-2xl font-black text-white font-headline tracking-tighter">RAG AI</span>
           </div>
           <h2 className="text-6xl font-extrabold font-headline leading-tight mb-6 text-white">Định hình tương lai <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Trí tuệ Nhân tạo</span></h2>
           <p className="text-xl text-white/70 leading-relaxed">Gia nhập cộng đồng những người tiên phong sử dụng AI để tối ưu hóa quy trình sáng tạo và làm việc chuyên nghiệp.</p>
@@ -170,12 +189,8 @@ export default function Register() {
                 <Sparkles className="w-5 h-5 text-on-primary-fixed" />
               </div>
               <span className="font-headline font-black text-2xl tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-container">
-                Obsidian Nebula
+                RAG AI
               </span>
-            </div>
-            <div>
-              <h1 className="text-3xl font-extrabold font-headline text-on-surface tracking-tight">Bắt đầu hành trình</h1>
-              <p className="text-on-surface-variant mt-2">Tạo tài khoản để khám phá sức mạnh AI</p>
             </div>
           </div>
 
@@ -329,13 +344,17 @@ export default function Register() {
               </div>
 
               {/* Social Login - Google Only */}
-              <button
-                type="button"
-                className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-surface-container-highest rounded-xl ghost-border hover:bg-surface-bright transition-all text-sm font-medium"
-              >
-                <img alt="Google Logo" className="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrn9hzKM7y4NObsaHyoNqVXbmyf0HjqLTRxXN0j_IQMAXptKUoMQFVOz79T4dUmdQeeqiZUczbGq7-jS7D-sdWczf7lQ_8KSb18yJBTV0SguUF0dbZ6hlsEOmbD8x9__3GmtUx83clL65xs78U-3RIgrlMfwlBXvCBbNckvAu7ii_JE77CqutwhDRb4K7PqCEQUF6eD4kXAUuMeXopFuGBSOmDfy8u7gWt8LGgIp8IXFly8t_SdcwDbTIiLUWZycH1r1ObvnH5aPvm" />
-                Google
-              </button>
+              <div className="w-full flex justify-center">
+                <GoogleLogin
+                  onSuccess={onGoogleSuccess}
+                  onError={() => setErrors({ general: 'Google registration failed' })}
+                  useOneTap
+                  theme={theme === 'dark' ? 'filled_black' : 'outline'}
+                  shape="pill"
+                  size="large"
+                  width="320"
+                />
+              </div>
             </form>
           </div>
 

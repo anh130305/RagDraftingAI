@@ -64,10 +64,10 @@ export default function App() {
   return (
     <div className="flex min-h-screen w-full bg-background">
       <Sidebar activeView={activeView} onViewChange={setActiveView} />
-      
+
       <main className="flex-1 ml-64 flex flex-col min-h-screen">
         <TopBar theme={theme} setTheme={setTheme} />
-        
+
         <div className="p-8 w-full flex-1 overflow-x-hidden custom-scrollbar">
           <Suspense
             fallback={
@@ -94,7 +94,7 @@ export default function App() {
 
         <footer className="p-8 mt-auto border-t border-outline-variant/5 text-center">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/30">
-            Obsidian AI Admin Architecture © 2024. All Rights Reserved.
+            RAG AI Admin Architecture © 2024. All Rights Reserved.
           </p>
         </footer>
       </main>

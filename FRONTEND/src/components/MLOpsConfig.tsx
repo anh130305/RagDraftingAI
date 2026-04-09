@@ -26,7 +26,7 @@ export default function MLOpsConfig() {
     >
       <header className="space-y-2">
         <h2 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface">MLOps Configuration</h2>
-        <p className="text-on-surface-variant max-w-2xl">Refine your neural architecture. Adjust inference parameters and system-level directives for the Obsidian core models.</p>
+        <p className="text-on-surface-variant max-w-2xl">Refine your neural architecture. Adjust inference parameters and system-level directives for the RAG core models.</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -196,7 +196,7 @@ export default function MLOpsConfig() {
               <Sparkles className="w-5 h-5 text-secondary shrink-0" />
               <div>
                 <h5 className="text-sm font-bold text-on-surface mb-1">Knowledge Injection</h5>
-                <p className="text-[11px] text-on-surface-variant">Contextual grounding: <span className="text-secondary font-bold">Enabled (Obsidian DB)</span></p>
+                <p className="text-[11px] text-on-surface-variant">Contextual grounding: <span className="text-secondary font-bold">Enabled (RAG DB)</span></p>
               </div>
             </div>
             <div className="flex items-start gap-4 p-4 rounded-xl bg-surface-low/30 border border-outline-variant">

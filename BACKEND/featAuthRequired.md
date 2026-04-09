@@ -1,123 +1,150 @@
-## Các trường hợp kiểm thử Auth (Login & Register)
+## Các trường hợp kiểm thử OAuth2 Login với Google
 
 ---
 
-### 🔐 ĐĂNG NHẬP (Login) — Username + Password
+### ✅ HAPPY PATH — Luồng thành công
 
-#### ✅ Happy Path
 | # | Trường hợp | Kết quả mong đợi |
 |---|-----------|-----------------|
-| L1 | Username & password đúng | Đăng nhập thành công, redirect |
-| L2 | Username có chữ hoa/thường lẫn lộn (nếu case-insensitive) | Đăng nhập thành công |
-
-#### ❌ Validation — Để trống
-| # | Trường hợp | Kết quả mong đợi |
-|---|-----------|-----------------|
-| L3 | Để trống cả 2 trường | Hiện lỗi cả 2 field |
-| L4 | Để trống username | Hiện lỗi username required |
-| L5 | Để trống password | Hiện lỗi password required |
-
-#### ❌ Sai thông tin
-| # | Trường hợp | Kết quả mong đợi |
-|---|-----------|-----------------|
-| L6 | Username đúng, password sai | "Sai mật khẩu" hoặc thông báo chung |
-| L7 | Username không tồn tại | "Tài khoản không tồn tại" hoặc thông báo chung |
-| L8 | Cả 2 đều sai | Thông báo lỗi chung (không lộ thông tin) |
-| L9 | Password đúng nhưng username sai case (nếu case-sensitive) | Báo lỗi |
-
-#### ⚠️ Edge Cases
-| # | Trường hợp | Kết quả mong đợi |
-|---|-----------|-----------------|
-| L10 | Username/password có khoảng trắng đầu/cuối | Trim hoặc báo lỗi rõ ràng |
-| L11 | Password có ký tự đặc biệt `!@#$%^&*` | Xử lý đúng, không crash |
-| L12 | Username/password quá dài (>255 ký tự) | Báo lỗi hoặc truncate |
-| L13 | Nhập SQL Injection: `' OR '1'='1` | Không bị bypass, trả lỗi |
-| L14 | Nhập XSS: `<script>alert(1)</script>` | Escape, không execute | 
-| L15 | Spam click nút Login nhiều lần | Không gửi request trùng, disable button |
-| L16 | Mạng chậm / timeout | Hiện loading, thông báo lỗi mạng |
-| L17 | Server trả về lỗi 500 | Hiện thông báo lỗi hệ thống |
-
-#### 🔒 Bảo mật
-| # | Trường hợp | Kết quả mong đợi |
-|---|-----------|-----------------|
-| L18 | Đăng nhập sai nhiều lần liên tiếp (brute force) | Khóa tài khoản tạm / captcha |
-| L19 | Password hiển thị dưới dạng `••••` | Không lộ plain text |
-| L20 | Toggle show/hide password | Hoạt động đúng |
-| L21 | Token/session được lưu đúng chỗ | Không lưu plain password ở localStorage |
+| O1 | User chưa có tài khoản, đăng nhập Google lần đầu | Tạo tài khoản mới + đăng nhập thành công |
+| O2 | User đã có tài khoản Google liên kết, đăng nhập lại | Đăng nhập thành công, không tạo duplicate |
+| O3 | User chọn đúng Google account trong popup | Redirect về app với session hợp lệ |
+| O4 | User có nhiều Google account, chọn đúng 1 | Đăng nhập đúng account được chọn |
 
 ---
 
-### 📝 ĐĂNG KÝ (Register) — Username + Department + Password + Confirm Password
+### 🚪 LUỒNG POPUP / REDIRECT
 
-#### ✅ Happy Path
 | # | Trường hợp | Kết quả mong đợi |
 |---|-----------|-----------------|
-| R1 | Điền đầy đủ, hợp lệ, password khớp | Tạo tài khoản thành công |
-| R2 | Đăng ký xong tự động login hoặc redirect login | Luồng đúng theo thiết kế |
-
-#### ❌ Validation — Để trống
-| # | Trường hợp | Kết quả mong đợi |
-|---|-----------|-----------------|
-| R3 | Để trống tất cả | Hiện lỗi tất cả field |
-| R4 | Để trống username | Lỗi username required |
-| R5 | Để trống department | Lỗi department required |
-| R6 | Để trống password | Lỗi password required |
-| R7 | Để trống confirm password | Lỗi confirm required |
-
-#### ❌ Username
-| # | Trường hợp | Kết quả mong đợi |
-|---|-----------|-----------------|
-| R8 | Username đã tồn tại trong hệ thống | "Username đã được sử dụng" |
-| R9 | Username quá ngắn (< min length, vd: <3 ký tự) | Báo lỗi min length |
-| R10 | Username quá dài (> max length) | Báo lỗi max length |
-| R11 | Username chứa ký tự đặc biệt không hợp lệ | Báo lỗi format |
-| R12 | Username chỉ có khoảng trắng | Trim → báo lỗi required |
-| R13 | Username có khoảng trắng ở giữa | Tùy rule: cho phép hay không |
-
-#### ❌ Department
-| # | Trường hợp | Kết quả mong đợi |
-|---|-----------|-----------------|
-| R14 | Không chọn department (nếu là dropdown) | Báo lỗi required |
-| R15 | Department không hợp lệ (giá trị lạ, nếu free text) | Báo lỗi |
-
-#### ❌ Password
-| # | Trường hợp | Kết quả mong đợi |
-|---|-----------|-----------------|
-| R16 | Password quá ngắn (< min length) | Báo lỗi min length |
-| R17 | Password quá dài (> max length) | Báo lỗi |
-| R18 | Password không đủ độ phức tạp (nếu có rule) | Báo lỗi rule cụ thể |
-| R19 | Password có khoảng trắng (đầu/cuối/giữa) | Tùy rule: trim hay báo lỗi |
-| R20 | Password có ký tự đặc biệt hợp lệ | Chấp nhận bình thường |
-
-#### ❌ Confirm Password
-| # | Trường hợp | Kết quả mong đợi |
-|---|-----------|-----------------|
-| R21 | Confirm password **không khớp** password | "Mật khẩu xác thực không khớp" |
-| R22 | Confirm password **khớp** password | Hợp lệ |
-| R23 | Thay đổi password sau khi điền confirm | Re-validate confirm field |
-
-#### ⚠️ Edge Cases
-| # | Trường hợp | Kết quả mong đợi |
-|---|-----------|-----------------|
-| R24 | SQL Injection ở bất kỳ field nào | Không bị exploit |
-| R25 | XSS ở username / department | Escape đúng |
-| R26 | Spam click nút Register | Không tạo duplicate, disable button |
-| R27 | Submit form bằng phím Enter | Hoạt động đúng |
-| R28 | Mạng chậm / timeout | Hiện loading, thông báo lỗi |
-| R29 | Server lỗi 500 khi submit | Hiện thông báo lỗi hệ thống |
-| R30 | Paste vào confirm password field | Cho phép hoặc chặn tùy UX |
+| P1 | Nhấn nút "Login with Google" → popup mở | Popup Google hiện đúng |
+| P2 | User **đóng popup** trước khi chọn account | Không lỗi, quay về trang login bình thường |
+| P3 | Popup bị **chặn bởi trình duyệt** (popup blocker) | Hiện thông báo hướng dẫn cho phép popup |
+| P4 | User nhấn nút Login Google **nhiều lần liên tiếp** | Không mở nhiều popup, chỉ focus popup hiện có |
+| P5 | Dùng **redirect flow** thay popup (mobile) | Redirect đúng, sau khi auth quay lại đúng trang |
+| P6 | User nhấn Back trên trang Google auth | Quay về app, không lỗi |
+| P7 | Popup mở nhưng user **không làm gì**, để timeout | Xử lý gracefully, không treo UI |
 
 ---
 
-### 🔄 LUỒNG CHUNG
+### ❌ TRƯỜNG HỢP HỦY / TỪ CHỐI
+
 | # | Trường hợp | Kết quả mong đợi |
 |---|-----------|-----------------|
-| G1 | Đã đăng nhập → vào trang login/register | Redirect về trang chính |
-| G2 | Chưa đăng nhập → vào trang cần auth | Redirect về login |
-| G3 | Token hết hạn giữa chừng | Logout + redirect login |
-| G4 | Nhấn Back sau khi đăng nhập | Không quay về trang login |
-| G5 | Đăng nhập trên nhiều tab cùng lúc | Xử lý đồng bộ session |
+| D1 | User nhấn **"Cancel"** trên màn hình Google consent | Quay về trang login, hiện thông báo nhẹ hoặc im lặng |
+| D2 | User **từ chối cấp quyền** (deny permissions) | Báo lỗi rõ ràng, không tạo tài khoản |
+| D3 | User thu hồi quyền app trong Google Account Settings | Lần sau login phải xác nhận lại, hoặc báo lỗi |
+| D4 | User xóa liên kết app khỏi Google → login lại | Xử lý như lần đầu hoặc báo lỗi tùy luồng |
 
 ---
 
-> **Gợi ý thứ tự test:** Happy path → Để trống → Sai dữ liệu → Edge cases → Bảo mật. Bạn muốn mình generate test case dạng code (Jest, Cypress, Playwright...) không?
+### 🔑 AUTHORIZATION CODE / TOKEN
+
+| # | Trường hợp | Kết quả mong đợi |
+|---|-----------|-----------------|
+| T1 | Authorization code hợp lệ → exchange lấy token | Access token + refresh token trả về đúng |
+| T2 | Authorization code **đã dùng rồi** (replay attack) | Google trả lỗi, app xử lý gracefully |
+| T3 | Authorization code **hết hạn** (> 10 phút) | Google trả lỗi `invalid_grant`, app báo lỗi |
+| T4 | **Access token hết hạn** giữa session | Dùng refresh token lấy token mới tự động |
+| T5 | **Refresh token hết hạn** hoặc bị thu hồi | Force logout + redirect về login |
+| T6 | Token bị **giả mạo / tampered** | Xác thực thất bại, từ chối |
+| T7 | `id_token` (JWT) không verify được signature | Từ chối, không tạo session |
+| T8 | `id_token` có `aud` không khớp Client ID của app | Từ chối |
+
+---
+
+### 🔐 BẢO MẬT — STATE & CSRF
+
+| # | Trường hợp | Kết quả mong đợi |
+|---|-----------|-----------------|
+| S1 | `state` parameter hợp lệ, khớp khi callback | Tiếp tục luồng bình thường |
+| S2 | `state` parameter **không khớp** (CSRF attempt) | Từ chối toàn bộ, không xử lý callback |
+| S3 | **Không có** `state` parameter trong callback | Từ chối, báo lỗi bảo mật |
+| S4 | Callback URL bị **thay đổi / tampered** | Google từ chối vì redirect_uri không khớp |
+| S5 | Dùng **redirect_uri** không đăng ký trong Google Console | Google trả lỗi `redirect_uri_mismatch` |
+| S6 | Tấn công **open redirect** qua `state` param | Validate state, không redirect tới URL lạ |
+
+---
+
+### 🌐 LỖI MẠNG / SERVER
+
+| # | Trường hợp | Kết quả mong đợi |
+|---|-----------|-----------------|
+| N1 | Mất mạng khi đang mở popup Google | Popup báo lỗi mạng, app không treo |
+| N2 | Mất mạng khi backend đang exchange code → token | Hiện lỗi, cho phép thử lại |
+| N3 | **Google API server down** (503) | Hiện thông báo "Dịch vụ Google không khả dụng" |
+| N4 | Backend server down khi nhận callback | Hiện trang lỗi thân thiện |
+| N5 | Request exchange token **timeout** | Retry hoặc báo lỗi timeout |
+| N6 | Callback nhận được nhưng **backend xử lý lỗi 500** | Hiện thông báo lỗi hệ thống |
+
+---
+
+### 👤 TRƯỜNG HỢP TÀI KHOẢN ĐẶC BIỆT
+
+| # | Trường hợp | Kết quả mong đợi |
+|---|-----------|-----------------|
+| A1 | Google account **bị suspend bởi Google** | Báo lỗi, không cho đăng nhập |
+| A2 | Tài khoản trong app **bị vô hiệu hóa** (banned) | Dù Google auth thành công vẫn báo lỗi |
+| A3 | Email Google **trùng với tài khoản username/password** đã có | Hỏi merge account hoặc tự link, không tạo duplicate |
+| A4 | User đổi email Google sau khi đã liên kết | Xử lý theo `google_user_id` (sub), không bị mất liên kết |
+| A5 | User dùng **Google Workspace** (email công ty) | Cho phép hoặc chặn tùy config |
+| A6 | User dùng **tài khoản Google con** (Family Link, <18 tuổi) | Xử lý đúng tùy chính sách app |
+| A7 | User có **2 tài khoản app** liên kết 2 Google khác nhau | Không conflict, đăng nhập đúng account |
+| A8 | Lần đầu login Google nhưng **thiếu thông tin** (vd: department) | Redirect sang form bổ sung thông tin |
+
+---
+
+### 🔄 SESSION & LOGOUT
+
+| # | Trường hợp | Kết quả mong đợi |
+|---|-----------|-----------------|
+| SE1 | Đăng nhập Google thành công → session được tạo | Session/cookie hợp lệ, không lưu token ở localStorage |
+| SE2 | Logout khỏi app | Xóa session app, **không nhất thiết** logout Google |
+| SE3 | Logout khỏi **Google** trong khi vẫn dùng app | Session app vẫn còn đến khi hết hạn (tùy thiết kế) |
+| SE4 | Đã login → vào lại trang login | Redirect về trang chính |
+| SE5 | Mở app trên **nhiều tab** cùng lúc | Đồng bộ session, không conflict |
+| SE6 | Session hết hạn giữa chừng | Silent refresh hoặc redirect login |
+
+---
+
+### 📱 ĐA THIẾT BỊ / TRÌNH DUYỆT
+
+| # | Trường hợp | Kết quả mong đợi |
+|---|-----------|-----------------|
+| BR1 | Chrome — popup flow | Hoạt động bình thường |
+| BR2 | Safari — ITP chặn third-party cookie | Dùng redirect flow thay popup |
+| BR3 | Firefox — strict mode | Test popup không bị chặn |
+| BR4 | Mobile browser (Chrome/Safari iOS) | Redirect flow, không dùng popup |
+| BR5 | Trình duyệt **không hỗ trợ** hoặc quá cũ | Hiện thông báo không hỗ trợ |
+| BR6 | **Incognito / Private mode** | Vẫn hoạt động bình thường |
+| BR7 | Đăng nhập trên mobile app (WebView) | Dùng đúng flow cho WebView |
+
+---
+
+### ⚙️ CẤU HÌNH / MÔI TRƯỜNG
+
+| # | Trường hợp | Kết quả mong đợi |
+|---|-----------|-----------------|
+| C1 | `Client ID` sai hoặc không hợp lệ | Google báo lỗi ngay, app xử lý gracefully |
+| C2 | `Client Secret` sai (backend) | Exchange token thất bại, báo lỗi |
+| C3 | Domain app **không được whitelist** trong Google Console | Google từ chối, báo lỗi rõ |
+| C4 | Scopes yêu cầu **không đủ** (thiếu email/profile) | Không lấy được thông tin user |
+| C5 | Scopes yêu cầu **quá nhiều** không cần thiết | Google cảnh báo user, ảnh hưởng trust |
+| C6 | App ở chế độ **Testing** trong Google Console | Chỉ test users được duyệt mới login được |
+
+---
+
+### 🗺️ GỢI Ý THỨ TỰ TEST
+
+```
+1. Happy path (O1 → O4)
+2. Luồng popup/redirect (P1 → P7)
+3. Hủy / từ chối (D1 → D4)
+4. Token & bảo mật (T1 → T8, S1 → S6)
+5. Tài khoản đặc biệt (A1 → A8)
+6. Lỗi mạng (N1 → N6)
+7. Đa trình duyệt (BR1 → BR7)
+8. Cấu hình môi trường (C1 → C6)
+```
+
+> Bạn muốn mình viết test case cụ thể cho trường hợp nào không? Hoặc generate mock/stub cho Google OAuth flow để test offline?

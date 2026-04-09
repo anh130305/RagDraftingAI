@@ -101,6 +101,8 @@ export interface TokenResponse {
 export interface UserResponse {
   id: string;
   username: string;
+  email: string | null;
+  google_id: string | null;
   role: 'admin' | 'user' | 'moderator';
   department: string | null;
   is_active: boolean;
@@ -124,6 +126,16 @@ export function register(
     method: 'POST',
     body: JSON.stringify({ username, password, department }),
   });
+}
+
+export function googleLogin(id_token: string, department?: string) {
+  return request<TokenResponse & { needs_onboarding: boolean }>(
+    '/api/v1/auth/google-login',
+    {
+      method: 'POST',
+      body: JSON.stringify({ id_token, department }),
+    },
+  );
 }
 
 export function getMe() {
