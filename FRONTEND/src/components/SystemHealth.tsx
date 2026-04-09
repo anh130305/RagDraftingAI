@@ -36,7 +36,7 @@ export default function SystemHealth() {
           <h2 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface mb-2">System Health</h2>
           <p className="text-on-surface-variant max-w-2xl">Monitor infrastructure vitals, node status, and real-time event logs across the global network.</p>
         </div>
-        <div className="flex items-center gap-3 px-5 py-2.5 bg-surface-low border border-outline-variant/20 rounded-full">
+        <div className="flex items-center gap-3 px-5 py-2.5 bg-surface-low border border-outline-variant rounded-full">
           <span className="w-2.5 h-2.5 rounded-full bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.5)] animate-pulse"></span>
           <span className="text-xs font-bold uppercase tracking-widest text-on-surface">All Systems Operational</span>
         </div>
@@ -45,7 +45,7 @@ export default function SystemHealth() {
       {/* Top Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {metrics.map((metric) => (
-          <div key={metric.id} className="glass-card p-6 rounded-xl border border-outline-variant/10 relative overflow-hidden group">
+          <div key={metric.id} className="glass-card p-6 rounded-xl border border-outline-variant relative overflow-hidden group">
             <div className={cn(
               "absolute -right-6 -top-6 w-24 h-24 rounded-full blur-[40px] opacity-20 group-hover:opacity-40 transition-opacity",
               `bg-${metric.color}`
@@ -66,8 +66,8 @@ export default function SystemHealth() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Node Status */}
-        <div className="lg:col-span-2 glass-card rounded-xl border border-outline-variant/10 overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-outline-variant/10 flex justify-between items-center">
+        <div className="lg:col-span-2 glass-card rounded-xl border border-outline-variant overflow-hidden flex flex-col">
+          <div className="p-6 border-b border-outline-variant flex justify-between items-center">
             <h3 className="font-headline font-bold text-lg text-on-surface flex items-center gap-2">
               <Server className="w-5 h-5 text-primary" />
               Active Nodes
@@ -78,7 +78,7 @@ export default function SystemHealth() {
             <div className="space-y-6">
               {nodes.map((node) => (
                 <div key={node.id} className="flex items-center gap-6">
-                  <div className="w-12 h-12 rounded-full bg-surface-highest flex items-center justify-center border border-outline-variant/20 shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-surface-highest flex items-center justify-center border border-outline-variant shrink-0">
                     {node.status === 'healthy' ? (
                       <CheckCircle2 className="w-6 h-6 text-green-400" />
                     ) : (
@@ -113,8 +113,8 @@ export default function SystemHealth() {
         </div>
 
         {/* Event Logs */}
-        <div className="glass-card rounded-xl border border-outline-variant/10 overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-outline-variant/10 flex justify-between items-center">
+        <div className="glass-card rounded-xl border border-outline-variant overflow-hidden flex flex-col">
+          <div className="p-6 border-b border-outline-variant flex justify-between items-center">
             <h3 className="font-headline font-bold text-lg text-on-surface flex items-center gap-2">
               <Clock className="w-5 h-5 text-tertiary" />
               System Events

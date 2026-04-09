@@ -62,13 +62,13 @@ export default function App() {
   const ActiveView = adminViewMap[activeView];
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen w-full bg-background">
       <Sidebar activeView={activeView} onViewChange={setActiveView} />
       
       <main className="flex-1 ml-64 flex flex-col min-h-screen">
         <TopBar theme={theme} setTheme={setTheme} />
         
-        <div className="p-8 max-w-7xl mx-auto w-full flex-1 overflow-x-hidden custom-scrollbar">
+        <div className="p-8 w-full flex-1 overflow-x-hidden custom-scrollbar">
           <Suspense
             fallback={
               <div className="flex flex-col items-center justify-center h-[60vh] text-center gap-2">
@@ -79,6 +79,7 @@ export default function App() {
           >
             <AnimatePresence mode="wait">
               <motion.div
+                className="w-full h-full flex flex-col"
                 key={activeView}
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}

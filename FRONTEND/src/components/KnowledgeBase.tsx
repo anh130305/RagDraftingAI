@@ -33,7 +33,7 @@ export default function KnowledgeBase() {
 
       <div className="flex flex-col gap-8">
         {/* Tabs */}
-        <div className="flex gap-2 p-1 bg-surface-low rounded-xl self-start border border-outline-variant/10">
+        <div className="flex gap-2 p-1 bg-surface-low rounded-xl self-start border border-outline-variant">
           <button className="px-6 py-2.5 rounded-lg bg-surface-highest text-primary font-semibold text-sm transition-all shadow-sm">Upload Docs</button>
           <button className="px-6 py-2.5 rounded-lg text-on-surface-variant hover:text-on-surface font-medium text-sm transition-all">Crawler</button>
           <button className="px-6 py-2.5 rounded-lg text-on-surface-variant hover:text-on-surface font-medium text-sm transition-all">Monitoring</button>
@@ -42,7 +42,7 @@ export default function KnowledgeBase() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left: Upload & Recent */}
           <div className="lg:col-span-8 flex flex-col gap-6">
-            <div className="glass-card p-12 rounded-xl border-dashed border-2 border-outline-variant/20 hover:border-primary/40 transition-all group cursor-pointer flex flex-col items-center justify-center text-center min-h-[400px]">
+            <div className="glass-card p-12 rounded-xl border-dashed border-2 border-outline-variant hover:border-primary/40 transition-all group cursor-pointer flex flex-col items-center justify-center text-center min-h-[400px]">
               <div className="w-20 h-20 bg-surface-highest rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-xl">
                 <Upload className="w-10 h-10 text-primary" />
               </div>
@@ -54,7 +54,7 @@ export default function KnowledgeBase() {
               </button>
             </div>
 
-            <div className="bg-surface rounded-xl p-6 border border-outline-variant/10">
+            <div className="bg-surface rounded-xl p-6 border border-outline-variant">
               <div className="flex justify-between items-center mb-6">
                 <h4 className="font-bold text-lg text-on-surface">Recent Ingestions</h4>
                 <span className="text-[10px] text-primary font-bold bg-primary/10 px-3 py-1 rounded-full uppercase tracking-widest border border-primary/20">
@@ -63,7 +63,7 @@ export default function KnowledgeBase() {
               </div>
               <div className="space-y-4">
                 {ingestions.map((file) => (
-                  <div key={file.id} className="flex items-center gap-4 p-4 bg-surface-high rounded-xl border border-outline-variant/5">
+                  <div key={file.id} className="flex items-center gap-4 p-4 bg-surface-high rounded-xl border border-outline-variant">
                     <div className="w-10 h-10 bg-surface-highest rounded-lg flex items-center justify-center">
                       <FileText className={cn("w-6 h-6", file.type === 'pdf' ? "text-red-400" : "text-blue-400")} />
                     </div>
@@ -91,7 +91,7 @@ export default function KnowledgeBase() {
 
           {/* Right: Crawler & Stats */}
           <div className="lg:col-span-4 flex flex-col gap-6">
-            <div className="bg-surface rounded-xl p-6 border border-outline-variant/10 shadow-lg">
+            <div className="bg-surface rounded-xl p-6 border border-outline-variant shadow-lg">
               <div className="flex items-center gap-3 mb-6">
                 <Globe className="w-6 h-6 text-secondary" />
                 <h4 className="font-bold text-lg text-on-surface">Web Crawler</h4>
@@ -124,7 +124,7 @@ export default function KnowledgeBase() {
               </div>
             </div>
 
-            <div className="bg-surface-low rounded-xl p-6 relative overflow-hidden group border border-outline-variant/5">
+            <div className="bg-surface-low rounded-xl p-6 relative overflow-hidden group border border-outline-variant">
               <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-tertiary/10 blur-[80px] rounded-full group-hover:bg-tertiary/20 transition-colors duration-500"></div>
               <h4 className="font-bold text-sm text-on-surface-variant mb-6 flex items-center gap-2">
                 <Database className="w-4 h-4" />
@@ -148,15 +148,15 @@ export default function KnowledgeBase() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-surface rounded-full border border-outline-variant/10">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-surface rounded-full border border-outline-variant">
                 <div className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></div>
                 <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant">Indexing</span>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-surface rounded-full border border-outline-variant/10">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-surface rounded-full border border-outline-variant">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
                 <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant">PostgreSQL Ready</span>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-surface rounded-full border border-outline-variant/10">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-surface rounded-full border border-outline-variant">
                 <div className="w-1.5 h-1.5 rounded-full bg-secondary"></div>
                 <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant">Pinecone V2</span>
               </div>
@@ -167,7 +167,7 @@ export default function KnowledgeBase() {
         {/* Jobs List */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {jobs.map((job) => (
-            <div key={job.id} className="bg-surface rounded-2xl p-6 border border-outline-variant/5 hover:border-outline-variant/20 transition-all">
+            <div key={job.id} className="bg-surface rounded-2xl p-6 border border-outline-variant hover:border-outline-variant transition-all">
               <div className="flex justify-between mb-4">
                 <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Vectorization Job #{job.id}</span>
                 <span className={cn("text-[10px] font-bold uppercase tracking-widest", `text-${job.color}`)}>{job.status}</span>

@@ -57,7 +57,7 @@ export default function UserManagement() {
           <p className="text-on-surface-variant max-w-lg">Govern access controls, update permissions, and audit user activity across the Obsidian ecosystem.</p>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface border border-outline-variant/10 text-on-surface hover:bg-surface-high transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface border border-outline-variant text-on-surface hover:bg-surface-high transition-colors">
             <Filter className="w-5 h-5" />
             <span className="text-sm font-medium">Filter</span>
           </button>
@@ -100,7 +100,7 @@ export default function UserManagement() {
       </div>
 
       {/* Table */}
-      <div className="bg-surface rounded-xl overflow-hidden border border-outline-variant/10 shadow-xl">
+      <div className="bg-surface rounded-xl overflow-hidden border border-outline-variant shadow-xl">
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -111,7 +111,7 @@ export default function UserManagement() {
                 <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-outline-variant/10">
+            <tbody className="divide-y divide-outline-variant">
               {users.map((user) => (
                 <tr key={user.id} className="hover:bg-surface-highest/30 transition-colors group">
                   <td className="px-6 py-5">
@@ -119,7 +119,7 @@ export default function UserManagement() {
                       <img 
                         src={user.avatar} 
                         alt={user.name} 
-                        className="w-10 h-10 rounded-full border border-outline-variant/20"
+                        className="w-10 h-10 rounded-full border border-outline-variant"
                         referrerPolicy="no-referrer"
                       />
                       <div>
@@ -131,7 +131,7 @@ export default function UserManagement() {
                   <td className="px-6 py-5">
                     <select 
                       defaultValue={user.role}
-                      className="bg-surface-low border border-outline-variant/20 rounded-xl px-4 py-2 text-sm text-on-surface focus:ring-1 focus:ring-primary focus:outline-none appearance-none cursor-pointer hover:border-primary/50 transition-colors"
+                      className="bg-surface-low border border-outline-variant rounded-xl px-4 py-2 text-sm text-on-surface focus:ring-1 focus:ring-primary focus:outline-none appearance-none cursor-pointer hover:border-primary/50 transition-colors"
                     >
                       <option value="Admin">Admin</option>
                       <option value="Clerical">Clerical</option>
@@ -142,7 +142,7 @@ export default function UserManagement() {
                     <div className="flex justify-center">
                       <button className={cn(
                         "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 border",
-                        user.status ? "bg-primary/20 border-primary/30" : "bg-surface-highest border-outline-variant/30"
+                        user.status ? "bg-primary/20 border-primary/30" : "bg-surface-highest border-outline-variant"
                       )}>
                         <span className={cn(
                           "inline-block h-4 w-4 transform rounded-full transition duration-200 ease-in-out",
@@ -168,15 +168,15 @@ export default function UserManagement() {
         </div>
         
         {/* Pagination */}
-        <div className="px-6 py-4 bg-surface-high/50 flex items-center justify-between border-t border-outline-variant/10">
+        <div className="px-6 py-4 bg-surface-high/50 flex items-center justify-between border-t border-outline-variant">
           <p className="text-xs text-on-surface-variant">
             Showing <span className="text-on-surface font-medium">1-4</span> of <span className="text-on-surface font-medium">1,284</span> users
           </p>
           <div className="flex gap-2">
-            <button className="p-2 rounded-lg border border-outline-variant/20 text-on-surface-variant hover:bg-surface hover:text-on-surface transition-all disabled:opacity-30" disabled>
+            <button className="p-2 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface hover:text-on-surface transition-all disabled:opacity-30" disabled>
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <button className="p-2 rounded-lg border border-outline-variant/20 text-on-surface-variant hover:bg-surface hover:text-on-surface transition-all">
+            <button className="p-2 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface hover:text-on-surface transition-all">
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -188,7 +188,7 @@ export default function UserManagement() {
         <h3 className="text-xl font-bold font-headline text-on-surface mb-4">Quick Permissions Overview</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {permissions.map((perm) => (
-            <div key={perm.role} className="glass-card p-6 rounded-xl border-t-2" style={{ borderTopColor: `var(--color-${perm.color})` }}>
+            <div key={perm.role} className="bg-surface-low p-6 rounded-2xl border border-black/5 dark:border-white/5 border-t-[3px] shadow-sm hover:shadow-md transition-shadow" style={{ borderTopColor: `var(--color-${perm.color})` }}>
               <div className="flex items-center gap-3 mb-6">
                 <div className={cn("w-2 h-2 rounded-full shadow-[0_0_8px_currentColor]")} style={{ color: `var(--color-${perm.color})`, backgroundColor: 'currentColor' }} />
                 <span className="text-xs font-bold tracking-widest uppercase text-on-surface">{perm.role}</span>

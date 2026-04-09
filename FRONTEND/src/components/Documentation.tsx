@@ -65,7 +65,7 @@ export default function Documentation() {
       </div>
 
       {/* Doc Content */}
-      <div className="flex-1 glass-card rounded-2xl p-8 lg:p-12 border border-outline-variant/10 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 glass-card rounded-2xl p-8 lg:p-12 border border-outline-variant overflow-y-auto custom-scrollbar">
         <div className="max-w-3xl">
           <div className="flex items-center gap-2 text-xs text-on-surface-variant mb-6 font-medium">
             <span>Getting Started</span>
@@ -88,8 +88,8 @@ export default function Documentation() {
                 Authentication to the API is performed via HTTP Bearer Auth. Provide your API key as the bearer token value in the Authorization header.
               </p>
               
-              <div className="relative group rounded-xl overflow-hidden border border-outline-variant/20 bg-[#0a0a0a]">
-                <div className="flex items-center justify-between px-4 py-2 bg-surface-highest border-b border-outline-variant/20">
+              <div className="relative group rounded-xl overflow-hidden border border-outline-variant bg-[#0a0a0a]">
+                <div className="flex items-center justify-between px-4 py-2 bg-surface-highest border-b border-outline-variant">
                   <span className="text-[10px] font-mono text-on-surface-variant uppercase tracking-widest">cURL</span>
                   <button 
                     onClick={handleCopy}
@@ -125,8 +125,8 @@ export default function Documentation() {
                 If you are using our official Node.js or Python SDKs, authentication is handled automatically when you initialize the client.
               </p>
               
-              <div className="relative rounded-xl overflow-hidden border border-outline-variant/20 bg-[#0a0a0a]">
-                <div className="flex items-center px-4 py-2 bg-surface-highest border-b border-outline-variant/20 gap-4">
+              <div className="relative rounded-xl overflow-hidden border border-outline-variant bg-[#0a0a0a]">
+                <div className="flex items-center px-4 py-2 bg-surface-highest border-b border-outline-variant gap-4">
                   <span className="text-[10px] font-mono text-primary uppercase tracking-widest border-b border-primary pb-1">Node.js</span>
                   <span className="text-[10px] font-mono text-on-surface-variant uppercase tracking-widest pb-1 cursor-pointer hover:text-on-surface">Python</span>
                 </div>
@@ -144,7 +144,7 @@ export default function Documentation() {
             </section>
           </div>
           
-          <div className="mt-12 pt-8 border-t border-outline-variant/10 flex justify-between items-center">
+          <div className="mt-12 pt-8 border-t border-outline-variant flex justify-between items-center">
             <button className="text-sm text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-2">
               <ChevronRight className="w-4 h-4 rotate-180" />
               Introduction
