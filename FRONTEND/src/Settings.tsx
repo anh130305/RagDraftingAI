@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import './styles/chat-auth.css';
 
 export default function Settings() {
   return (
@@ -20,15 +21,15 @@ export default function Settings() {
           {/* Navigation Scrollable */}
           <nav className="flex-1 space-y-1 overflow-y-auto custom-scrollbar">
             <div className="text-[#ADAAAA] text-[11px] font-bold px-3 mb-2 uppercase tracking-wider">Recent</div>
-            <Link className="flex items-center gap-3 px-3 py-2 text-[#ADAAAA] hover:text-white hover:bg-[#1A1919] transition-colors duration-200 rounded-full group" to="/">
+            <Link className="flex items-center gap-3 px-3 py-2 text-[#ADAAAA] hover:text-white hover:bg-[#1A1919] transition-colors duration-200 rounded-full group" to="/chat">
               <span className="material-symbols-outlined text-xl">chat_bubble</span>
               <span className="font-label text-sm truncate">Recent Chat 1</span>
             </Link>
-            <Link className="flex items-center gap-3 px-3 py-2 text-[#ADAAAA] hover:text-white hover:bg-[#1A1919] transition-colors duration-200 rounded-full group" to="/">
+            <Link className="flex items-center gap-3 px-3 py-2 text-[#ADAAAA] hover:text-white hover:bg-[#1A1919] transition-colors duration-200 rounded-full group" to="/chat">
               <span className="material-symbols-outlined text-xl">chat_bubble</span>
               <span className="font-label text-sm truncate">Recent Chat 2</span>
             </Link>
-            <Link className="flex items-center gap-3 px-3 py-2 text-[#ADAAAA] hover:text-white hover:bg-[#1A1919] transition-colors duration-200 rounded-full group" to="/">
+            <Link className="flex items-center gap-3 px-3 py-2 text-[#ADAAAA] hover:text-white hover:bg-[#1A1919] transition-colors duration-200 rounded-full group" to="/chat">
               <span className="material-symbols-outlined text-xl">chat_bubble</span>
               <span className="font-label text-sm truncate">Recent Chat 3</span>
             </Link>
