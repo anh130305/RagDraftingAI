@@ -1,34 +1,43 @@
-from fastapi import FastAPI, Depends
+"""
+main.py – FastAPI application entry point.
+"""
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-from sqlalchemy import text
 
-from app.db.session import engine, Base, get_db
+from app.core.config import settings
+from app.api.v1.router import api_router
+from app.db.base import Base  # noqa: F401 – ensure all models are registered
+from app.db.session import get_engine
 
-app = FastAPI(title="RagDraftingAI API", version="1.0.0")
+# ── Create tables (dev only – use Alembic in production) ─────
+Base.metadata.create_all(bind=get_engine())
 
-# Create tables in Database (if they don't exist yet)
-Base.metadata.create_all(bind=engine)
+# ── App ──────────────────────────────────────────────────────
+app = FastAPI(
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
 
-# Setup CORS for Frontend React integration
+# ── CORS ─────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], # Vite default port
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.get("/")
-def read_root(db: Session = Depends(get_db)):
-    try:
-        # Execute simple query to test connection
-        db.execute(text("SELECT 1"))
-        db_status = "Connected successfully to PostgreSQL!"
-    except Exception as e:
-        db_status = f"Failed to connect: {str(e)}"
-        
+# ── Routes ───────────────────────────────────────────────────
+app.include_router(api_router)
+
+
+@app.get("/", tags=["Root"])
+def read_root():
     return {
-        "message": "Welcome to RagDraftingAI Backend REST API",
-        "database_status": db_status
+        "message": f"Welcome to {settings.APP_NAME} API",
+        "version": settings.APP_VERSION,
+        "docs": "/docs",
     }
