@@ -88,7 +88,7 @@
     --surface-highest: #e5e7eb;
     --on-surface: #111827;
     --on-surface-variant: #6b7280;
-    --outline-variant: #d1d5db;
+    --outline-variant: rgba(0, 0, 0, 0.08);
     --primary: #3b82f6;
     --primary-container: #60a5fa;
     --secondary: #8b5cf6;
@@ -104,7 +104,7 @@
     --surface-highest: #262626;
     --on-surface: #ffffff;
     --on-surface-variant: #adaaaa;
-    --outline-variant: #484847;
+    --outline-variant: rgba(255, 255, 255, 0.08);
     --primary: #85adff;
     --primary-container: #6d9fff;
     --secondary: #c180ff;

@@ -2,7 +2,7 @@
 
 @layer components {
   .glass-card {
-    @apply bg-surface-highest/40 backdrop-blur-3xl border border-outline-variant/10 transition-colors duration-300;
+    @apply bg-surface-highest/40 backdrop-blur-3xl border border-outline-variant transition-colors duration-300;
   }
 
   .gradient-primary {
@@ -18,6 +18,6 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-outline-variant/30 rounded-full;
+    @apply bg-outline-variant rounded-full;
   }
 }

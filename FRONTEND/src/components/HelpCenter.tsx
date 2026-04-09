@@ -24,7 +24,7 @@ export default function HelpCenter() {
       className="space-y-10"
     >
       {/* Hero Section */}
-      <div className="relative glass-card rounded-2xl p-12 overflow-hidden border border-outline-variant/10 text-center flex flex-col items-center justify-center min-h-[300px]">
+      <div className="relative glass-card rounded-2xl p-12 overflow-hidden border border-outline-variant text-center flex flex-col items-center justify-center min-h-[300px]">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none"></div>
         <div className="absolute -top-24 -left-24 w-64 h-64 bg-primary/20 blur-[100px] rounded-full pointer-events-none"></div>
         <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-secondary/20 blur-[100px] rounded-full pointer-events-none"></div>
@@ -38,7 +38,7 @@ export default function HelpCenter() {
           <input 
             type="text" 
             placeholder="Search for articles, tutorials, or error codes..." 
-            className="w-full bg-surface-highest/80 backdrop-blur-md border border-outline-variant/20 rounded-full py-4 pl-12 pr-6 text-on-surface focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all shadow-xl placeholder:text-on-surface-variant/50"
+            className="w-full bg-surface-highest/80 backdrop-blur-md border border-outline-variant rounded-full py-4 pl-12 pr-6 text-on-surface focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all shadow-xl placeholder:text-on-surface-variant/50"
           />
         </div>
       </div>
@@ -48,7 +48,7 @@ export default function HelpCenter() {
         <h3 className="text-xl font-bold font-headline text-on-surface mb-6">Browse by Category</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {categories.map((cat) => (
-            <div key={cat.id} className="glass-card p-6 rounded-xl border border-outline-variant/10 hover:border-primary/30 transition-all cursor-pointer group flex items-start gap-5">
+            <div key={cat.id} className="glass-card p-6 rounded-xl border border-outline-variant hover:border-primary/30 transition-all cursor-pointer group flex items-start gap-5">
               <div className="w-12 h-12 rounded-xl bg-surface-highest flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
                 <cat.icon className="w-6 h-6 text-on-surface-variant group-hover:text-primary transition-colors" />
               </div>
@@ -65,11 +65,11 @@ export default function HelpCenter() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Popular FAQs */}
-        <div className="lg:col-span-2 glass-card p-8 rounded-xl border border-outline-variant/10">
+        <div className="lg:col-span-2 glass-card p-8 rounded-xl border border-outline-variant">
           <h3 className="text-xl font-bold font-headline text-on-surface mb-6">Frequently Asked Questions</h3>
           <div className="space-y-3">
             {faqs.map((faq, idx) => (
-              <div key={idx} className="p-4 rounded-xl bg-surface-low border border-outline-variant/5 hover:bg-surface-highest transition-colors cursor-pointer flex justify-between items-center group">
+              <div key={idx} className="p-4 rounded-xl bg-surface-low border border-outline-variant hover:bg-surface-highest transition-colors cursor-pointer flex justify-between items-center group">
                 <span className="text-sm font-medium text-on-surface-variant group-hover:text-on-surface transition-colors">{faq}</span>
                 <ChevronRight className="w-4 h-4 text-on-surface-variant/50 group-hover:text-on-surface transition-colors" />
               </div>
@@ -78,13 +78,13 @@ export default function HelpCenter() {
         </div>
 
         {/* Contact Support */}
-        <div className="glass-card p-8 rounded-xl border border-outline-variant/10 flex flex-col justify-center text-center">
+        <div className="glass-card p-8 rounded-xl border border-outline-variant flex flex-col justify-center text-center">
           <div className="w-16 h-16 rounded-full bg-tertiary/10 flex items-center justify-center mx-auto mb-6">
             <MessageSquare className="w-8 h-8 text-tertiary" />
           </div>
           <h3 className="text-xl font-bold font-headline text-on-surface mb-2">Still need help?</h3>
           <p className="text-xs text-on-surface-variant mb-8">Our engineering support team is available 24/7 for enterprise customers.</p>
-          <button className="w-full py-3 rounded-full bg-surface-highest text-on-surface font-bold border border-outline-variant/20 hover:bg-surface-variant transition-all flex items-center justify-center gap-2 mb-3">
+          <button className="w-full py-3 rounded-full bg-surface-highest text-on-surface font-bold border border-outline-variant hover:bg-surface-variant transition-all flex items-center justify-center gap-2 mb-3">
             <MessageSquare className="w-4 h-4" />
             Live Chat
           </button>

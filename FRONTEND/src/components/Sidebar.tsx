@@ -24,18 +24,9 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowUserMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  // Removed outside click listener state
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -81,29 +72,9 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
         ))}
       </nav>
 
-      <div className="mt-auto pt-6 border-t border-outline-variant/10 relative" ref={menuRef}>
-        {showUserMenu && (
-          <div className="absolute bottom-full left-0 mb-2 w-full bg-surface-highest border border-outline-variant/20 rounded-xl shadow-xl overflow-hidden py-1 z-50">
-            <button 
-              onClick={() => { onViewChange('settings'); setShowUserMenu(false); }}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-high transition-colors"
-            >
-              <User className="w-4 h-4" /> Profile & Settings
-            </button>
-            <div className="h-px bg-outline-variant/10 my-1"></div>
-            <button 
-              onClick={() => setShowUserMenu(false)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-error hover:bg-surface-high transition-colors font-medium"
-            >
-              <LogOut className="w-4 h-4" /> Log Out
-            </button>
-          </div>
-        )}
-        <div 
-          onClick={() => setShowUserMenu(!showUserMenu)}
-          className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-surface-highest/50 transition-colors cursor-pointer"
-        >
-          <div className="w-10 h-10 rounded-full overflow-hidden border border-outline-variant/20 shrink-0">
+      <div className="mt-auto pt-6 border-t border-outline-variant">
+        <div className="flex items-center gap-3 px-2 py-2">
+          <div className="w-10 h-10 rounded-full overflow-hidden border border-outline-variant shrink-0">
             <img 
               src="https://picsum.photos/seed/admin/100/100" 
               alt="User" 
@@ -112,9 +83,15 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
           </div>
           <div className="flex-1 min-w-0">
             <h4 className="text-sm font-bold text-on-surface truncate">Adrian Valerius</h4>
-            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest truncate">Admin Stratos</p>
+            <p className="text-xs text-on-surface-variant truncate">Admin Stratos</p>
           </div>
         </div>
+        <button 
+          className="w-full mt-2 flex items-center justify-center gap-2 px-2 py-2.5 text-sm rounded-xl text-error bg-error/10 hover:bg-error hover:text-white transition-all font-bold tracking-wide"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Log Out</span>
+        </button>
       </div>
     </aside>
   );

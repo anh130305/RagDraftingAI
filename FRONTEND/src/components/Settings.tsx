@@ -71,11 +71,11 @@ export default function Settings() {
           {/* General Tab */}
           {activeTab === 'general' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-              <div className="glass-card p-8 rounded-2xl border border-outline-variant/10">
+              <div className="glass-card p-8 rounded-2xl border border-outline-variant">
                 <h3 className="text-xl font-bold font-headline text-on-surface mb-6">Profile Information</h3>
                 
                 <div className="flex items-center gap-6 mb-8">
-                  <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-outline-variant/20 relative group cursor-pointer">
+                  <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-outline-variant relative group cursor-pointer">
                     <img 
                       src="https://picsum.photos/seed/admin/200/200" 
                       alt="Profile" 
@@ -86,7 +86,7 @@ export default function Settings() {
                     </div>
                   </div>
                   <div>
-                    <button className="px-5 py-2 rounded-full bg-surface-highest text-on-surface text-sm font-bold border border-outline-variant/20 hover:bg-surface-variant transition-all mb-2">
+                    <button className="px-5 py-2 rounded-full bg-surface-highest text-on-surface text-sm font-bold border border-outline-variant hover:bg-surface-variant transition-all mb-2">
                       Upload New Avatar
                     </button>
                     <p className="text-xs text-on-surface-variant">JPG, GIF or PNG. Max size of 2MB.</p>
@@ -142,22 +142,22 @@ export default function Settings() {
           {/* API Keys Tab */}
           {activeTab === 'api' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-              <div className="glass-card p-8 rounded-2xl border border-outline-variant/10">
+              <div className="glass-card p-8 rounded-2xl border border-outline-variant">
                 <div className="flex justify-between items-center mb-6">
                   <div>
                     <h3 className="text-xl font-bold font-headline text-on-surface">API Keys</h3>
                     <p className="text-xs text-on-surface-variant mt-1">Manage keys for authenticating with the Obsidian API.</p>
                   </div>
-                  <button className="px-5 py-2.5 rounded-full bg-surface-highest text-primary font-bold text-sm border border-outline-variant/20 hover:bg-surface-variant transition-all flex items-center gap-2">
+                  <button className="px-5 py-2.5 rounded-full bg-surface-highest text-primary font-bold text-sm border border-outline-variant hover:bg-surface-variant transition-all flex items-center gap-2">
                     <Plus className="w-4 h-4" />
                     Create New Key
                   </button>
                 </div>
 
-                <div className="bg-surface rounded-xl overflow-hidden border border-outline-variant/10">
+                <div className="bg-surface rounded-xl overflow-hidden border border-outline-variant">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="bg-surface-high border-b border-outline-variant/10">
+                      <tr className="bg-surface-high border-b border-outline-variant">
                         <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Name</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Secret Key</th>
                         <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Created</th>
@@ -165,7 +165,7 @@ export default function Settings() {
                         <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-outline-variant/5">
+                    <tbody className="divide-y divide-outline-variant">
                       {apiKeys.map((key) => (
                         <tr key={key.id} className="hover:bg-surface-highest/30 transition-colors">
                           <td className="px-6 py-4 text-sm font-medium text-on-surface">{key.name}</td>
@@ -197,9 +197,9 @@ export default function Settings() {
           {/* Security Tab */}
           {activeTab === 'security' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-              <div className="glass-card p-8 rounded-2xl border border-outline-variant/10">
+              <div className="glass-card p-8 rounded-2xl border border-outline-variant">
                 <h3 className="text-xl font-bold font-headline text-on-surface mb-6">Two-Factor Authentication</h3>
-                <div className="flex items-center justify-between p-6 bg-surface-low rounded-xl border border-outline-variant/5">
+                <div className="flex items-center justify-between p-6 bg-surface-low rounded-xl border border-outline-variant">
                   <div>
                     <h4 className="text-sm font-bold text-on-surface mb-1">Authenticator App</h4>
                     <p className="text-xs text-on-surface-variant">Use an app like Google Authenticator to get 2FA codes.</p>
@@ -210,11 +210,11 @@ export default function Settings() {
                 </div>
               </div>
 
-              <div className="glass-card p-8 rounded-2xl border border-outline-variant/10">
+              <div className="glass-card p-8 rounded-2xl border border-outline-variant">
                 <h3 className="text-xl font-bold font-headline text-on-surface mb-6">Active Sessions</h3>
                 <div className="space-y-4">
                   {sessions.map((session) => (
-                    <div key={session.id} className="flex items-center justify-between p-4 bg-surface-high rounded-xl border border-outline-variant/5">
+                    <div key={session.id} className="flex items-center justify-between p-4 bg-surface-high rounded-xl border border-outline-variant">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-lg bg-surface-highest flex items-center justify-center">
                           <session.icon className="w-5 h-5 text-on-surface-variant" />
@@ -242,18 +242,18 @@ export default function Settings() {
           {/* Billing Tab (Placeholder) */}
           {activeTab === 'billing' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-              <div className="glass-card p-8 rounded-2xl border border-outline-variant/10">
+              <div className="glass-card p-8 rounded-2xl border border-outline-variant">
                 <div className="flex justify-between items-start mb-8">
                   <div>
                     <h3 className="text-xl font-bold font-headline text-on-surface mb-2">Current Plan</h3>
                     <p className="text-sm text-on-surface-variant">You are currently on the <span className="text-secondary font-bold">Enterprise Tier</span>.</p>
                   </div>
-                  <button className="px-5 py-2.5 rounded-full bg-surface-highest text-on-surface font-bold text-sm border border-outline-variant/20 hover:bg-surface-variant transition-all">
+                  <button className="px-5 py-2.5 rounded-full bg-surface-highest text-on-surface font-bold text-sm border border-outline-variant hover:bg-surface-variant transition-all">
                     Manage Billing
                   </button>
                 </div>
 
-                <div className="p-6 bg-surface-low rounded-xl border border-outline-variant/5">
+                <div className="p-6 bg-surface-low rounded-xl border border-outline-variant">
                   <div className="flex justify-between items-end mb-4">
                     <div>
                       <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-1">Compute Usage</h4>
@@ -273,7 +273,7 @@ export default function Settings() {
           {/* Notifications Tab (Placeholder) */}
           {activeTab === 'notifications' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-              <div className="glass-card p-8 rounded-2xl border border-outline-variant/10">
+              <div className="glass-card p-8 rounded-2xl border border-outline-variant">
                 <h3 className="text-xl font-bold font-headline text-on-surface mb-6">Notification Preferences</h3>
                 <div className="space-y-4">
                   {[
@@ -282,14 +282,14 @@ export default function Settings() {
                     { title: 'Model Training', desc: 'Notifications when fine-tuning jobs complete.', active: false },
                     { title: 'Security Logs', desc: 'New logins, API key creation, and role changes.', active: true },
                   ].map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-4 bg-surface-low rounded-xl border border-outline-variant/5">
+                    <div key={idx} className="flex items-center justify-between p-4 bg-surface-low rounded-xl border border-outline-variant">
                       <div>
                         <h4 className="text-sm font-bold text-on-surface mb-1">{item.title}</h4>
                         <p className="text-xs text-on-surface-variant">{item.desc}</p>
                       </div>
                       <button className={cn(
                         "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 border",
-                        item.active ? "bg-primary/20 border-primary/30" : "bg-surface-highest border-outline-variant/30"
+                        item.active ? "bg-primary/20 border-primary/30" : "bg-surface-highest border-outline-variant"
                       )}>
                         <span className={cn(
                           "inline-block h-4 w-4 transform rounded-full transition duration-200 ease-in-out",

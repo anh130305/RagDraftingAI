@@ -50,11 +50,11 @@ export default function Dashboard() {
           <p className="text-on-surface-variant font-medium">Real-time inference and hardware orchestration status.</p>
         </div>
         <div className="flex gap-3">
-          <div className="flex items-center gap-2 px-4 py-2 bg-surface rounded-lg border border-outline-variant/10 text-xs font-medium">
+          <div className="flex items-center gap-2 px-4 py-2 bg-surface rounded-lg border border-outline-variant text-xs font-medium">
             <span className="w-2 h-2 bg-tertiary rounded-full animate-pulse shadow-[0_0_8px_rgba(251,180,255,0.6)]"></span>
             Live Feed Active
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-surface rounded-lg border border-outline-variant/10 text-xs font-medium text-on-surface-variant">
+          <div className="flex items-center gap-2 px-4 py-2 bg-surface rounded-lg border border-outline-variant text-xs font-medium text-on-surface-variant">
             Last sync: 2s ago
           </div>
         </div>
@@ -202,7 +202,7 @@ export default function Dashboard() {
         </div>
 
         {/* Bottom Alerts/Stats */}
-        <div className="col-span-12 lg:col-span-4 glass-card rounded-xl p-6 flex items-center gap-6 border-l-4 border-l-error">
+        <div className="col-span-12 lg:col-span-4 glass-card rounded-xl p-6 flex items-center gap-6">
           <div className="w-14 h-14 rounded-full bg-error/10 flex items-center justify-center text-error">
             <AlertCircle className="w-8 h-8" />
           </div>
