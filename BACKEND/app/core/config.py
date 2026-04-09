@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     # ── JWT / Auth ───────────────────────────────────────────
     SECRET_KEY: str = "change-me-in-production"
+    INTERNAL_API_KEY: str = "internal-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
@@ -33,6 +34,11 @@ class Settings(BaseSettings):
     MINIO_SECRET_KEY: str = "minioadmin"
     MINIO_BUCKET: str = "documents"
     MINIO_SECURE: bool = False
+
+    # ── Google OAuth ─────────────────────────────────────────
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
 
     model_config = {
         "env_file": ".env",

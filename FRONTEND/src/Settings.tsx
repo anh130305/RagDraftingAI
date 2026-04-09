@@ -1,11 +1,36 @@
 import React, { useState } from 'react';
-import { CheckCheck, ChevronDown, Edit2, LogOut } from 'lucide-react';
+import { CheckCheck, ChevronDown, Edit2, LogOut, Loader2, Save } from 'lucide-react';
 import UserShell from './components/UserShell';
 import ThemeModeRow from './components/ThemeModeRow';
 import SettingsRow from './components/SettingsRow';
+import { useAuth } from './lib/AuthContext';
+import * as api from './lib/api';
+import { useLocation } from 'react-router-dom';
 
 function SettingsContent() {
+  const { user, refreshUser, logout } = useAuth();
+  const location = useLocation();
+  const onboarding = location.state?.onboarding;
+
   const [activeTab, setActiveTab] = useState('account');
+  const [department, setDepartment] = useState(user?.department || '');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  const handleUpdateProfile = async () => {
+    setIsUpdating(true);
+    setUpdateStatus('idle');
+    try {
+      await api.updateMe({ department });
+      await refreshUser();
+      setUpdateStatus('success');
+      setTimeout(() => setUpdateStatus('idle'), 3000);
+    } catch (err) {
+      setUpdateStatus('error');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   return (
     <div className="flex-1 overflow-y-auto custom-scrollbar px-6 md:px-12 py-10">
@@ -50,6 +75,38 @@ function SettingsContent() {
                   </div>
 
                   <div className="space-y-4 pt-4">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-4">Workspace</h3>
+                    <SettingsRow 
+                      title="Department" 
+                      description={onboarding ? "Please select your department to continue" : "Your assigned organizational unit"}
+                    >
+                      <div className="flex flex-col gap-3 items-end">
+                        <select
+                          className={`block w-48 px-4 py-2 bg-surface-container-high border rounded-xl text-sm focus:ring-2 focus:ring-primary/20 ${onboarding ? 'ring-2 ring-primary pulse' : 'border-outline-variant/20'}`}
+                          value={department}
+                          onChange={(e) => setDepartment(e.target.value)}
+                          disabled={isUpdating}
+                        >
+                          <option value="">Select Department</option>
+                          <option value="BackEnd">BackEnd</option>
+                          <option value="FrontEnd">FrontEnd</option>
+                          <option value="AI Engineer">AI Engineer</option>
+                          <option value="FullStack">FullStack</option>
+                          <option value="DevOps">DevOps</option>
+                        </select>
+                        <button
+                          onClick={handleUpdateProfile}
+                          disabled={isUpdating || department === user?.department}
+                          className="flex items-center gap-2 px-4 py-1.5 bg-primary text-on-primary-fixed rounded-full text-xs font-bold hover:scale-105 transition-all disabled:opacity-50"
+                        >
+                          {isUpdating ? <Loader2 className="w-3 h-3 animate-spin"/> : <Save className="w-3 h-3"/>}
+                          {updateStatus === 'success' ? 'Saved!' : 'Save Changes'}
+                        </button>
+                      </div>
+                    </SettingsRow>
+                  </div>
+
+                  <div className="space-y-4 pt-4">
                     <h3 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-4">General</h3>
                     <SettingsRow title="Language" description="Primary interface language">
                       <div className="flex items-center gap-2 text-on-surface-variant hover:text-on-surface cursor-pointer px-4 py-2 border border-outline-variant/20 rounded-xl">
@@ -72,7 +129,7 @@ function SettingsContent() {
                 <div className="space-y-4">
                   <h3 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-4">Data &amp; Privacy</h3>
 
-                  <SettingsRow title="Telemetry & Usage Analytics" description="Share anonymous usage data to help us improve Obsidian AI models.">
+                  <SettingsRow title="Telemetry & Usage Analytics" description="Share anonymous usage data to help us improve RAG AI models.">
                     <div className="relative inline-flex items-center cursor-pointer">
                       <input defaultChecked className="sr-only peer" type="checkbox" />
                       <div className="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
@@ -140,11 +197,11 @@ function SettingsContent() {
                     <Edit2 className="w-4 h-4" />
                   </button>
                 </div>
-                <h3 className="text-2xl font-bold font-headline mb-1">Julian Thorne</h3>
-                <p className="text-on-surface-variant text-sm mb-6">julian.thorne@obsidian.arch</p>
+                <h3 className="text-2xl font-bold font-headline mb-1">{user?.username || 'Guest'}</h3>
+                <p className="text-on-surface-variant text-sm mb-6">{user?.email || 'No email provided'}</p>
                 <div className="flex items-center gap-2 px-4 py-1.5 bg-secondary/10 border border-secondary/20 text-secondary rounded-full text-xs font-bold uppercase tracking-widest">
                   <CheckCheck className="w-4 h-4" />
-                  Pro Member
+                  {user?.role === 'admin' ? 'Admin' : 'Member'}
                 </div>
               </div>
 
@@ -168,7 +225,10 @@ function SettingsContent() {
                 </div>
               </div>
 
-              <button className="w-full mt-10 py-4 bg-surface-container-highest hover:bg-surface-variant transition-colors rounded-xl font-bold text-sm border border-outline-variant/10 flex items-center justify-center gap-2 cursor-pointer">
+              <button 
+                onClick={logout}
+                className="w-full mt-10 py-4 bg-surface-container-highest hover:bg-surface-variant transition-colors rounded-xl font-bold text-sm border border-outline-variant/10 flex items-center justify-center gap-2 cursor-pointer"
+              >
                 <LogOut className="w-4 h-4" />
                 Sign Out
               </button>

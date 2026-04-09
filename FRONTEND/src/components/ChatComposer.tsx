@@ -7,8 +7,8 @@ interface ChatComposerProps {
 }
 
 export default function ChatComposer({
-  placeholder = 'Message Obsidian Nebula...',
-  note = 'Obsidian Nebula can make mistakes. Verify important info.',
+  placeholder = 'Message RAG AI...',
+  note = 'RAG AI can make mistakes. Verify important info.',
 }: ChatComposerProps) {
   return (
     <div className="w-full max-w-3xl sticky bottom-4">

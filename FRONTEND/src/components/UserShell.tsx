@@ -124,7 +124,7 @@ export default function UserShell({ activeNav, children, showProBadge = false }:
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
             <Hexagon className="w-4 h-4 text-on-primary-fixed" />
           </div>
-          <span className="text-xl font-bold tracking-tight text-primary font-headline">Obsidian AI</span>
+          <span className="text-xl font-bold tracking-tight text-primary font-headline">RAG AI</span>
         </div>
 
         <button className="flex items-center gap-3 w-full px-5 py-4 mb-8 bg-surface-container-highest rounded-full transition-transform active:scale-95 group">
@@ -192,7 +192,7 @@ export default function UserShell({ activeNav, children, showProBadge = false }:
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-background/80 backdrop-blur-xl border-b border-outline-variant/20 flex justify-between items-center px-8 w-full z-40 sticky top-0 h-16 transition-all">
           <div className="flex items-center gap-2">
-            <span className="text-lg font-black text-on-surface font-headline">Obsidian Architect</span>
+            <span className="text-lg font-black text-on-surface font-headline">RAG Architect</span>
             {showProBadge && (
               <span className="bg-tertiary/10 text-tertiary text-[10px] font-bold px-2 py-0.5 rounded-full border border-tertiary/20">PRO</span>
             )}

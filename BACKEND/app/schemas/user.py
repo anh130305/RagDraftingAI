@@ -81,8 +81,10 @@ class AdminUserUpdate(BaseModel):
 class UserResponse(BaseModel):
     id: UUID
     username: str
-    role: UserRole
-    department: Optional[str] = None
+    role: str
+    department: str | None = None
+    email: str | None = None
+    google_id: str | None = None
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -94,6 +96,12 @@ class Token(BaseModel):
     """Returned on successful login."""
     access_token: str
     token_type: str = "bearer"
+    needs_onboarding: bool = False
+
+
+class GoogleLoginRequest(BaseModel):
+    id_token: str
+    department: str | None = None
 
 
 class TokenPayload(BaseModel):

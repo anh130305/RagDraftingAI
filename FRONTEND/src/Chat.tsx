@@ -23,7 +23,7 @@ export default function Chat() {
               How can I help you today?
             </h1>
             <p className="text-on-surface-variant text-lg max-w-2xl mx-auto font-body">
-              Harness the power of Obsidian Nebula to build, create, and solve. What's on your mind?
+              Harness the power of RAG AI to build, create, and solve. What's on your mind?
             </p>
           </div>
           {/* Suggestion Bento Grid */}

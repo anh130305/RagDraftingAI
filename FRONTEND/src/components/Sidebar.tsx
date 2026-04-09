@@ -44,7 +44,7 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
           <Hexagon className="text-surface w-6 h-6 fill-current" />
         </div>
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-on-surface leading-none font-headline">Obsidian AI</h1>
+          <h1 className="text-xl font-bold tracking-tight text-on-surface leading-none font-headline">RAG AI</h1>
           <p className="text-[10px] text-on-surface-variant tracking-widest uppercase mt-1 font-bold">Admin Console</p>
         </div>
       </div>

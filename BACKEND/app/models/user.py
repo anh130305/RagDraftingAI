@@ -24,7 +24,9 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String(50), unique=True, nullable=False, index=True)
-    password_hash = Column(String, nullable=False)
+    email = Column(String(255), unique=True, nullable=True, index=True)
+    google_id = Column(String(255), unique=True, nullable=True, index=True)
+    password_hash = Column(String, nullable=True)
     role = Column(
         Enum(UserRole, name="user_role", create_type=False),
         nullable=False,

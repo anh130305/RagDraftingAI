@@ -75,7 +75,7 @@ export default function Documentation() {
 
           <h1 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface mb-4">Authentication</h1>
           <p className="text-on-surface-variant leading-relaxed mb-8 text-lg">
-            The Obsidian AI API uses API keys to authenticate requests. You can view and manage your API keys in the <span className="text-primary cursor-pointer hover:underline">Settings</span> dashboard.
+            The RAG AI API uses API keys to authenticate requests. You can view and manage your API keys in the <span className="text-primary cursor-pointer hover:underline">Settings</span> dashboard.
           </p>
 
           <div className="space-y-8">
@@ -101,7 +101,7 @@ export default function Documentation() {
                 <div className="p-4 overflow-x-auto">
                   <pre className="text-sm font-mono text-on-surface-variant">
                     <code className="language-bash">
-                      <span className="text-primary">curl</span> https://api.obsidian.ai/v1/models \<br/>
+                      <span className="text-primary">curl</span> https://api.rag.ai/v1/models \<br/>
                       {'  '}-H <span className="text-secondary">"Authorization: Bearer OBS_SECRET_KEY"</span>
                     </code>
                   </pre>
@@ -133,9 +133,9 @@ export default function Documentation() {
                 <div className="p-4 overflow-x-auto">
                   <pre className="text-sm font-mono text-on-surface-variant">
                     <code className="language-javascript">
-                      <span className="text-tertiary">import</span> {'{'} Obsidian {'}'} <span className="text-tertiary">from</span> <span className="text-secondary">'obsidian-ai'</span>;<br/><br/>
-                      <span className="text-primary">const</span> client = <span className="text-tertiary">new</span> Obsidian({'{'}<br/>
-                      {'  '}apiKey: process.env.<span className="text-on-surface">OBSIDIAN_API_KEY</span>,<br/>
+                      <span className="text-tertiary">import</span> {'{'} RAG {'}'} <span className="text-tertiary">from</span> <span className="text-secondary">'rag-ai'</span>;<br/><br/>
+                      <span className="text-primary">const</span> client = <span className="text-tertiary">new</span> RAG({'{'}<br/>
+                      {'  '}apiKey: process.env.<span className="text-on-surface">RAG_API_KEY</span>,<br/>
                       {'}'});
                     </code>
                   </pre>

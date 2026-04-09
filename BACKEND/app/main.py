@@ -5,14 +5,37 @@ main.py – FastAPI application entry point.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import time
+import logging
+from sqlalchemy.exc import OperationalError
+
 from app.core.config import settings
 from app.api.v1.router import api_router
 from app.db.base import Base  # noqa: F401 – ensure all models are registered
 from app.db.session import get_engine
 from app.core.rate_limit import init_rate_limiting
 
-# ── Create tables (dev only – use Alembic in production) ─────
-Base.metadata.create_all(bind=get_engine())
+# ── Config Logging ──────────────────────────────────────────
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# ── Create tables with retry logic ───────────────────────────
+max_retries = 10
+retry_delay = 3
+
+for attempt in range(max_retries):
+    try:
+        logger.info(f"Connecting to database (Attempt {attempt + 1}/{max_retries})...")
+        Base.metadata.create_all(bind=get_engine())
+        logger.info("Database connection successful. Tables verified.")
+        break
+    except OperationalError as e:
+        if attempt < max_retries - 1:
+            logger.warning(f"Database not ready ({e}). Retrying in {retry_delay}s...")
+            time.sleep(retry_delay)
+        else:
+            logger.error("Max retries reached. Could not connect to database.")
+            raise e
 
 # ── App ──────────────────────────────────────────────────────
 app = FastAPI(

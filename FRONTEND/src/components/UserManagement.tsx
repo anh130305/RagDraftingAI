@@ -8,10 +8,10 @@ import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 
 const users = [
-  { id: 1, name: 'Ava Sterling', email: 'ava.sterling@obsidian.ai', role: 'Admin', status: true, avatar: 'https://picsum.photos/seed/ava/100/100' },
-  { id: 2, name: 'Marcus Thorne', email: 'm.thorne@obsidian.ai', role: 'Clerical', status: true, avatar: 'https://picsum.photos/seed/marcus/100/100' },
-  { id: 3, name: 'Elena Vance', email: 'vance@obsidian.ai', role: 'User', status: false, avatar: 'https://picsum.photos/seed/elena/100/100' },
-  { id: 4, name: 'Julian Moss', email: 'j.moss@obsidian.ai', role: 'User', status: true, avatar: 'https://picsum.photos/seed/julian/100/100' },
+  { id: 1, name: 'Ava Sterling', email: 'ava.sterling@rag.ai', role: 'Admin', status: true, avatar: 'https://picsum.photos/seed/ava/100/100' },
+  { id: 2, name: 'Marcus Thorne', email: 'm.thorne@rag.ai', role: 'Clerical', status: true, avatar: 'https://picsum.photos/seed/marcus/100/100' },
+  { id: 3, name: 'Elena Vance', email: 'vance@rag.ai', role: 'User', status: false, avatar: 'https://picsum.photos/seed/elena/100/100' },
+  { id: 4, name: 'Julian Moss', email: 'j.moss@rag.ai', role: 'User', status: true, avatar: 'https://picsum.photos/seed/julian/100/100' },
 ];
 
 const permissions = [
@@ -54,7 +54,7 @@ export default function UserManagement() {
       <header className="flex justify-between items-end">
         <div>
           <h2 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface mb-2">User & Role Management</h2>
-          <p className="text-on-surface-variant max-w-lg">Govern access controls, update permissions, and audit user activity across the Obsidian ecosystem.</p>
+          <p className="text-on-surface-variant max-w-lg">Govern access controls, update permissions, and audit user activity across the RAG ecosystem.</p>
         </div>
         <div className="flex gap-3">
           <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface border border-outline-variant text-on-surface hover:bg-surface-high transition-colors">

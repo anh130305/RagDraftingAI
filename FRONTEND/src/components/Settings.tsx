@@ -106,7 +106,7 @@ export default function Settings() {
                     <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Email Address</label>
                     <input 
                       type="email" 
-                      defaultValue="adrian.v@obsidian.ai"
+                      defaultValue="adrian.v@rag.ai"
                       className="w-full bg-surface-high border-none rounded-xl px-4 py-3 text-sm text-on-surface focus:ring-1 focus:ring-primary transition-all"
                     />
                   </div>
@@ -123,7 +123,7 @@ export default function Settings() {
                     <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Workspace</label>
                     <input 
                       type="text" 
-                      defaultValue="Obsidian Core"
+                      defaultValue="RAG Core"
                       className="w-full bg-surface-high border-none rounded-xl px-4 py-3 text-sm text-on-surface focus:ring-1 focus:ring-primary transition-all"
                     />
                   </div>
@@ -146,7 +146,7 @@ export default function Settings() {
                 <div className="flex justify-between items-center mb-6">
                   <div>
                     <h3 className="text-xl font-bold font-headline text-on-surface">API Keys</h3>
-                    <p className="text-xs text-on-surface-variant mt-1">Manage keys for authenticating with the Obsidian API.</p>
+                    <p className="text-xs text-on-surface-variant mt-1">Manage keys for authenticating with the RAG API.</p>
                   </div>
                   <button className="px-5 py-2.5 rounded-full bg-surface-highest text-primary font-bold text-sm border border-outline-variant hover:bg-surface-variant transition-all flex items-center gap-2">
                     <Plus className="w-4 h-4" />

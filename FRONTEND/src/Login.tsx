@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Monitor, Moon, Sparkles, Sun, User } from 'lucide-react';
+import { Lock, Monitor, Moon, Sparkles, Sun, User, Eye, EyeOff } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from './lib/AuthContext';
 import './styles/chat-auth.css';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
 
   const [theme, setTheme] = useState<ThemeMode>(() => {
@@ -63,6 +64,26 @@ export default function Login() {
     }
   };
 
+  const onGoogleSuccess = async (response: any) => {
+    setIsSubmitting(true);
+    setErrors({});
+    try {
+      const { needs_onboarding } = await googleLogin(response.credential);
+      if (needs_onboarding) {
+        // For now, redirect to settings to fill department
+        // or show a toast suggesting they update their profile.
+        // In a more complex app, we'd open a dedicated onboarding modal.
+        navigate('/settings', { replace: true, state: { onboarding: true } });
+      } else {
+        navigate('/chat', { replace: true });
+      }
+    } catch (err: any) {
+      setErrors({ general: err.message || 'Đăng nhập Google thất bại' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
 
   return (
@@ -85,7 +106,7 @@ export default function Login() {
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Trí tuệ nhân tạo</span>
             </h1>
             <p className="text-white/70 text-xl max-w-lg leading-relaxed">
-              Đắm chìm trong không gian làm việc tối ưu với Obsidian Nebula. Nơi kiến thức và sự sáng tạo giao thoa trong sự tĩnh lặng của bóng tối.
+              Đắm chìm trong không gian làm việc tối ưu với Rag AI. Nơi kiến thức và sự sáng tạo giao thoa trong sự tĩnh lặng của bóng tối.
             </p>
           </div>
         </section>
@@ -109,12 +130,8 @@ export default function Login() {
                   <Sparkles className="w-5 h-5 text-on-primary-fixed" />
                 </div>
                 <span className="font-headline font-black text-2xl tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-container">
-                  Obsidian Nebula
+                  RAG AI
                 </span>
-              </div>
-              <div>
-                <h2 className="font-headline text-3xl font-bold text-on-surface">Chào mừng trở lại</h2>
-                <p className="text-on-surface-variant mt-2">Vui lòng nhập thông tin để tiếp tục hành trình của bạn.</p>
               </div>
             </div>
             {/* Glassmorphism Form Card */}
@@ -201,10 +218,17 @@ export default function Login() {
                 <div className="flex-grow border-t border-outline-variant/30"></div>
               </div>
               {/* Social Login - Google Only */}
-              <button className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-surface-container-highest rounded-xl ghost-border hover:bg-surface-bright transition-all text-sm font-medium">
-                <img alt="Google Logo" className="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrn9hzKM7y4NObsaHyoNqVXbmyf0HjqLTRxXN0j_IQMAXptKUoMQFVOz79T4dUmdQeeqiZUczbGq7-jS7D-sdWczf7lQ_8KSb18yJBTV0SguUF0dbZ6hlsEOmbD8x9__3GmtUx83clL65xs78U-3RIgrlMfwlBXvCBbNckvAu7ii_JE77CqutwhDRb4K7PqCEQUF6eD4kXAUuMeXopFuGBSOmDfy8u7gWt8LGgIp8IXFly8t_SdcwDbTIiLUWZycH1r1ObvnH5aPvm" />
-                Google
-              </button>
+              <div className="w-full flex justify-center">
+                <GoogleLogin
+                  onSuccess={onGoogleSuccess}
+                  onError={() => setErrors({ general: 'Google Login failed' })}
+                  useOneTap
+                  theme={theme === 'dark' ? 'filled_black' : 'outline'}
+                  shape="pill"
+                  size="large"
+                  width="320"
+                />
+              </div>
             </div>
             {/* Footer */}
             <p className="text-center text-on-surface-variant text-sm">

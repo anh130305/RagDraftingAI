@@ -13,6 +13,7 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string, department?: string) => Promise<void>;
+  googleLogin: (credential: string, department?: string) => Promise<{ needs_onboarding: boolean }>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -91,6 +92,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await login(username, password);
   };
 
+  const googleLogin = async (credential: string, department?: string) => {
+    const res = await api.googleLogin(credential, department);
+    localStorage.setItem('access_token', res.access_token);
+    setToken(res.access_token);
+    return { needs_onboarding: res.needs_onboarding };
+  };
+
   const logout = () => {
     localStorage.removeItem('access_token');
     setToken(null);
@@ -106,6 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user,
         login,
         register,
+        googleLogin,
         logout,
         refreshUser,
       }}
