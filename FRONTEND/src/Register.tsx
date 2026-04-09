@@ -183,7 +183,7 @@ export default function Register() {
 
         <div className="w-full max-w-md">
           {/* Branding */}
-          <div className="text-center lg:text-left space-y-4 mb-10">
+          <div className="text-center lg:text-left space-y-4 mb-6">
             <div className="flex items-center justify-center lg:justify-start gap-3">
               <div className="w-10 h-10 rounded-lg primary-gradient flex items-center justify-center glow-shadow">
                 <Sparkles className="w-5 h-5 text-on-primary-fixed" />
@@ -194,8 +194,8 @@ export default function Register() {
             </div>
           </div>
 
-          <div className="glass-morphism rounded-2xl p-8 ghost-border space-y-6 shadow-2xl">
-            <form className="space-y-5" onSubmit={handleSubmit}>
+          <div className="glass-morphism rounded-2xl p-6 ghost-border space-y-4 shadow-2xl">
+            <form className="space-y-4" onSubmit={handleSubmit}>
               {/* General Error Message */}
               {errors.general && (
                 <div className="px-4 py-3 rounded-xl bg-error/10 border border-error/20 text-error text-sm font-medium animate-in fade-in">
@@ -211,7 +211,7 @@ export default function Register() {
                     <User className="w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
                   </div>
                   <input
-                    className={`block w-full pl-11 pr-4 py-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition-all ${errors.username ? 'ring-1 ring-error/50' : ''}`}
+                    className={`block w-full pl-11 pr-4 py-3 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition-all ${errors.username ? 'ring-1 ring-error/50' : ''}`}
                     placeholder="Nhập tên đăng nhập"
                     type="text"
                     value={username}
@@ -232,7 +232,7 @@ export default function Register() {
                     <Building2 className="w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
                   </div>
                   <select
-                    className={`block w-full pl-11 pr-4 py-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface transition-all appearance-none cursor-pointer ${errors.department ? 'ring-1 ring-error/50' : ''}`}
+                    className={`block w-full pl-11 pr-4 py-3 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface transition-all appearance-none cursor-pointer ${errors.department ? 'ring-1 ring-error/50' : ''}`}
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
                     disabled={isSubmitting}
@@ -261,7 +261,7 @@ export default function Register() {
                     <Lock className="w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
                   </div>
                   <input
-                    className={`block w-full pl-11 pr-12 py-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition-all ${errors.password ? 'ring-1 ring-error/50' : ''}`}
+                    className={`block w-full pl-11 pr-12 py-3 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition-all ${errors.password ? 'ring-1 ring-error/50' : ''}`}
                     placeholder="Ít nhất 6 ký tự"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
@@ -289,7 +289,7 @@ export default function Register() {
                     <Lock className="w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
                   </div>
                   <input
-                    className={`block w-full pl-11 pr-4 py-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition-all ${errors.confirmPassword ? 'ring-1 ring-error/50' : ''}`}
+                    className={`block w-full pl-11 pr-4 py-3 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition-all ${errors.confirmPassword ? 'ring-1 ring-error/50' : ''}`}
                     placeholder="Nhập lại mật khẩu"
                     type={showPassword ? 'text' : 'password'}
                     value={confirmPassword}
@@ -322,7 +322,7 @@ export default function Register() {
 
               {/* Submit */}
               <button
-                className="w-full primary-gradient text-on-primary-fixed font-bold py-4 rounded-xl glow-shadow hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className="w-full primary-gradient text-on-primary-fixed font-bold py-3.5 rounded-xl glow-shadow hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 type="submit"
                 disabled={isSubmitting}
               >
@@ -335,27 +335,27 @@ export default function Register() {
                   'ĐĂNG KÝ'
                 )}
               </button>
-
-              {/* Divider */}
-              <div className="relative py-2 flex items-center">
-                <div className="flex-grow border-t border-outline-variant/10"></div>
-                <span className="flex-shrink mx-4 text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">HOẶC ĐĂNG KÝ VỚI</span>
-                <div className="flex-grow border-t border-outline-variant/10"></div>
-              </div>
-
-              {/* Social Login - Google Only */}
-              <div className="w-full flex justify-center">
-                <GoogleLogin
-                  onSuccess={onGoogleSuccess}
-                  onError={() => setErrors({ general: 'Google registration failed' })}
-                  useOneTap
-                  theme={theme === 'dark' ? 'filled_black' : 'outline'}
-                  shape="pill"
-                  size="large"
-                  width="320"
-                />
-              </div>
             </form>
+
+            {/* Divider */}
+            <div className="relative py-1 flex items-center">
+              <div className="flex-grow border-t border-outline-variant/10"></div>
+              <span className="flex-shrink mx-4 text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">HOẶC ĐĂNG KÝ VỚI</span>
+              <div className="flex-grow border-t border-outline-variant/10"></div>
+            </div>
+
+            {/* Social Login - Google Only */}
+            <div className="w-full flex justify-center">
+              <GoogleLogin
+                onSuccess={onGoogleSuccess}
+                onError={() => setErrors({ general: 'Google registration failed' })}
+                useOneTap
+                theme={theme === 'dark' ? 'filled_black' : 'outline'}
+                shape="pill"
+                size="large"
+                width="320"
+              />
+            </div>
           </div>
 
           {/* Login Redirect */}

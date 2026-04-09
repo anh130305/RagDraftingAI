@@ -122,7 +122,7 @@ export default function Login() {
           </button>
 
           {/* Content Container */}
-          <div className="w-full max-w-md space-y-10">
+          <div className="w-full max-w-md space-y-6">
             {/* Header & Logo */}
             <div className="text-center lg:text-left space-y-4">
               <div className="flex items-center justify-center lg:justify-start gap-3">
@@ -135,8 +135,8 @@ export default function Login() {
               </div>
             </div>
             {/* Glassmorphism Form Card */}
-            <div className="glass-morphism rounded-2xl p-8 ghost-border space-y-6 shadow-2xl">
-              <form className="space-y-5" onSubmit={handleSubmit}>
+            <div className="glass-morphism rounded-2xl p-6 ghost-border space-y-4 shadow-2xl">
+              <form className="space-y-4" onSubmit={handleSubmit}>
                 {/* General Error Message */}
                 {errors.general && (
                   <div className="px-4 py-3 rounded-xl bg-error/10 border border-error/20 text-error text-sm font-medium animate-in fade-in">
@@ -151,7 +151,7 @@ export default function Login() {
                       <User className="w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
                     </div>
                     <input
-                      className={`block w-full pl-11 pr-4 py-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition-all ${errors.username ? 'ring-1 ring-error/50' : ''}`}
+                      className={`block w-full pl-11 pr-4 py-3 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition-all ${errors.username ? 'ring-1 ring-error/50' : ''}`}
                       id="username"
                       placeholder="username"
                       type="text"
@@ -175,7 +175,7 @@ export default function Login() {
                       <Lock className="w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
                     </div>
                     <input
-                      className={`block w-full pl-11 pr-12 py-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition-all ${errors.password ? 'ring-1 ring-error/50' : ''}`}
+                      className={`block w-full pl-11 pr-12 py-3 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition-all ${errors.password ? 'ring-1 ring-error/50' : ''}`}
                       id="password"
                       placeholder="••••••••"
                       type={showPassword ? 'text' : 'password'}
@@ -197,7 +197,7 @@ export default function Login() {
                 </div>
                 {/* Login Button */}
                 <button
-                  className="w-full primary-gradient text-on-primary-fixed font-bold py-4 rounded-xl glow-shadow hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  className="w-full primary-gradient text-on-primary-fixed font-bold py-3.5 rounded-xl glow-shadow hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                   type="submit"
                   disabled={isSubmitting}
                 >
@@ -212,7 +212,7 @@ export default function Login() {
                 </button>
               </form>
               {/* Divider */}
-              <div className="relative flex items-center py-2">
+              <div className="relative flex items-center py-1">
                 <div className="flex-grow border-t border-outline-variant/30"></div>
                 <span className="flex-shrink mx-4 text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Hoặc đăng nhập với</span>
                 <div className="flex-grow border-t border-outline-variant/30"></div>
