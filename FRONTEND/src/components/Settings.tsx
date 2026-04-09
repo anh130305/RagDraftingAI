@@ -176,7 +176,7 @@ export default function Settings() {
                                 onClick={() => handleCopy(key.id)}
                                 className="text-on-surface-variant hover:text-on-surface transition-colors"
                               >
-                                {copied === key.id ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                                {copied === key.id ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
                               </button>
                             </div>
                           </td>

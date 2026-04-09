@@ -37,7 +37,7 @@ export default function SystemHealth() {
           <p className="text-on-surface-variant max-w-2xl">Monitor infrastructure vitals, node status, and real-time event logs across the global network.</p>
         </div>
         <div className="flex items-center gap-3 px-5 py-2.5 bg-surface-low border border-outline-variant rounded-full">
-          <span className="w-2.5 h-2.5 rounded-full bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.5)] animate-pulse"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-success shadow-[0_0_10px_var(--color-success)] animate-pulse"></span>
           <span className="text-xs font-bold uppercase tracking-widest text-on-surface">All Systems Operational</span>
         </div>
       </header>
@@ -80,7 +80,7 @@ export default function SystemHealth() {
                 <div key={node.id} className="flex items-center gap-6">
                   <div className="w-12 h-12 rounded-full bg-surface-highest flex items-center justify-center border border-outline-variant shrink-0">
                     {node.status === 'healthy' ? (
-                      <CheckCircle2 className="w-6 h-6 text-green-400" />
+                      <CheckCircle2 className="w-6 h-6 text-success" />
                     ) : (
                       <AlertTriangle className="w-6 h-6 text-secondary" />
                     )}

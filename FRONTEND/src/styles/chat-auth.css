@@ -1,7 +1,5 @@
 @reference "./base.css";
 
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0');
-
 @layer components {
   .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
@@ -15,18 +13,68 @@
     @apply bg-outline-variant rounded-full;
   }
 
+  .ui-nav-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-highest/50 hover:backdrop-blur-xl hover:shadow-sm transition-all duration-200;
+  }
+
+  .ui-nav-item-active {
+    @apply bg-surface-highest text-primary font-semibold;
+  }
+
+  .ui-icon-btn {
+    @apply p-2 text-on-surface-variant hover:text-on-surface transition-colors;
+  }
+
+  .ui-theme-option {
+    @apply w-full px-4 py-2 text-left text-sm hover:bg-surface-high flex items-center gap-2;
+  }
+
+  .ui-pill-tab {
+    @apply px-6 py-2 text-sm rounded-full text-on-surface-variant hover:text-on-surface transition-colors;
+  }
+
+  .ui-pill-tab-active {
+    @apply bg-surface-variant text-primary font-semibold;
+  }
+
+  /* Glass panel - adapts to dark/light */
   .glass-panel {
     backdrop-filter: blur(24px);
     background: rgba(38, 38, 38, 0.4);
   }
 
+  :root .glass-panel {
+    background: rgba(255, 255, 255, 0.7);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  }
+
+  .dark .glass-panel {
+    background: rgba(38, 38, 38, 0.4);
+    box-shadow: none;
+  }
+
+  /* Glass morphism - adapts to dark/light */
   .glass-morphism {
-    background: rgba(32, 31, 31, 0.6);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
   }
 
+  :root .glass-morphism {
+    background: rgba(255, 255, 255, 0.75);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  }
+
+  .dark .glass-morphism {
+    background: rgba(32, 31, 31, 0.6);
+    box-shadow: none;
+  }
+
+  /* Ghost border - adapts to dark/light */
   .ghost-border {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .ghost-border {
     border: 1px solid rgba(72, 72, 71, 0.15);
   }
 
@@ -42,14 +90,17 @@
     background: radial-gradient(circle at 50% 50%, rgba(133, 173, 255, 0.1) 0%, rgba(14, 14, 14, 1) 100%);
   }
 
+  :root .nebula-gradient {
+    background: radial-gradient(circle at 50% 50%, rgba(133, 173, 255, 0.05) 0%, rgba(249, 250, 251, 1) 100%);
+  }
+
+  .dark .nebula-gradient {
+    background: radial-gradient(circle at 50% 50%, rgba(133, 173, 255, 0.1) 0%, rgba(14, 14, 14, 1) 100%);
+  }
+
   .input-glow:focus-within {
     box-shadow: 0 0 20px rgba(133, 173, 255, 0.2);
     border-color: rgba(133, 173, 255, 0.5);
-  }
-
-  .material-symbols-outlined {
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-    vertical-align: middle;
   }
 
   .scale-98-on-click:active {
@@ -58,6 +109,31 @@
 
   .animate-subtle-drift {
     animation: drift 30s ease-in-out infinite alternate;
+  }
+
+  /* Image overlay for auth pages - less aggressive in light mode */
+  .auth-overlay-bottom {
+    background: linear-gradient(to top, rgba(14, 14, 14, 0.9), rgba(14, 14, 14, 0.1), transparent);
+  }
+
+  :root .auth-overlay-bottom {
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.1), transparent);
+  }
+
+  .dark .auth-overlay-bottom {
+    background: linear-gradient(to top, rgba(14, 14, 14, 0.9), rgba(14, 14, 14, 0.1), transparent);
+  }
+
+  .auth-overlay-right {
+    background: linear-gradient(to right, transparent, rgba(14, 14, 14, 0.3));
+  }
+
+  :root .auth-overlay-right {
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.3));
+  }
+
+  .dark .auth-overlay-right {
+    background: linear-gradient(to right, transparent, rgba(14, 14, 14, 0.3));
   }
 }
 

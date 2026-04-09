@@ -32,9 +32,9 @@ const tokenData = [
 ];
 
 const deptData = [
-  { name: 'Engineering', value: 75, amount: '12.4M', color: '#85adff' },
-  { name: 'Marketing', value: 45, amount: '4.1M', color: '#c180ff' },
-  { name: 'Product', value: 60, amount: '8.9M', color: '#fbb4ff' },
+  { name: 'Engineering', value: 75, amount: '12.4M', color: 'var(--primary)' },
+  { name: 'Marketing', value: 45, amount: '4.1M', color: 'var(--secondary)' },
+  { name: 'Product', value: 60, amount: '8.9M', color: 'var(--tertiary)' },
 ];
 
 export default function Dashboard() {
@@ -77,25 +77,25 @@ export default function Dashboard() {
               <AreaChart data={vramData}>
                 <defs>
                   <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#85adff" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#85adff" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <XAxis 
                   dataKey="time" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{ fill: '#adaaaa', fontSize: 10, fontWeight: 700 }}
+                  tick={{ fill: 'var(--on-surface-variant)', fontSize: 10, fontWeight: 700 }}
                   interval={2}
                 />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#1a1919', border: 'none', borderRadius: '12px', fontSize: '12px' }}
-                  itemStyle={{ color: '#85adff' }}
+                  contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--outline-variant)', borderRadius: '12px', fontSize: '12px' }}
+                  itemStyle={{ color: 'var(--primary)' }}
                 />
                 <Area 
                   type="monotone" 
                   dataKey="value" 
-                  stroke="#85adff" 
+                  stroke="var(--primary)" 
                   strokeWidth={3}
                   fillOpacity={1} 
                   fill="url(#colorValue)" 
@@ -126,8 +126,8 @@ export default function Dashboard() {
                   startAngle={90}
                   endAngle={450}
                 >
-                  <Cell fill="#85adff" stroke="none" />
-                  <Cell fill="#262626" stroke="none" />
+                  <Cell fill="var(--primary)" stroke="none" />
+                  <Cell fill="var(--surface-highest)" stroke="none" />
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
@@ -169,7 +169,7 @@ export default function Dashboard() {
                   {tokenData.map((entry, index) => (
                     <Cell 
                       key={`cell-${index}`} 
-                      fill={index === 4 ? '#85adff' : '#262626'} 
+                      fill={index === 4 ? 'var(--primary)' : 'var(--surface-highest)'} 
                       className="hover:fill-primary/60 transition-colors cursor-pointer"
                     />
                   ))}
