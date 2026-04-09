@@ -1,25 +1,48 @@
-import os
+"""
+db.session – SQLAlchemy engine and session factory.
+
+Uses centralised Settings from core.config for database URL.
+"""
+
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from dotenv import load_dotenv
+from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Tìm và load file .env ở thư mục gốc (hoặc ../.env)
-load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
+from app.core.config import settings
 
-# Lấy thông tin URL từ môi trường (do Docker Compose định nghĩa)
-# Hoặc url fallback khi chạy local không qua docker
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:admin@localhost:5432/rag_db")
-
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
+# ── Declarative Base ─────────────────────────────────────────
+# All models inherit from this. Imported by db/base.py to register tables.
 Base = declarative_base()
 
-# Dependency dùng chung cho Fastapi Routes
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# ── Engine & Session ─────────────────────────────────────────
+# Engine creation is deferred to allow test overrides of DATABASE_URL.
+# psycopg2 is only required when actually connecting to PostgreSQL.
+
+_engine = None
+_SessionLocal = None
+
+
+def get_engine():
+    global _engine
+    if _engine is None:
+        _engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
+    return _engine
+
+
+def get_session_local():
+    global _SessionLocal
+    if _SessionLocal is None:
+        _SessionLocal = sessionmaker(
+            autocommit=False, autoflush=False, bind=get_engine()
+        )
+    return _SessionLocal
+
+
+# Backward-compatible aliases
+@property
+def engine():
+    return get_engine()
+
+
+@property
+def SessionLocal():
+    return get_session_local()

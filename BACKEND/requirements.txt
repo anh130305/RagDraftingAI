@@ -1,8 +1,31 @@
-
+# Core
 fastapi
-uvicorn
+uvicorn[standard]
+
+# Database
 sqlalchemy
 psycopg2-binary
+alembic
+
+# Auth
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt<4.1
+
+# Config & Utilities
+pydantic-settings
 python-dotenv
+python-multipart
+
+# HTTP client (RAG service)
+httpx
+
+# Object storage
 minio
+
+# Vector DB client
 qdrant-client
+
+# Testing
+pytest
+pytest-order
