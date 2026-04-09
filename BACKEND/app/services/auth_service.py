@@ -3,6 +3,7 @@ services.auth_service – Registration and login logic.
 """
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.core.security import hash_password, verify_password, create_access_token
 from app.core.exceptions import BadRequestError, UnauthorizedError, ConflictError
@@ -12,18 +13,24 @@ from app.schemas.user import UserCreate, UserLogin, Token, UserResponse
 
 def register(db: Session, payload: UserCreate) -> UserResponse:
     """Create a new user account.  Raises ConflictError if username taken."""
+    # Check at application level first (fast path)
     existing = user_repo.get_by_username(db, payload.username)
     if existing:
         raise ConflictError(f"Username '{payload.username}' is already taken")
 
-    user = user_repo.create(
-        db,
-        obj_in={
-            "username": payload.username,
-            "password_hash": hash_password(payload.password),
-            "department": payload.department,
-        },
-    )
+    try:
+        user = user_repo.create(
+            db,
+            obj_in={
+                "username": payload.username,
+                "password_hash": hash_password(payload.password),
+                "department": payload.department,
+            },
+        )
+    except IntegrityError:
+        db.rollback()
+        raise ConflictError(f"Username '{payload.username}' is already taken")
+
     return UserResponse.model_validate(user)
 
 
@@ -37,3 +44,4 @@ def login(db: Session, payload: UserLogin) -> Token:
 
     token = create_access_token(data={"sub": str(user.id)})
     return Token(access_token=token)
+

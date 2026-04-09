@@ -16,8 +16,10 @@ import {
   Pin,
   Edit2,
   LogOut,
+  UserCircle2,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../lib/AuthContext';
 import '../styles/chat-auth.css';
 
 type UserNav = 'chat' | 'settings';
@@ -47,6 +49,7 @@ export function useUserTheme() {
 }
 
 export default function UserShell({ activeNav, children, showProBadge = false }: UserShellProps) {
+  const { user, logout } = useAuth();
   const [theme, setTheme] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem('auth-theme') as ThemeMode | null;
     return saved || 'dark';
@@ -58,6 +61,12 @@ export default function UserShell({ activeNav, children, showProBadge = false }:
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    setShowProfileMenu(false);
+    logout();
+    navigate('/login', { replace: true });
+  };
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -226,19 +235,26 @@ export default function UserShell({ activeNav, children, showProBadge = false }:
             </div>
             <div className="relative ml-2" ref={profileMenuRef}>
               <div 
-                className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-primary/20 cursor-pointer"
+                className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-primary/20 cursor-pointer bg-primary/10 flex items-center justify-center"
                 onClick={() => setShowProfileMenu((prev) => !prev)}
+                title={user?.username || 'User'}
               >
-                <img
-                  alt="User Avatar"
-                  className="w-full h-full object-cover"
-                  data-alt="portrait of a focused creative professional man in a minimal workspace with soft moody cinematic lighting"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcSjUBE8LH5O63KqcP3aROM383TpgfA5tV5blSxM-EzmlqczeTqLE_fKZv7iSuCRO0tKNJbLgjlN4DYBoULSoPdZqopLUC2juE_Y_46uA5FDZnrbxwFOy1uLhmWV2FDeLJOI0EtYXD-ZK_L6wy52YhnCCQWrK3nUOfrFOOje6HWZsf8yU0L6yTvaI9YC8UybAOCduhonpOUjbRYjXv4-s_8uoyEXxv7Jiz3cDEHTfofAYLHFbDl3iEscpaG9R8pXTRpIwkJIzOwqHg"
-                />
+                {user ? (
+                  <span className="text-sm font-bold text-primary uppercase">
+                    {user.username.slice(0, 2)}
+                  </span>
+                ) : (
+                  <UserCircle2 className="w-5 h-5 text-on-surface-variant" />
+                )}
               </div>
 
               {showProfileMenu && (
-                <div className="absolute right-0 mt-3 w-40 bg-surface border border-outline-variant/50 rounded-lg shadow-[0_4px_18px_rgba(0,0,0,0.12)] overflow-hidden py-1 z-50">
+                <div className="absolute right-0 mt-3 w-48 bg-surface border border-outline-variant/50 rounded-lg shadow-[0_4px_18px_rgba(0,0,0,0.12)] overflow-hidden py-1 z-50">
+                  {/* User info header */}
+                  <div className="px-4 py-3 border-b border-outline-variant/20">
+                    <p className="text-sm font-bold text-on-surface truncate">{user?.username}</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5 capitalize">{user?.role} · {user?.department || 'No dept'}</p>
+                  </div>
                   <button
                     onClick={() => { setShowProfileMenu(false); navigate('/settings'); }}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-surface-high transition-colors text-on-surface font-medium"
@@ -246,7 +262,7 @@ export default function UserShell({ activeNav, children, showProBadge = false }:
                     <Settings className="w-4 h-4" /> Settings
                   </button>
                   <button
-                    onClick={() => { setShowProfileMenu(false); navigate('/login'); }}
+                    onClick={handleLogout}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-error/10 transition-colors text-error font-bold tracking-wide"
                   >
                     <LogOut className="w-4 h-4" /> Log Out

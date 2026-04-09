@@ -29,3 +29,6 @@ qdrant-client
 # Testing
 pytest
 pytest-order
+
+# Rate Limiting
+slowapi

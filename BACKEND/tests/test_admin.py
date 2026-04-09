@@ -58,10 +58,10 @@ class TestAdminUpdateUser:
         resp = client.put(
             f"/api/v1/admin/users/{user_id}",
             headers=admin_auth,
-            json={"department": "Legal"},
+            json={"department": "AI Engineer"},
         )
         assert resp.status_code == 200
-        assert resp.json()["department"] == "Legal"
+        assert resp.json()["department"] == "AI Engineer"
 
     def test_admin_update_nonexistent_user(self, client, admin_auth):
         fake_id = str(uuid4())

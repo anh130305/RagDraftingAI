@@ -35,14 +35,14 @@ class TestUpdateProfile:
         resp = client.put(
             "/api/v1/users/me",
             headers=normal_auth,
-            json={"department": "Marketing"},
+            json={"department": "FrontEnd"},
         )
         assert resp.status_code == 200
-        assert resp.json()["department"] == "Marketing"
+        assert resp.json()["department"] == "FrontEnd"
 
     def test_update_no_auth(self, client):
         resp = client.put(
             "/api/v1/users/me",
-            json={"department": "Sales"},
+            json={"department": "DevOps"},
         )
         assert resp.status_code == 401

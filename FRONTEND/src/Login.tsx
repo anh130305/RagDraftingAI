@@ -1,15 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Eye, Lock, Mail, Monitor, Moon, Sparkles, Sun } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, Lock, Monitor, Moon, Sparkles, Sun, User } from 'lucide-react';
+import { useAuth } from './lib/AuthContext';
 import './styles/chat-auth.css';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
 export default function Login() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
   const [theme, setTheme] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem('auth-theme') as ThemeMode | null;
     return saved || 'dark';
   });
+
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<{ username?: string; password?: string; general?: string }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -28,6 +38,29 @@ export default function Login() {
 
   const cycleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : prev === 'light' ? 'system' : 'dark'));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors: typeof errors = {};
+    if (!username.trim()) newErrors.username = 'Vui lòng nhập tên đăng nhập';
+    if (!password) newErrors.password = 'Vui lòng nhập mật khẩu';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
+    setIsSubmitting(true);
+    try {
+      await login(username.trim(), password);
+      navigate('/chat', { replace: true });
+    } catch (err: any) {
+      setErrors({ general: err.message || 'Đăng nhập thất bại' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
@@ -86,16 +119,33 @@ export default function Login() {
             </div>
             {/* Glassmorphism Form Card */}
             <div className="glass-morphism rounded-2xl p-8 ghost-border space-y-6 shadow-2xl">
-              <form className="space-y-5">
-                {/* Email Field */}
+              <form className="space-y-5" onSubmit={handleSubmit}>
+                {/* General Error Message */}
+                {errors.general && (
+                  <div className="px-4 py-3 rounded-xl bg-error/10 border border-error/20 text-error text-sm font-medium animate-in fade-in">
+                    {errors.general}
+                  </div>
+                )}
+                {/* Username Field */}
                 <div className="space-y-2">
-                  <label className="font-label text-sm font-medium text-on-surface-variant ml-1" htmlFor="email">Email của bạn</label>
+                  <label className="font-label text-sm font-medium text-on-surface-variant ml-1" htmlFor="username">Tên đăng nhập</label>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Mail className="w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
+                      <User className="w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
                     </div>
-                    <input className="block w-full pl-11 pr-4 py-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition-all" id="email" placeholder="name@company.com" type="email" />
+                    <input
+                      className={`block w-full pl-11 pr-4 py-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition-all ${errors.username ? 'ring-1 ring-error/50' : ''}`}
+                      id="username"
+                      placeholder="username"
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      autoComplete="username"
+                      disabled={isSubmitting}
+                      maxLength={255}
+                    />
                   </div>
+                  {errors.username && <p className="text-error text-[10px] font-bold uppercase tracking-wider ml-1">{errors.username}</p>}
                 </div>
                 {/* Password Field */}
                 <div className="space-y-2">
@@ -107,15 +157,41 @@ export default function Login() {
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <Lock className="w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
                     </div>
-                    <input className="block w-full pl-11 pr-12 py-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition-all" id="password" placeholder="••••••••" type="password" />
-                    <button className="absolute inset-y-0 right-0 pr-4 flex items-center text-on-surface-variant hover:text-on-surface" type="button">
-                      <Eye className="w-5 h-5" />
+                    <input
+                      className={`block w-full pl-11 pr-12 py-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-on-surface placeholder:text-outline transition-all ${errors.password ? 'ring-1 ring-error/50' : ''}`}
+                      id="password"
+                      placeholder="••••••••"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="current-password"
+                      disabled={isSubmitting}
+                      maxLength={255}
+                    />
+                    <button
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-on-surface-variant hover:text-on-surface"
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
+                  {errors.password && <p className="text-error text-[10px] font-bold uppercase tracking-wider ml-1">{errors.password}</p>}
                 </div>
                 {/* Login Button */}
-                <button className="w-full primary-gradient text-on-primary-fixed font-bold py-4 rounded-xl glow-shadow hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2" type="button">
-                  ĐĂNG NHẬP
+                <button
+                  className="w-full primary-gradient text-on-primary-fixed font-bold py-4 rounded-xl glow-shadow hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  type="submit"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ĐANG XỬ LÝ...
+                    </>
+                  ) : (
+                    'ĐĂNG NHẬP'
+                  )}
                 </button>
               </form>
               {/* Divider */}
@@ -126,7 +202,7 @@ export default function Login() {
               </div>
               {/* Social Login - Google Only */}
               <button className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-surface-container-highest rounded-xl ghost-border hover:bg-surface-bright transition-all text-sm font-medium">
-                <img alt="Google Logo" className="w-5 h-5" data-alt="Official Google multi-color logo icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrn9hzKM7y4NObsaHyoNqVXbmyf0HjqLTRxXN0j_IQMAXptKUoMQFVOz79T4dUmdQeeqiZUczbGq7-jS7D-sdWczf7lQ_8KSb18yJBTV0SguUF0dbZ6hlsEOmbD8x9__3GmtUx83clL65xs78U-3RIgrlMfwlBXvCBbNckvAu7ii_JE77CqutwhDRb4K7PqCEQUF6eD4kXAUuMeXopFuGBSOmDfy8u7gWt8LGgIp8IXFly8t_SdcwDbTIiLUWZycH1r1ObvnH5aPvm" />
+                <img alt="Google Logo" className="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrn9hzKM7y4NObsaHyoNqVXbmyf0HjqLTRxXN0j_IQMAXptKUoMQFVOz79T4dUmdQeeqiZUczbGq7-jS7D-sdWczf7lQ_8KSb18yJBTV0SguUF0dbZ6hlsEOmbD8x9__3GmtUx83clL65xs78U-3RIgrlMfwlBXvCBbNckvAu7ii_JE77CqutwhDRb4K7PqCEQUF6eD4kXAUuMeXopFuGBSOmDfy8u7gWt8LGgIp8IXFly8t_SdcwDbTIiLUWZycH1r1ObvnH5aPvm" />
                 Google
               </button>
             </div>

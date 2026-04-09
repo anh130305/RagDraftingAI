@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.api.v1.router import api_router
 from app.db.base import Base  # noqa: F401 – ensure all models are registered
 from app.db.session import get_engine
+from app.core.rate_limit import init_rate_limiting
 
 # ── Create tables (dev only – use Alembic in production) ─────
 Base.metadata.create_all(bind=get_engine())
@@ -20,6 +21,8 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+init_rate_limiting(app)
 
 # ── CORS ─────────────────────────────────────────────────────
 app.add_middleware(
