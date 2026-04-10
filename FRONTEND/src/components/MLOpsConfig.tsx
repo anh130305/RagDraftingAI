@@ -25,8 +25,8 @@ export default function MLOpsConfig() {
       className="space-y-8"
     >
       <header className="space-y-2">
-        <h2 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface">MLOps Configuration</h2>
-        <p className="text-on-surface-variant max-w-2xl">Refine your neural architecture. Adjust inference parameters and system-level directives for the RAG core models.</p>
+        <h2 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface">Cấu hình MLOps</h2>
+        <p className="text-on-surface-variant max-w-2xl">Tinh chỉnh kiến trúc mạng nơ-ron của bạn. Điều chỉnh các tham số suy luận và các chỉ thị cấp hệ thống cho các model cốt lõi RAG.</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -38,12 +38,12 @@ export default function MLOpsConfig() {
                 <Settings2 className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-headline font-bold text-xl text-on-surface">Model Selection</h3>
-                <p className="text-xs text-on-surface-variant font-medium">Choose the underlying LLM architecture</p>
+                <h3 className="font-headline font-bold text-xl text-on-surface">Lựa chọn Model</h3>
+                <p className="text-xs text-on-surface-variant font-medium">Chọn kiến trúc LLM nền tảng</p>
               </div>
             </div>
             <span className="bg-secondary/10 text-secondary text-[10px] px-3 py-1 rounded-full font-bold tracking-widest uppercase border border-secondary/20">
-              Stable Release
+              Phiên bản Ổn định
             </span>
           </div>
 
@@ -90,7 +90,7 @@ export default function MLOpsConfig() {
           <div className="glass-card p-8 rounded-xl border border-outline-variant flex-1">
             <div className="flex items-center gap-3 mb-8">
               <Thermometer className="w-6 h-6 text-tertiary" />
-              <h3 className="font-headline font-bold text-lg text-on-surface">Temperature</h3>
+              <h3 className="font-headline font-bold text-lg text-on-surface">Nhiệt độ (Temperature)</h3>
             </div>
             
             <div className="space-y-10">
@@ -98,7 +98,7 @@ export default function MLOpsConfig() {
                 <div className="space-y-1">
                   <p className="text-4xl font-extrabold font-headline text-primary">{temperature.toFixed(1)}</p>
                   <p className="text-xs text-on-surface-variant font-medium">
-                    {temperature < 0.4 ? 'Precise & Logical' : temperature > 0.7 ? 'Creative & Fluid' : 'Balanced Creativity'}
+                    {temperature < 0.4 ? 'Chính xác & Logic' : temperature > 0.7 ? 'Sáng tạo & Mạch lạc' : 'Cân bằng Sáng tạo'}
                   </p>
                 </div>
                 <Sparkles className="w-10 h-10 text-on-surface-variant/20" />
@@ -115,22 +115,22 @@ export default function MLOpsConfig() {
                   className="w-full h-1.5 bg-surface-highest rounded-full appearance-none cursor-pointer accent-primary"
                 />
                 <div className="flex justify-between text-[10px] text-on-surface-variant mt-4 font-mono font-bold uppercase tracking-widest">
-                  <span>0.0 (Precise)</span>
-                  <span>1.0 (Creative)</span>
+                  <span>0.0 (Chính xác)</span>
+                  <span>1.0 (Sáng tạo)</span>
                 </div>
               </div>
 
               <div className="flex gap-3 p-4 bg-surface-low rounded-xl border border-outline-variant">
                 <Info className="w-5 h-5 text-on-surface-variant shrink-0" />
                 <p className="text-[11px] text-on-surface-variant leading-relaxed italic">
-                  Lower values result in more deterministic outputs, while higher values increase randomness and diversity.
+                  Giá trị thấp mang lại kết quả nhất quán hơn, trong khi giá trị cao làm tăng tính đa dạng và ngẫu nhiên.
                 </p>
               </div>
             </div>
           </div>
 
           <div className="bg-surface rounded-xl p-6 border border-outline-variant shadow-lg">
-            <h4 className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-5">Context Utilization</h4>
+            <h4 className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-5">Sử dụng Ngữ cảnh</h4>
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <div className="h-2 flex-1 bg-surface-highest rounded-full overflow-hidden">
@@ -143,7 +143,7 @@ export default function MLOpsConfig() {
                 <span className="text-xs font-mono font-bold text-on-surface">42k / 128k</span>
               </div>
               <p className="text-[10px] text-on-surface-variant font-medium leading-relaxed">
-                Predicted context window usage for next inference batch based on current configuration.
+                Dự đoán việc sử dụng bộ nhớ ngữ cảnh cho lô xử lý tiếp theo dựa trên cấu hình hiện tại.
               </p>
             </div>
           </div>
@@ -157,16 +157,16 @@ export default function MLOpsConfig() {
                 <Terminal className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-headline font-bold text-xl text-on-surface">Global System Prompt</h3>
-                <p className="text-xs text-on-surface-variant font-medium">Define the AI's identity, tone, and foundational constraints</p>
+                <h3 className="font-headline font-bold text-xl text-on-surface">Prompt Hệ thống Toàn cục</h3>
+                <p className="text-xs text-on-surface-variant font-medium">Định nghĩa danh tính, giọng điệu và các bắt buộc nền tảng cho AI</p>
               </div>
             </div>
             <div className="flex gap-3">
               <button className="text-[10px] px-4 py-2 rounded-full border border-outline-variant hover:bg-surface-highest transition-all uppercase tracking-widest font-bold text-on-surface-variant hover:text-on-surface">
-                Import Template
+                Nhập mẫu
               </button>
               <button className="text-[10px] px-4 py-2 rounded-full bg-tertiary/10 text-tertiary hover:bg-tertiary/20 transition-all uppercase tracking-widest font-bold border border-tertiary/20">
-                Clear All
+                Xóa tất cả
               </button>
             </div>
           </div>
@@ -175,12 +175,12 @@ export default function MLOpsConfig() {
             <textarea 
               rows={8}
               className="w-full bg-surface-low/50 rounded-2xl border border-outline-variant p-8 font-mono text-sm leading-relaxed text-on-surface focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-all placeholder:text-on-surface-variant/20 resize-none shadow-inner custom-scrollbar"
-              placeholder="You are a professional AI architect with a focus on minimalist efficiency..."
-              defaultValue="You are a professional AI architect with a focus on minimalist efficiency. Your primary objective is to provide high-precision technical responses while maintaining a sophisticated, editorial tone. Avoid verbosity and prioritize structural clarity in all outputs."
+              placeholder="Bạn là một kiến trúc sư AI chuyên nghiệp..."
+              defaultValue="Bạn là một kiến trúc sư AI chuyên nghiệp tập trung vào hiệu suất tối ưu. Mục tiêu chính của bạn là cung cấp các phản hồi phân tích hệ thống có độ chính xác cao và hợp lý. Viết tóm tắt đầy đủ kỹ thuật chuyên môn."
             />
             <div className="absolute bottom-6 right-6 flex items-center gap-2 text-[10px] text-on-surface-variant font-mono font-bold uppercase tracking-widest">
               <span className="flex h-2 w-2 rounded-full bg-tertiary animate-pulse shadow-[0_0_8px_rgba(251,180,255,0.6)]"></span>
-              Live Validator Active
+              Trình xác thực Đang hoạt động
             </div>
           </div>
 
@@ -188,22 +188,22 @@ export default function MLOpsConfig() {
             <div className="flex items-start gap-4 p-4 rounded-xl bg-surface-low/30 border border-outline-variant">
               <ShieldCheck className="w-5 h-5 text-primary shrink-0" />
               <div>
-                <h5 className="text-sm font-bold text-on-surface mb-1">Tone Analysis</h5>
-                <p className="text-[11px] text-on-surface-variant">Currently set to: <span className="text-primary font-bold">Professional / Technical</span></p>
+                <h5 className="text-sm font-bold text-on-surface mb-1">Phân tích Giọng điệu</h5>
+                <p className="text-[11px] text-on-surface-variant">Thiết lập hiện tại: <span className="text-primary font-bold">Chuyên nghiệp / Kỹ thuật</span></p>
               </div>
             </div>
             <div className="flex items-start gap-4 p-4 rounded-xl bg-surface-low/30 border border-outline-variant">
               <Sparkles className="w-5 h-5 text-secondary shrink-0" />
               <div>
-                <h5 className="text-sm font-bold text-on-surface mb-1">Knowledge Injection</h5>
-                <p className="text-[11px] text-on-surface-variant">Contextual grounding: <span className="text-secondary font-bold">Enabled (RAG DB)</span></p>
+                <h5 className="text-sm font-bold text-on-surface mb-1">Bổ sung Kiến thức</h5>
+                <p className="text-[11px] text-on-surface-variant">Liên kết ngữ cảnh: <span className="text-secondary font-bold">Đã Bật (RAG DB)</span></p>
               </div>
             </div>
             <div className="flex items-start gap-4 p-4 rounded-xl bg-surface-low/30 border border-outline-variant">
               <Zap className="w-5 h-5 text-error shrink-0" />
               <div>
-                <h5 className="text-sm font-bold text-on-surface mb-1">Safety Guardrails</h5>
-                <p className="text-[11px] text-on-surface-variant">Compliance level: <span className="text-error font-bold">Strict / HIPAA Mode</span></p>
+                <h5 className="text-sm font-bold text-on-surface mb-1">Giới hạn An toàn</h5>
+                <p className="text-[11px] text-on-surface-variant">Tính tuân thủ: <span className="text-error font-bold">Nghiêm ngặt / Chế độ HIPAA</span></p>
               </div>
             </div>
           </div>
@@ -211,9 +211,9 @@ export default function MLOpsConfig() {
 
         {/* Action Bar */}
         <div className="md:col-span-12 flex justify-end items-center gap-6 pt-4">
-          <button className="px-8 py-3.5 rounded-full border border-outline-variant bg-surface-high/80 backdrop-blur-xl text-on-surface-variant text-sm font-bold hover:text-on-surface hover:bg-surface-highest transition-all uppercase tracking-widest">Discard Changes</button>
+          <button className="px-8 py-3.5 rounded-full border border-outline-variant bg-surface-high/80 backdrop-blur-xl text-on-surface-variant text-sm font-bold hover:text-on-surface hover:bg-surface-highest transition-all uppercase tracking-widest">Hủy thay đổi</button>
           <button className="gradient-primary text-surface font-extrabold px-12 py-4 rounded-full text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
-            Save Configuration
+            Lưu Cấu hình
           </button>
         </div>
       </div>
@@ -222,12 +222,12 @@ export default function MLOpsConfig() {
       <div className="fixed bottom-8 right-8 flex items-center gap-6 bg-surface-high/80 backdrop-blur-xl px-8 py-4 rounded-full border border-outline-variant shadow-2xl z-50">
         <div className="flex items-center gap-3">
           <span className="w-2.5 h-2.5 rounded-full bg-success shadow-[0_0_10px_var(--color-success)]"></span>
-          <span className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Engine: Online</span>
+          <span className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Hệ thống: Đang trực tuyến</span>
         </div>
         <div className="h-4 w-px bg-outline-variant"></div>
         <div className="flex items-center gap-3">
           <Zap className="w-4 h-4 text-primary" />
-          <span className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Latency: 12ms</span>
+          <span className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Độ trễ: 12ms</span>
         </div>
       </div>
     </motion.div>

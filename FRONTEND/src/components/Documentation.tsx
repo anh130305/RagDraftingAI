@@ -5,16 +5,16 @@ import { cn } from '../lib/utils';
 
 const navSections = [
   {
-    title: 'Getting Started',
-    items: ['Introduction', 'Authentication', 'Quick Start Guide']
+    title: 'Bắt đầu',
+    items: ['Giới thiệu', 'Xác thực', 'Hướng dẫn Cài đặt Nhanh']
   },
   {
-    title: 'Core Concepts',
-    items: ['Models & Endpoints', 'Context Windows', 'Embeddings']
+    title: 'Khái niệm Nhập môn',
+    items: ['Models & Endpoints', 'Cửa sổ Ngữ cảnh', 'Embeddings']
   },
   {
-    title: 'API Reference',
-    items: ['REST API', 'Webhooks', 'Rate Limits', 'Error Codes']
+    title: 'Tài liệu API',
+    items: ['REST API', 'Webhooks', 'Giới hạn Rate', 'Mã Lỗi']
   }
 ];
 
@@ -38,7 +38,7 @@ export default function Documentation() {
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
             <BookOpen className="w-5 h-5 text-primary" />
           </div>
-          <h2 className="text-xl font-bold font-headline text-on-surface">Docs</h2>
+          <h2 className="text-xl font-bold font-headline text-on-surface">Khái niệm</h2>
         </div>
 
         <div className="space-y-6">
@@ -50,7 +50,7 @@ export default function Documentation() {
                   <li key={itemIdx}>
                     <button className={cn(
                       "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
-                      item === 'Authentication' 
+                      item === 'Xác thực' 
                         ? "bg-surface-highest text-primary font-medium" 
                         : "text-on-surface-variant hover:text-on-surface hover:bg-surface-low"
                     )}>
@@ -68,24 +68,24 @@ export default function Documentation() {
       <div className="flex-1 glass-card rounded-2xl p-8 lg:p-12 border border-outline-variant overflow-y-auto custom-scrollbar">
         <div className="max-w-3xl">
           <div className="flex items-center gap-2 text-xs text-on-surface-variant mb-6 font-medium">
-            <span>Getting Started</span>
+            <span>Bắt đầu</span>
             <ChevronRight className="w-3 h-3" />
-            <span className="text-primary">Authentication</span>
+            <span className="text-primary">Xác thực</span>
           </div>
 
-          <h1 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface mb-4">Authentication</h1>
+          <h1 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface mb-4">Xác thực</h1>
           <p className="text-on-surface-variant leading-relaxed mb-8 text-lg">
-            The RAG AI API uses API keys to authenticate requests. You can view and manage your API keys in the <span className="text-primary cursor-pointer hover:underline">Settings</span> dashboard.
+            RAG AI API dùng mã bảo vệ để kết nối yêu cầu. Bạn có thể xem và kiểm soát mã bảo vệ của mình trong trang <span className="text-primary cursor-pointer hover:underline">Cài đặt</span>.
           </p>
 
           <div className="space-y-8">
             <section>
               <h3 className="text-xl font-bold font-headline text-on-surface mb-4 flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-secondary" />
-                Bearer Token
+                Mã bảo vệ
               </h3>
               <p className="text-on-surface-variant leading-relaxed mb-4 text-sm">
-                Authentication to the API is performed via HTTP Bearer Auth. Provide your API key as the bearer token value in the Authorization header.
+                Bảo vệ tới API sẽ thông qua HTTP Bearer Auth. Bạn cần gửi khóa truy xuất như là đoạn mã trong mục tùy chỉnh HTTP headers.
               </p>
               
               <div className="relative group rounded-xl overflow-hidden border border-outline-variant bg-[#0a0a0a]">
@@ -110,19 +110,19 @@ export default function Documentation() {
             </section>
 
             <section>
-              <h3 className="text-xl font-bold font-headline text-on-surface mb-4">API Key Security</h3>
+              <h3 className="text-xl font-bold font-headline text-on-surface mb-4">Bảo vệ Khóa</h3>
               <div className="p-5 rounded-xl bg-surface-low border-l-4 border-l-tertiary">
-                <h4 className="text-sm font-bold text-on-surface mb-2">Keep your keys safe</h4>
+                <h4 className="text-sm font-bold text-on-surface mb-2">Giữ khóa bí mật của bạn</h4>
                 <p className="text-xs text-on-surface-variant leading-relaxed">
-                  Your API keys carry many privileges, so be sure to keep them secure! Do not share your secret API keys in publicly accessible areas such as GitHub, client-side code, and so forth.
+                  Vì khóa bảo vệ có thể vượt qua hầu hết rào cản, bạn không nên chia sẻ vào những môi trường như GitHub. 
                 </p>
               </div>
             </section>
 
             <section>
-              <h3 className="text-xl font-bold font-headline text-on-surface mb-4">SDK Initialization</h3>
+              <h3 className="text-xl font-bold font-headline text-on-surface mb-4">Bắt đầu Với Mã</h3>
               <p className="text-on-surface-variant leading-relaxed mb-4 text-sm">
-                If you are using our official Node.js or Python SDKs, authentication is handled automatically when you initialize the client.
+                Chuyên sâu cho nền tảng Node.js và Python đã cho phép việc tạo môi trường và lấy thông tin chỉ bằng 1 câu lệnh.
               </p>
               
               <div className="relative rounded-xl overflow-hidden border border-outline-variant bg-[#0a0a0a]">
@@ -147,10 +147,10 @@ export default function Documentation() {
           <div className="mt-12 pt-8 border-t border-outline-variant flex justify-between items-center">
             <button className="text-sm text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-2">
               <ChevronRight className="w-4 h-4 rotate-180" />
-              Introduction
+              Giới thiệu
             </button>
             <button className="text-sm text-primary hover:text-primary-container transition-colors flex items-center gap-2 font-medium">
-              Quick Start Guide
+              Hướng dẫn Cài đặt Nhanh
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>

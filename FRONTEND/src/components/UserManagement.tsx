@@ -19,27 +19,27 @@ const permissions = [
     role: 'Admin', 
     color: 'primary', 
     items: [
-      { label: 'Global Config Access', active: true },
-      { label: 'Billing & User Mgmt', active: true },
-      { label: 'Model Deployment', active: true },
+      { label: 'Truy cập Cấu hình Toàn cục', active: true },
+      { label: 'Quản lý Thanh toán & Người dùng', active: true },
+      { label: 'Triển khai Model', active: true },
     ]
   },
   { 
     role: 'Clerical', 
     color: 'secondary', 
     items: [
-      { label: 'View Global Analytics', active: true },
-      { label: 'Dataset Labeling', active: true },
-      { label: 'No System Config', active: false },
+      { label: 'Xem Phân tích Toàn cục', active: true },
+      { label: 'Dán nhãn dữ liệu', active: true },
+      { label: 'Không có Cấu hình Hệ thống', active: false },
     ]
   },
   { 
     role: 'User', 
     color: 'tertiary', 
     items: [
-      { label: 'Personal Dashboards', active: true },
-      { label: 'Model Experimentation', active: true },
-      { label: 'No User Management', active: false },
+      { label: 'Bảng điều khiển Cá nhân', active: true },
+      { label: 'Thử nghiệm Model', active: true },
+      { label: 'Không Quản lý Người dùng', active: false },
     ]
   },
 ];
@@ -53,17 +53,17 @@ export default function UserManagement() {
     >
       <header className="flex justify-between items-end">
         <div>
-          <h2 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface mb-2">User & Role Management</h2>
-          <p className="text-on-surface-variant max-w-lg">Govern access controls, update permissions, and audit user activity across the RAG ecosystem.</p>
+          <h2 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface mb-2">Quản lý Người dùng & Vai trò</h2>
+          <p className="text-on-surface-variant max-w-lg">Quản lý quyền truy cập, cập nhật quyền hạn và theo dõi hoạt động của người dùng trong hệ sinh thái RAG.</p>
         </div>
         <div className="flex gap-3">
           <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface border border-outline-variant text-on-surface hover:bg-surface-high transition-colors">
             <Filter className="w-5 h-5" />
-            <span className="text-sm font-medium">Filter</span>
+            <span className="text-sm font-medium">Bộ lọc</span>
           </button>
           <button className="flex items-center gap-2 px-6 py-2.5 rounded-full gradient-primary text-surface font-bold hover:opacity-90 transition-opacity shadow-lg shadow-primary/10">
             <UserPlus className="w-5 h-5" />
-            <span className="text-sm">Invite User</span>
+            <span className="text-sm">Mời Người dùng</span>
           </button>
         </div>
       </header>
@@ -72,7 +72,7 @@ export default function UserManagement() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="glass-card p-6 rounded-xl flex items-center justify-between">
           <div>
-            <p className="text-on-surface-variant text-[10px] uppercase tracking-widest font-bold mb-1">Total Users</p>
+            <p className="text-on-surface-variant text-[10px] uppercase tracking-widest font-bold mb-1">Tổng Số Người dùng</p>
             <p className="text-3xl font-headline font-extrabold">1,284</p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
@@ -81,7 +81,7 @@ export default function UserManagement() {
         </div>
         <div className="glass-card p-6 rounded-xl flex items-center justify-between">
           <div>
-            <p className="text-on-surface-variant text-[10px] uppercase tracking-widest font-bold mb-1">Active Roles</p>
+            <p className="text-on-surface-variant text-[10px] uppercase tracking-widest font-bold mb-1">Vai trò Đang dùng</p>
             <p className="text-3xl font-headline font-extrabold">12</p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-secondary/10 flex items-center justify-center text-secondary">
@@ -90,7 +90,7 @@ export default function UserManagement() {
         </div>
         <div className="glass-card p-6 rounded-xl flex items-center justify-between">
           <div>
-            <p className="text-on-surface-variant text-[10px] uppercase tracking-widest font-bold mb-1">System Load</p>
+            <p className="text-on-surface-variant text-[10px] uppercase tracking-widest font-bold mb-1">Tải Hệ thống</p>
             <p className="text-3xl font-headline font-extrabold">24%</p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-tertiary/10 flex items-center justify-center text-tertiary">
@@ -105,10 +105,10 @@ export default function UserManagement() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-surface-high">
-                <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">User</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Role</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-center">Status</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-right">Actions</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Người dùng</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Vai trò</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-center">Trạng thái</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-right">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant">
@@ -170,7 +170,7 @@ export default function UserManagement() {
         {/* Pagination */}
         <div className="px-6 py-4 bg-surface-high/50 flex items-center justify-between border-t border-outline-variant">
           <p className="text-xs text-on-surface-variant">
-            Showing <span className="text-on-surface font-medium">1-4</span> of <span className="text-on-surface font-medium">1,284</span> users
+            Hiển thị <span className="text-on-surface font-medium">1-4</span> trong số <span className="text-on-surface font-medium">1,284</span> người dùng
           </p>
           <div className="flex gap-2">
             <button className="p-2 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface hover:text-on-surface transition-all disabled:opacity-30" disabled>
@@ -185,7 +185,7 @@ export default function UserManagement() {
 
       {/* Permissions Matrix */}
       <div>
-        <h3 className="text-xl font-bold font-headline text-on-surface mb-4">Quick Permissions Overview</h3>
+        <h3 className="text-xl font-bold font-headline text-on-surface mb-4">Tổng quan Phân quyền Nhanh</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {permissions.map((perm) => (
             <div key={perm.role} className="bg-surface-low p-6 rounded-2xl border border-black/5 dark:border-white/5 border-t-[3px] shadow-sm hover:shadow-md transition-shadow" style={{ borderTopColor: `var(--color-${perm.color})` }}>

@@ -47,8 +47,8 @@ interface UploadProgress {
 }
 
 export default function ChatComposer({
-  placeholder = 'Message RAG AI...',
-  note = 'RAG AI can make mistakes. Verify important info.',
+  placeholder = 'Nhắn với RAG AI...',
+  note = 'RAG AI có thể mắc lỗi. Vui lòng kiểm tra lại thông tin quan trọng.',
   statusMessage,
   onSend,
   disabled = false,

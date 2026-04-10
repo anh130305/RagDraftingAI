@@ -12,7 +12,7 @@ const Register = lazy(() => import('./Register'));
 const WorkspaceSettings = lazy(() => import('./Settings'));
 
 function LoadingFallback() {
-  return <FullScreenLoader text="Loading workspace..." />;
+  return <FullScreenLoader text="Đang tải không gian làm việc..." />;
 }
 
 export default function App() {
