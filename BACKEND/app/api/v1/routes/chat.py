@@ -5,7 +5,7 @@ routes.chat – Session and message endpoints.
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_current_user
@@ -19,7 +19,9 @@ from app.schemas.chat import (
     ChatSessionWithMessages,
     ChatMessageFeedbackUpdate,
 )
-from app.services import chat_service
+from app.services import chat_service, audit_service, prompt_template_service
+from app.models.audit_log import AuditAction
+from app.schemas.prompt_template import PromptTemplateListResponse
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -28,11 +30,22 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 
 @router.post("/sessions", response_model=ChatSessionResponse, status_code=201)
 def create_session(
+    request: Request,
     payload: ChatSessionCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return chat_service.create_session(db, current_user.id, payload)
+    session = chat_service.create_session(db, current_user.id, payload)
+    background_tasks.add_task(
+        audit_service.log_action,
+        user_id=current_user.id,
+        action=AuditAction.create_session,
+        resource_type="chat_session",
+        resource_id=session.id,
+        ip_address=request.client.host if request.client else None
+    )
+    return session
 
 
 @router.get("/sessions", response_model=List[ChatSessionResponse])
@@ -69,11 +82,21 @@ def update_session(
 
 @router.delete("/sessions/{session_id}", status_code=204)
 def delete_session(
+    request: Request,
     session_id: UUID,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     chat_service.delete_session(db, session_id, current_user.id)
+    background_tasks.add_task(
+        audit_service.log_action,
+        user_id=current_user.id,
+        action=AuditAction.delete_session,
+        resource_type="chat_session",
+        resource_id=session_id,
+        ip_address=request.client.host if request.client else None
+    )
 
 
 # ── Messages ─────────────────────────────────────────────────
@@ -95,12 +118,25 @@ def get_messages(
     status_code=201,
 )
 def send_message(
+    request: Request,
     session_id: UUID,
     payload: ChatMessageCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return chat_service.add_message(db, session_id, current_user.id, payload)
+    msg = chat_service.add_message(db, session_id, current_user.id, payload)
+    # Log the query event
+    background_tasks.add_task(
+        audit_service.log_action,
+        user_id=current_user.id,
+        action=AuditAction.query,
+        resource_type="chat_session",
+        resource_id=session_id,
+        ip_address=request.client.host if request.client else None,
+        detail={"query_length": len(payload.content)}
+    )
+    return msg
 
 #API Mock Test Reponse from RAG AI
 @router.post(
@@ -132,3 +168,14 @@ def update_message_feedback(
 ):
     """Update feedback (like/dislike) for an AI message."""
     return chat_service.update_message_feedback(db, message_id, current_user.id, payload.feedback)
+
+
+# ── Prompt Templates (User-facing) ───────────────────────────
+
+@router.get("/prompt-templates", response_model=PromptTemplateListResponse)
+def list_user_prompt_templates(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List active prompt templates for chat users."""
+    return prompt_template_service.list_templates(db)

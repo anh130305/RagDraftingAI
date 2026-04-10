@@ -12,9 +12,9 @@ interface AuthState {
 }
 
 interface AuthContextValue extends AuthState {
-  login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string, department?: string) => Promise<void>;
-  googleLogin: (credential: string, department?: string) => Promise<{ needs_onboarding: boolean }>;
+  login: (username: string, password: string) => Promise<UserResponse>;
+  register: (username: string, password: string, department?: string) => Promise<UserResponse>;
+  googleLogin: (credential: string, department?: string) => Promise<{ needs_onboarding: boolean, user: UserResponse }>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -81,6 +81,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await api.login(username, password);
     localStorage.setItem('access_token', res.access_token);
     setToken(res.access_token);
+    const me = await api.getMe();
+    setUser(me);
+    return me;
   };
 
   const register = async (
@@ -90,20 +93,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ) => {
     await api.register(username, password, department);
     // Auto-login after successful registration
-    await login(username, password);
+    return await login(username, password);
   };
 
   const googleLogin = async (credential: string, department?: string) => {
     const res = await api.googleLogin(credential, department);
     localStorage.setItem('access_token', res.access_token);
     setToken(res.access_token);
-    return { needs_onboarding: res.needs_onboarding };
+    const me = await api.getMe();
+    setUser(me);
+    return { needs_onboarding: res.needs_onboarding, user: me };
   };
 
-  const logout = () => {
-    localStorage.removeItem('access_token');
-    setToken(null);
-    setUser(null);
+  const logout = async () => {
+    try {
+      await api.logout();
+    } catch {
+      // Ignore errors if server is unreachable
+    } finally {
+      localStorage.removeItem('access_token');
+      setToken(null);
+      setUser(null);
+    }
   };
 
   return (
@@ -145,14 +156,18 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
 
 /* ── Redirect if already logged in ──────────────────────── */
 export function RedirectIfAuth({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      navigate('/chat', { replace: true });
+    if (!isLoading && isAuthenticated && user) {
+      if (user.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/chat', { replace: true });
+      }
     }
-  }, [isLoading, isAuthenticated, navigate]);
+  }, [isLoading, isAuthenticated, user, navigate]);
 
   if (isLoading) {
     return <FullScreenLoader text="Đang tải..." />;
