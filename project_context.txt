@@ -1,0 +1,273 @@
+================================================================
+PROJECT CONTEXT — RAG Soạn thảo Văn bản Hành chính Việt Nam
+================================================================
+
+## MỤC TIÊU DỰ ÁN
+Xây dựng hệ thống RAG (Retrieval-Augmented Generation) để hỗ trợ soạn
+thảo văn bản hành chính Việt Nam, gồm 3 chức năng chính:
+  1. Truy xuất điều khoản pháp luật liên quan (legal retrieval)
+  2. Gợi ý biểu mẫu hành chính phù hợp (form retrieval)
+  3. Few-shot retrieval ví dụ văn bản đã soạn sẵn (example retrieval)
+
+
+================================================================
+1. CÁC DATASET GỐC (Raw)
+================================================================
+
+--- legal_dataset ---
+File    : dataset/raw/legal_dataset.parquet
+Số hàng : 515,188
+Mỗi hàng: 1 Điều khoản của 1 văn bản pháp luật
+Cột     : id, ministry, type, name, chapter_id, chapter_name, article, content
+Ghi chú :
+  - "id" là số hiệu văn bản (VD: "30/2020/NĐ-CP") — KHÔNG phải row key
+    vì nhiều điều khoản cùng văn bản chia sẻ 1 id (95% trùng)
+  - 17.61% content = null
+  - 6.29% content trùng lặp
+  - Cột "type" có 98 giá trị unique do bị ngắt dòng, nhiễu
+
+--- forms_dataset ---
+File    : dataset/raw/forms_dataset.parquet
+Số hàng : 10 (10 biểu mẫu hành chính)
+Cột     : form_id, form_type, purpose, required_fields, template_markdown
+Ghi chú :
+  - "required_fields" kiểu numpy.ndarray (list các placeholder)
+  - "template_markdown" chứa template với {{FIELD_NAME}} placeholders
+  - Trung bình 12.4 required_fields/form, min=9, max=14
+  - Dataset sạch, 0 missing, 0 duplicate
+
+--- forms_examples_dataset ---
+File    : dataset/raw/forms_examples_dataset.parquet
+Số hàng : 150 (15 ví dụ × 10 forms)
+Cột     : form_id, form_type, example_id, scenario, fields, filled_content, doc_id
+Ghi chú :
+  - "fields" kiểu dict (Python), chứa giá trị điền vào từng placeholder
+  - "filled_content" là văn bản đã điền sẵn (không còn {{}} nào)
+  - 150 unique doc_id, phân bố đều 15/form
+  - Dataset sạch hoàn toàn
+
+
+================================================================
+2. PREPROCESSING (preprocessData.ipynb)
+================================================================
+
+Input : dataset/raw/*.parquet  (hoặc dataset/processed/ nếu không có raw)
+Output: dataset/processed/*_processed.parquet
+
+--- legal_dataset_processed ---
+File    : dataset/processed/legal_dataset_processed.parquet
+Số hàng : 392,079  (giảm từ 515,188 — loại 23.9%)
+Cột     : doc_id, id, ministry, type_normalized, name,
+           chapter_id, chapter_name, article, content
+Các bước cleaning:
+  1. Drop content = null   → loại 90,706 hàng (17.6%)
+  2. Drop exact duplicate  → loại 638 hàng (0.2%)
+  3. Drop content duplicate → loại 31,765 hàng (7.5%)
+  4. Normalize type → 9 nhóm chuẩn:
+       THÔNG TƯ (33.8%), QUYẾT ĐỊNH (21.9%), NGHỊ ĐỊNH (18.2%),
+       NGHỊ QUYẾT (15.3%), LUẬT (7.9%), PHÁP LỆNH (1.7%),
+       KHÁC (1.2%), VĂN BẢN KHÁC (0.0%), KHÔNG RÕ (0.0%)
+  5. Normalize text (whitespace, newline, tab)
+  6. Tạo doc_id = SHA256(số_hiệu + article + content_hash[:10])
+     → 392,079 unique doc_id, 0 duplicate
+
+--- forms_dataset_processed ---
+File    : dataset/processed/forms_dataset_processed.parquet
+Số hàng : 10
+Cột     : doc_id, form_id, form_type, purpose, required_fields, template_markdown
+Các bước: normalize text, convert required_fields numpy→list, doc_id = form_id
+
+--- forms_examples_dataset_processed ---
+File    : dataset/processed/forms_examples_dataset_processed.parquet
+Số hàng : 150
+Cột     : doc_id, form_id, form_type, example_id, scenario, fields_json, filled_content
+Các bước: normalize text, serialize fields dict → fields_json (JSON string)
+
+
+================================================================
+3. CHUNKING (chunkData.ipynb)
+================================================================
+
+Input : dataset/processed/*_processed.parquet
+Output: dataset/chunks/*.parquet + *.jsonl
+
+Tham số chunking:
+  LEGAL_MAX_WORDS     = 400  (ngưỡng split)
+  LEGAL_MIN_WORDS     = 30   (ngưỡng merge)
+  LEGAL_OVERLAP_WORDS = 50   (overlap khi fixed-word split)
+
+--- legal_chunks ---
+File    : dataset/chunks/legal_chunks.parquet  (326.6 MB)
+          dataset/chunks/legal_chunks.jsonl    (1336.2 MB)
+Số chunk: 593,430
+Cột     : chunk_id, doc_id, id (source_doc_no), ministry, type_normalized,
+           name (doc_name), chapter_id, chapter_name, article,
+           chunk_index, total_chunks, split_type, text, word_count
+Phân bố split_type:
+  article    : 307,889 (51.9%)  — điều ngắn ≤400 từ, giữ nguyên
+  fixed_word : 285,541 (48.1%)  — điều dài, split cứng với overlap
+Word count: mean=258 | median=252 | min=2 | max=705
+Lưu ý: chunk con có article header prepend: "[Điều X. Tên điều]\ncontent..."
+
+--- forms_chunks ---
+File    : dataset/chunks/forms_chunks.parquet
+          dataset/chunks/forms_chunks.jsonl
+Số chunk: 10  (1 template = 1 chunk)
+Cột     : chunk_id, doc_id, form_id, form_type, purpose, required_fields,
+           chunk_index, total_chunks, split_type, text, word_count
+split_type: full_template
+Word count: mean=76 | min=50 | max=100
+
+--- examples_chunks ---
+File    : dataset/chunks/examples_chunks.parquet
+          dataset/chunks/examples_chunks.jsonl
+Số chunk: 150  (1 ví dụ = 1 chunk)
+Cột     : chunk_id, doc_id, example_id, form_id, form_type, scenario,
+           fields_json, chunk_index, total_chunks, split_type, text, word_count
+split_type: full_example
+Word count: mean=278 | min=133 | max=473
+
+
+================================================================
+4. VECTOR DATABASE — ChromaDB (notebook_final.ipynb)
+================================================================
+
+Chạy trên: Kaggle Notebook, GPU Tesla T4
+Input : dataset/chunks/*.parquet  (upload lên Kaggle dataset "rag-chunks")
+Output: chromadb_output.zip  (tải về, giải nén thành thư mục chromadb/)
+
+Embedding model: intfloat/multilingual-e5-large-instruct
+  - Dim       : 1024
+  - Max seq   : 512 tokens
+  - Asymmetric retrieval:
+      Index (passage): prefix "passage: {text}"
+      Query (search) : "Instruct: {task}\nQuery: {query}"
+  - Distance  : cosine  (embeddings đã L2-normalize)
+
+ChromaDB Collections:
+  legal_chunks    → 593,430 chunks  (legal_chunks.parquet)
+  forms_chunks    → 10 chunks       (forms_chunks.parquet)
+  examples_chunks → 150 chunks      (examples_chunks.parquet)
+
+Retrieval instructions (asymmetric):
+  legal   : "Instruct: Tim dieu khoan phap luat Viet Nam lien quan.\nQuery: "
+  forms   : "Instruct: Tim mau bieu hanh chinh phu hop voi nhu cau soan thao.\nQuery: "
+  examples: "Instruct: Tim vi du van ban hanh chinh tuong tu tinh huong sau.\nQuery: "
+
+Cách dùng local sau khi tải về:
+  import chromadb
+  client   = chromadb.PersistentClient(path="./chromadb")
+  col      = client.get_collection("legal_chunks")  # hoặc forms_chunks / examples_chunks
+  # Query:
+  results  = col.query(query_embeddings=[q_vec.tolist()], n_results=5,
+                        include=["documents","metadatas","distances"])
+
+Insert/Update vài chunk ở local:
+  col.upsert(ids=[...], embeddings=[...], documents=[...], metadatas=[...])
+  # IDs dùng SHA-256[:24] của "doc_id|chunk_index|text[:200]"
+
+
+================================================================
+5. SCHEMA CHI TIẾT CÁC COLLECTION
+================================================================
+
+--- legal_chunks (metadata fields) ---
+  chunk_id_raw   : str  — chunk_id gốc từ chunkData
+  source_doc_no  : str  — số hiệu văn bản (cột "id" gốc, VD: "30/2020/NĐ-CP")
+  doc_name       : str  — tên văn bản đầy đủ
+  type_normalized: str  — loại văn bản chuẩn hoá (THÔNG TƯ, NGHỊ ĐỊNH, LUẬT,...)
+  article        : str  — tên Điều (VD: "Điều 5. Quyền và trách nhiệm...")
+  ministry       : str  — cơ quan ban hành
+  chapter_id     : str  — số chương
+  chunk_index    : int  — thứ tự chunk trong điều
+  total_chunks   : int  — tổng số chunk của điều
+  split_type     : str  — "article" | "fixed_word"
+  word_count     : int  — số từ trong chunk
+
+--- forms_chunks (metadata fields) ---
+  form_id        : str  — VD: "Form_01"
+  form_type      : str  — loại biểu mẫu
+  purpose        : str  — mục đích sử dụng
+  required_fields: str  — JSON string danh sách placeholder bắt buộc
+  chunk_index    : int
+  total_chunks   : int
+  split_type     : str  — "full_template"
+  word_count     : int
+
+--- examples_chunks (metadata fields) ---
+  example_id     : str  — ID ví dụ
+  form_id        : str  — VD: "Form_01"
+  form_type      : str  — loại biểu mẫu
+  scenario       : str  — mô tả tình huống
+  fields_json    : str  — JSON string các cặp field:value đã điền
+  chunk_index    : int
+  total_chunks   : int
+  split_type     : str  — "full_example"
+  word_count     : int
+
+
+================================================================
+6. FILTER EXAMPLES KHI QUERY
+================================================================
+
+# Lọc theo loại văn bản
+retrieve_legal(query, where={"type_normalized": "NGHỊ ĐỊNH"})
+
+# Lọc theo số hiệu văn bản
+retrieve_legal(query, where={"source_doc_no": "30/2020/NĐ-CP"})
+
+# Lọc examples theo form cụ thể
+retrieve_examples(query, form_id="Form_01")
+
+
+================================================================
+7. CẤU TRÚC THƯ MỤC LOCAL
+================================================================
+
+project/
+├── dataset/
+│   ├── raw/
+│   │   ├── legal_dataset.parquet
+│   │   ├── forms_dataset.parquet
+│   │   └── forms_examples_dataset.parquet
+│   ├── processed/
+│   │   ├── legal_dataset_processed.parquet    (392,079 hàng)
+│   │   ├── forms_dataset_processed.parquet    (10 hàng)
+│   │   └── forms_examples_dataset_processed.parquet  (150 hàng)
+│   ├── chunks/
+│   │   ├── legal_chunks.parquet    (593,430 chunks, 326.6 MB)
+│   │   ├── legal_chunks.jsonl      (1336.2 MB)
+│   │   ├── forms_chunks.parquet    (10 chunks)
+│   │   ├── forms_chunks.jsonl
+│   │   ├── examples_chunks.parquet (150 chunks)
+│   │   └── examples_chunks.jsonl
+│   └── chromadb/                  ← chuyển vào đây
+│       └── chroma.sqlite3 + ...
+├── models/
+│   └── embedding/                 ← cache model intfloat/multilingual-e5-large-instruct
+├── checkData.ipynb
+├── preprocessData.ipynb
+├── chunkData.ipynb
+└── notebook_final.ipynb           ← Kaggle: build ChromaDB
+
+
+================================================================
+8. BƯỚC TIẾP THEO (chưa thực hiện)
+================================================================
+
+  □ Xây dựng RAG pipeline:
+      - Nhận user query (mô tả nhu cầu soạn thảo)
+      - retrieve_legal()   → top-k điều khoản liên quan
+      - retrieve_forms()   → top-k biểu mẫu phù hợp
+      - retrieve_examples() → top-k ví dụ few-shot
+      - Ghép context → prompt LLM → sinh văn bản
+
+  □ Chọn LLM generation model (GPT-4o / Gemini / local LLM)
+
+  □ Xây dựng prompt template cho từng loại văn bản
+
+  □ Evaluation: đánh giá chất lượng retrieval và generation
+
+  □ (Tuỳ chọn) API / UI cho end-user
+
+================================================================
