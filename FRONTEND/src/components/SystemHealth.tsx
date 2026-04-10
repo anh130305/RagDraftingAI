@@ -1,148 +1,299 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Activity, Cpu, HardDrive, Network, Server, AlertTriangle, CheckCircle2, Clock, ShieldAlert } from 'lucide-react';
+import { 
+  Activity, Cpu, HardDrive, Network,
+  AlertTriangle, Search, Filter, RefreshCw, 
+  ChevronLeft, ChevronRight, FileText, UserPlus, LogIn, Trash2, Database, KeyRound
+} from 'lucide-react';
 import { cn } from '../lib/utils';
+import * as api from '../lib/api';
 
-const metrics = [
-  { id: 'cpu', label: 'Tải CPU Toàn cục', value: '42%', icon: Cpu, color: 'primary', status: 'normal' },
-  { id: 'mem', label: 'Sử dụng Bộ nhớ', value: '78%', icon: HardDrive, color: 'secondary', status: 'warning' },
-  { id: 'net', label: 'I/O Mạng', value: '1.2 GB/s', icon: Network, color: 'tertiary', status: 'normal' },
-  { id: 'err', label: 'Tỷ lệ Lỗi', value: '0.01%', icon: Activity, color: 'error', status: 'normal' },
-];
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
-const nodes = [
-  { id: 'node-01', region: 'us-east-1', status: 'healthy', uptime: '99.99%', load: 45 },
-  { id: 'node-02', region: 'us-east-2', status: 'healthy', uptime: '99.95%', load: 62 },
-  { id: 'node-03', region: 'eu-west-1', status: 'warning', uptime: '98.50%', load: 89 },
-  { id: 'node-04', region: 'ap-south-1', status: 'healthy', uptime: '99.90%', load: 30 },
-];
 
-const logs = [
-  { id: 1, time: '10:42:05 AM', level: 'INFO', message: 'Đồng bộ trọng số model qua cụm eu-west-1 thành công.' },
-  { id: 2, time: '10:38:12 AM', level: 'WARN', message: 'Phát hiện áp lực bộ nhớ cao trên node-03. Đã kích hoạt Auto-scaling.' },
-  { id: 3, time: '10:15:00 AM', level: 'ERROR', message: 'Lỗi khi tải nguồn cơ sở tri thức bên ngoài: hết thời gian chờ.' },
-  { id: 4, time: '09:55:22 AM', level: 'INFO', message: 'Hoàn thành bảo trì định kỳ cho các phân vùng cơ sở dữ liệu.' },
-];
+
+const auditActionLabels: Record<string, string> = {
+  login: 'Đăng nhập',
+  logout: 'Đăng xuất',
+  upload_document: 'Tải lên Tài liệu',
+  delete_document: 'Xóa Tài liệu',
+  query: 'Truy vấn RAG',
+  create_session: 'Tạo Phiên',
+  delete_session: 'Xóa Phiên',
+  update_user: 'Cập nhật User'
+};
+
+const getActionConfig = (action: string) => {
+  switch (action) {
+    case 'login': return { icon: LogIn, color: 'text-success', bg: 'bg-success/10', border: 'border-success/20' };
+    case 'logout': return { icon: LogIn, color: 'text-on-surface-variant', bg: 'bg-surface-high', border: 'border-outline-variant' };
+    case 'upload_document': return { icon: FileText, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' };
+    case 'delete_document': return { icon: Trash2, color: 'text-error', bg: 'bg-error/10', border: 'border-error/20' };
+    case 'query': return { icon: Database, color: 'text-tertiary', bg: 'bg-tertiary/10', border: 'border-tertiary/20' };
+    case 'update_user': return { icon: UserPlus, color: 'text-secondary', bg: 'bg-secondary/10', border: 'border-secondary/20' };
+    case 'create_session': return { icon: Activity, color: 'text-primary', bg: 'bg-primary/5', border: 'border-primary/10' };
+    default: return { icon: KeyRound, color: 'text-on-surface-variant', bg: 'bg-surface-high', border: 'border-outline-variant' };
+  }
+};
 
 export default function SystemHealth() {
+  const [logs, setLogs] = useState<api.AuditLogResponse[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  
+  // Chart Data
+  const [chartData, setChartData] = useState<any[]>([]);
+
+  // Filters
+  const [actionFilter, setActionFilter] = useState<string>('');
+  const [page, setPage] = useState(1);
+  const limit = 20;
+
+  useEffect(() => {
+    // Fetch stats for chart (aggregated from recent 500 logs)
+    const fetchChartStats = async () => {
+      try {
+        const res = await api.getAuditLogs({ limit: 500 });
+        const counts: Record<string, number> = {};
+        res.items.forEach(log => {
+          counts[log.action] = (counts[log.action] || 0) + 1;
+        });
+        
+        const data = Object.entries(counts).map(([action, count]) => {
+          const label = auditActionLabels[action] || action;
+          let fill = '#8b5cf6'; // default primary
+          if (action === 'delete_document' || action === 'delete_session') fill = '#ef4444';
+          if (action === 'login' || action === 'upload_document') fill = '#22c55e';
+          if (action === 'query') fill = '#3b82f6';
+          return { name: label, count, fill };
+        });
+        
+        data.sort((a, b) => b.count - a.count);
+        setChartData(data);
+      } catch (err) {
+        console.error("Failed to fetch chart stats:", err);
+      }
+    };
+    fetchChartStats();
+  }, []);
+
+  const fetchLogs = async () => {
+    setLoading(true);
+    try {
+      const skip = (page - 1) * limit;
+      const params: Record<string, any> = { skip, limit };
+      if (actionFilter) params.action = actionFilter;
+      
+      const res = await api.getAuditLogs(params);
+      setLogs(res.items);
+      setTotal(res.total);
+    } catch (err: any) {
+      console.error("Failed to load audit logs:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+    // eslint-disable-next-line
+  }, [page, actionFilter]);
+
+  const totalPages = Math.ceil(total / limit);
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8"
     >
-      <header className="flex justify-between items-end">
+      <header className="flex justify-between items-end flex-wrap gap-4">
         <div>
-          <h2 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface mb-2">Tình trạng Hệ thống</h2>
-          <p className="text-on-surface-variant max-w-2xl">Giám sát các chỉ số hạ tầng quan trọng, trạng thái node và sự kiện hệ thống theo thời gian thực.</p>
+          <h2 className="text-3xl font-extrabold font-headline tracking-tight text-on-surface mb-1">Tình trạng Hệ thống (Audit)</h2>
+          <p className="text-xs text-on-surface-variant max-w-2xl font-medium">Giám sát các chỉ số hạ tầng quan trọng và theo dõi nhật ký hoạt động trên toàn hệ thống.</p>
         </div>
-        <div className="flex items-center gap-3 px-5 py-2.5 bg-surface-low border border-outline-variant rounded-full">
-          <span className="w-2.5 h-2.5 rounded-full bg-success shadow-[0_0_10px_var(--color-success)] animate-pulse"></span>
-          <span className="text-xs font-bold uppercase tracking-widest text-on-surface">Tất cả Hệ thống Hoạt động Tốt</span>
+        <div className="flex gap-3">
+          <div className="px-4 py-2 bg-surface text-on-surface-variant font-bold rounded-xl border border-outline-variant flex items-center gap-2 text-xs shadow-sm">
+            <span className="w-2.5 h-2.5 rounded-full bg-success shadow-[0_0_10px_var(--color-success)] animate-pulse"></span>
+            Hệ thống Hoạt động Tốt
+          </div>
         </div>
       </header>
 
-      {/* Top Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {metrics.map((metric) => (
-          <div key={metric.id} className="glass-card p-6 rounded-xl border border-outline-variant relative overflow-hidden group">
-            <div className={cn(
-              "absolute -right-6 -top-6 w-24 h-24 rounded-full blur-[40px] opacity-20 group-hover:opacity-40 transition-opacity",
-              `bg-${metric.color}`
-            )}></div>
-            <div className="flex justify-between items-start mb-4 relative z-10">
-              <div className={cn("p-2 rounded-lg bg-surface-highest", `text-${metric.color}`)}>
-                <metric.icon className="w-5 h-5" />
-              </div>
-              {metric.status === 'warning' && <AlertTriangle className="w-4 h-4 text-secondary" />}
-            </div>
-            <div className="relative z-10">
-              <p className="text-3xl font-extrabold font-headline text-on-surface">{metric.value}</p>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mt-1">{metric.label}</p>
-            </div>
-          </div>
-        ))}
+      {/* Audit Logs Chart */}
+      <div className="glass-card p-6 pb-2 rounded-2xl border border-outline-variant h-[320px] mb-8">
+        <h3 className="font-bold text-on-surface mb-6 flex items-center gap-2">
+          <Activity className="w-5 h-5 text-primary" />
+          Phân bổ Tần suất Hành động (500 bản ghi gần nhất)
+        </h3>
+        <ResponsiveContainer width="100%" height="80%">
+          <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-on-surface-variant)' }} dy={10} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-on-surface-variant)' }} />
+            <Tooltip 
+              cursor={{ fill: 'rgba(255,255,255,0.02)' }}
+              contentStyle={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-outline-variant)', borderRadius: '12px', fontSize: '12px', color: 'var(--color-on-surface)' }}
+              itemStyle={{ fontWeight: 'bold' }}
+            />
+            <Bar dataKey="count" name="Số lượt" radius={[4, 4, 0, 0]} barSize={40} maxBarSize={60}>
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Node Status */}
-        <div className="lg:col-span-2 glass-card rounded-xl border border-outline-variant overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-outline-variant flex justify-between items-center">
-            <h3 className="font-headline font-bold text-lg text-on-surface flex items-center gap-2">
-              <Server className="w-5 h-5 text-primary" />
-              Các Node Hoạt động
+      {/* Audit Logs Data Table */}
+      <div className="glass-card flex flex-col rounded-2xl border border-outline-variant overflow-hidden">
+        {/* Toolbar */}
+        <div className="p-4 border-b border-outline-variant bg-surface flex flex-wrap lg:flex-nowrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4 w-full lg:w-auto">
+            <h3 className="font-headline font-bold text-lg text-on-surface flex items-center gap-2 shrink-0">
+              <Activity className="w-5 h-5 text-primary" />
+              Nhật ký Audit 
+              <span className="text-xs font-mono bg-surface-high px-2 py-0.5 rounded-full text-on-surface-variant ml-2 border border-outline-variant">
+                {total}
+              </span>
             </h3>
-            <span className="text-xs text-on-surface-variant font-medium">4 / 4 Đang trực tuyến</span>
-          </div>
-          <div className="p-6 flex-1">
-            <div className="space-y-6">
-              {nodes.map((node) => (
-                <div key={node.id} className="flex items-center gap-6">
-                  <div className="w-12 h-12 rounded-full bg-surface-highest flex items-center justify-center border border-outline-variant shrink-0">
-                    {node.status === 'healthy' ? (
-                      <CheckCircle2 className="w-6 h-6 text-success" />
-                    ) : (
-                      <AlertTriangle className="w-6 h-6 text-secondary" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-end mb-2">
-                      <div>
-                        <h4 className="text-sm font-bold text-on-surface">{node.id}</h4>
-                        <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">{node.region}</p>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs font-mono text-on-surface">{node.load}% Tải</span>
-                      </div>
-                    </div>
-                    <div className="h-1.5 w-full bg-surface-highest rounded-full overflow-hidden">
-                      <div 
-                        className={cn("h-full rounded-full", node.status === 'healthy' ? "bg-primary" : "bg-secondary")}
-                        style={{ width: `${node.load}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div className="hidden sm:block text-right shrink-0 w-24">
-                    <p className="text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Thời gian hoạt động</p>
-                    <p className="text-sm font-mono text-on-surface">{node.uptime}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="h-6 w-px bg-outline-variant hidden lg:block"></div>
+            
+            <div className="relative min-w-[200px]">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Filter className="h-4 w-4 text-on-surface-variant" />
+              </div>
+              <select
+                value={actionFilter}
+                onChange={(e) => {
+                  setActionFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full pl-9 pr-8 py-2 bg-surface-high border border-outline-variant rounded-xl text-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary appearance-none outline-none font-medium"
+              >
+                <option value="">Tất cả Hành động</option>
+                {Object.entries(auditActionLabels).map(([val, label]) => (
+                  <option key={val} value={val}>{label}</option>
+                ))}
+              </select>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 w-full lg:w-auto">
+            <button 
+              onClick={fetchLogs}
+              className="px-4 py-2 border border-outline-variant rounded-xl text-on-surface text-sm font-bold bg-surface hover:bg-surface-high transition-colors flex items-center gap-2 shrink-0"
+            >
+              <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+              <span>Làm mới</span>
+            </button>
           </div>
         </div>
 
-        {/* Event Logs */}
-        <div className="glass-card rounded-xl border border-outline-variant overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-outline-variant flex justify-between items-center">
-            <h3 className="font-headline font-bold text-lg text-on-surface flex items-center gap-2">
-              <Clock className="w-5 h-5 text-tertiary" />
-              Sự kiện Hệ thống
-            </h3>
-          </div>
-          <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
-            <div className="space-y-4">
-              {logs.map((log) => (
-                <div key={log.id} className="flex gap-4 items-start">
-                  <div className={cn(
-                    "mt-1 w-2 h-2 rounded-full shrink-0",
-                    log.level === 'INFO' ? "bg-primary" : log.level === 'WARN' ? "bg-secondary" : "bg-error"
-                  )} />
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={cn(
-                        "text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded",
-                        log.level === 'INFO' ? "bg-primary/10 text-primary" : log.level === 'WARN' ? "bg-secondary/10 text-secondary" : "bg-error/10 text-error"
-                      )}>
-                        {log.level}
-                      </span>
-                      <span className="text-[10px] font-mono text-on-surface-variant">{log.time}</span>
-                    </div>
-                    <p className="text-xs text-on-surface-variant leading-relaxed">{log.message}</p>
-                  </div>
-                </div>
-              ))}
+        {/* Table Container */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-surface-low border-b border-outline-variant/50">
+                <th className="px-5 py-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest whitespace-nowrap">Thời gian</th>
+                <th className="px-5 py-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest whitespace-nowrap">Hành động</th>
+                <th className="px-5 py-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest whitespace-nowrap">User ID</th>
+                <th className="px-5 py-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest whitespace-nowrap">IP / Nguồn</th>
+                <th className="px-5 py-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest w-[30%]">Tài nguyên / Chi tiết</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-outline-variant/30 text-sm">
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse bg-surface/50">
+                    <td className="px-5 py-4"><div className="h-4 w-24 bg-surface-high rounded"></div></td>
+                    <td className="px-5 py-4"><div className="h-6 w-32 bg-surface-high rounded-full"></div></td>
+                    <td className="px-5 py-4"><div className="h-4 w-40 bg-surface-high rounded"></div></td>
+                    <td className="px-5 py-4"><div className="h-4 w-24 bg-surface-high rounded"></div></td>
+                    <td className="px-5 py-4"><div className="h-4 w-full bg-surface-high rounded"></div></td>
+                  </tr>
+                ))
+              ) : logs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-5 py-16 text-center text-on-surface-variant">
+                    <Database className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                    <p className="font-bold">Không tìm thấy bản ghi Audit nào</p>
+                    <p className="text-xs mt-1 opacity-70">Thử thay đổi bộ lọc hoặc tải lại trang.</p>
+                  </td>
+                </tr>
+              ) : (
+                logs.map((log) => {
+                  const conf = getActionConfig(log.action);
+                  
+                  return (
+                    <tr key={log.id} className="hover:bg-surface-highest/30 transition-colors group">
+                      <td className="px-5 py-3 align-top">
+                        <div className="font-mono text-xs text-on-surface-variant mt-1.5 whitespace-nowrap">
+                          {new Date(log.created_at).toLocaleString('vi-VN')}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 align-top">
+                        <div className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-bold", conf.bg, conf.border, conf.color)}>
+                          <conf.icon className="w-3.5 h-3.5" />
+                          <span className="truncate max-w-[120px]">{auditActionLabels[log.action] || log.action}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 align-top">
+                        <code className="text-[11px] font-mono bg-surface-high/50 text-on-surface px-1.5 py-0.5 rounded border border-outline-variant/30 text-nowrap">
+                          {log.user_id ? `${log.user_id.split('-')[0]}...` : 'System'}
+                        </code>
+                      </td>
+                      <td className="px-5 py-3 align-top text-xs text-on-surface-variant">
+                        {log.ip_address || '-'}
+                      </td>
+                      <td className="px-5 py-3 align-top">
+                        <div className="text-xs space-y-1.5">
+                          {log.resource_type && (
+                            <div className="font-bold text-on-surface">
+                              [{log.resource_type}] {log.resource_id ? <span className="font-mono text-[10px] text-on-surface-variant leading-none">{log.resource_id.split('-')[0]}</span> : ''}
+                            </div>
+                          )}
+                          {log.detail && (
+                            <pre className="text-[10px] text-on-surface-variant bg-surface-low p-2 rounded-lg border border-outline-variant overflow-x-auto custom-scrollbar max-w-sm lg:max-w-md">
+                              {JSON.stringify(log.detail, null, 2)}
+                            </pre>
+                          )}
+                          {!log.resource_type && !log.detail && (
+                            <span className="text-on-surface-variant opacity-50 italic">-</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer/Pagination */}
+        <div className="p-4 border-t border-outline-variant bg-surface-low flex flex-wrap gap-4 items-center justify-between">
+          <p className="text-xs text-on-surface-variant font-medium">
+            Hiển thị <strong className="text-on-surface">{logs.length}</strong> kết quả trên trang này
+          </p>
+          <div className="flex gap-2">
+            <button 
+              disabled={page <= 1 || loading}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant bg-surface text-on-surface hover:bg-surface-high disabled:opacity-50 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div className="flex items-center px-4 font-mono text-xs font-bold bg-surface-high rounded-lg border border-outline-variant">
+              {page} / {totalPages || 1}
             </div>
+            <button 
+              disabled={page >= totalPages || loading}
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant bg-surface text-on-surface hover:bg-surface-high disabled:opacity-50 transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>

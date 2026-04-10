@@ -36,3 +36,7 @@ slowapi
 # Google OAuth
 google-auth
 requests
+
+# System monitoring (GPU/VRAM via NVIDIA, CPU/RAM cross-platform)
+psutil
+nvidia-ml-py

@@ -169,4 +169,27 @@ CREATE TABLE query_logs (
 CREATE INDEX idx_query_logs_session_id  ON query_logs(session_id);
 CREATE INDEX idx_query_logs_created_at  ON query_logs(created_at DESC);
 
+
+-- ============================================================
+-- 8. PROMPT_TEMPLATES
+-- ============================================================
+
+CREATE TABLE prompt_templates (
+    id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        VARCHAR(100) NOT NULL,
+    description TEXT,
+    content     TEXT         NOT NULL,
+    is_default  BOOLEAN      NOT NULL DEFAULT FALSE,
+    is_active   BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_by  UUID         REFERENCES users(id) ON DELETE SET NULL,
+    created_at  TIMESTAMP    NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_prompt_tpl_active ON prompt_templates(is_active);
+
+CREATE TRIGGER trg_prompt_tpl_updated_at
+    BEFORE UPDATE ON prompt_templates
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
 ```

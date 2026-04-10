@@ -57,9 +57,13 @@ export default function Login() {
     setErrors({});
     setIsSubmitting(true);
     try {
-      await login(username.trim(), password);
+      const user = await login(username.trim(), password);
       showToast('Đăng nhập thành công!', 'success');
-      navigate('/chat', { replace: true });
+      if (user.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/chat', { replace: true });
+      }
     } catch (err: any) {
       showToast(err.message || 'Đăng nhập thất bại', 'error');
     } finally {

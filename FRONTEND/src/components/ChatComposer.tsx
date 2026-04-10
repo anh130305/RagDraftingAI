@@ -6,13 +6,18 @@ import {
   FileUp,
   Image,
   LoaderCircle,
+  Loader2,
   Mic,
   MicOff,
   Paperclip,
   PlusCircle,
+  Sparkles,
+  Star,
   X,
 } from 'lucide-react';
 import { useToast } from '../lib/ToastContext';
+import * as api from '../lib/api';
+import type { PromptTemplateResponse } from '../lib/api';
 
 interface ChatComposerProps {
   placeholder?: string;
@@ -75,6 +80,12 @@ export default function ChatComposer({
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
   const [retryingAttachmentId, setRetryingAttachmentId] = useState<string | null>(null);
+
+  // Prompt template states
+  const [showPromptPicker, setShowPromptPicker] = useState(false);
+  const [promptTemplates, setPromptTemplates] = useState<PromptTemplateResponse[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const promptPickerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     valueRef.current = value;
@@ -474,12 +485,14 @@ export default function ChatComposer({
     const handlePointerDown = (event: MouseEvent) => {
       if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
         closeMenu();
+        setShowPromptPicker(false);
       }
     };
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         closeMenu();
+        setShowPromptPicker(false);
       }
     };
 
@@ -678,9 +691,97 @@ export default function ChatComposer({
                   <span className="text-[11px] text-on-surface-variant">Xem trước trước khi gửi</span>
                 </div>
               </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-sm text-on-surface hover:bg-surface-container-high transition-colors disabled:pointer-events-none"
+                disabled={disabled}
+                onClick={async () => {
+                  closeMenu();
+                  setShowPromptPicker(true);
+                  if (promptTemplates.length === 0) {
+                    setIsLoadingTemplates(true);
+                    try {
+                      const res = await api.getUserPromptTemplates();
+                      setPromptTemplates(res.items);
+                    } catch {
+                      showToast('Không thể tải danh sách mẫu prompt', 'error');
+                    } finally {
+                      setIsLoadingTemplates(false);
+                    }
+                  }
+                }}
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-tertiary/10 text-tertiary">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-semibold">Prompt mẫu</span>
+                  <span className="text-[11px] text-on-surface-variant">Sử dụng lệnh mẫu có sẵn</span>
+                </div>
+              </button>
             </div>
           )}
         </div>
+
+        {/* Prompt Template Picker Popup */}
+        {showPromptPicker && (
+          <div
+            ref={promptPickerRef}
+            className="absolute left-0 bottom-full mb-3 w-80 overflow-hidden rounded-3xl border border-outline-variant/20 bg-surface/95 shadow-[0_20px_45px_rgba(0,0,0,0.12)] backdrop-blur-xl z-50"
+          >
+            <div className="px-4 py-3 border-b border-outline-variant/15 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-tertiary" />
+                <span className="text-sm font-bold text-on-surface">Prompt mẫu</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPromptPicker(false)}
+                className="p-1 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-highest transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="max-h-64 overflow-y-auto custom-scrollbar">
+              {isLoadingTemplates ? (
+                <div className="flex items-center justify-center py-8 gap-2 text-on-surface-variant">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-xs">Đang tải...</span>
+                </div>
+              ) : promptTemplates.length === 0 ? (
+                <div className="py-8 text-center text-on-surface-variant text-xs">
+                  Chưa có mẫu prompt nào.
+                </div>
+              ) : (
+                promptTemplates.map((tpl) => (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-container-high transition-colors border-b border-outline-variant/10 last:border-b-0"
+                    onClick={() => {
+                      onValueChange?.(tpl.content);
+                      setShowPromptPicker(false);
+                      showToast(`Đã chèn mẫu "${tpl.name}"`, 'success');
+                    }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-semibold text-on-surface truncate">{tpl.name}</span>
+                        {tpl.is_default && (
+                          <Star className="w-3 h-3 text-amber-500 shrink-0 fill-amber-500" />
+                        )}
+                      </div>
+                      <p className="text-[11px] text-on-surface-variant mt-0.5 line-clamp-2 leading-relaxed">
+                        {tpl.description || tpl.content.slice(0, 80) + '...'}
+                      </p>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="flex min-h-14 flex-1 items-center rounded-[24px] bg-surface/70 px-3.5 py-1.5 transition-shadow focus-within:ring-0">
           <input
             className="flex-1 bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant font-body text-[15px] leading-6 outline-none"

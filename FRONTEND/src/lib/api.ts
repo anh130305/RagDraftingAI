@@ -140,6 +140,10 @@ export function googleLogin(id_token: string, department?: string) {
   );
 }
 
+export function logout() {
+  return request<void>('/api/v1/auth/logout', { method: 'POST' });
+}
+
 export function getMe() {
   return request<UserResponse>('/api/v1/users/me');
 }
@@ -151,7 +155,100 @@ export function updateMe(data: { department?: string }) {
   });
 }
 
+/* ─── Admin Users ───────────────────────────────────────── */
+
+export function getAdminUsers(skip = 0, limit = 100) {
+  return request<UserResponse[]>(`/api/v1/admin/users?skip=${skip}&limit=${limit}`);
+}
+
+export function updateAdminUser(id: string, data: { role?: string; is_active?: boolean }) {
+  return request<UserResponse>(`/api/v1/admin/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+/* ─── Admin Audit Logs ────────────────────────────────────── */
+
+export interface AuditLogResponse {
+  id: string;
+  user_id: string | null;
+  action: string;
+  resource_type: string | null;
+  resource_id: string | null;
+  ip_address: string | null;
+  detail: any;
+  created_at: string;
+}
+
+export interface AuditLogListResponse {
+  items: AuditLogResponse[];
+  total: number;
+}
+
+export function getAuditLogs(params: Record<string, any> = {}) {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') {
+      qs.append(key, String(value));
+    }
+  }
+  const str = qs.toString();
+  const url = str ? `/api/v1/admin/audit-logs?${str}` : '/api/v1/admin/audit-logs';
+  return request<AuditLogListResponse>(url);
+}
+
+/* ─── Admin Prompt Templates ─────────────────────────────── */
+
+export interface PromptTemplateResponse {
+  id: string;
+  name: string;
+  description: string | null;
+  content: string;
+  is_default: boolean;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PromptTemplateListResponse {
+  items: PromptTemplateResponse[];
+  total: number;
+}
+
+export function getPromptTemplates() {
+  return request<PromptTemplateListResponse>('/api/v1/admin/prompt-templates');
+}
+
+export function createPromptTemplate(data: { name: string; description?: string; content: string }) {
+  return request<PromptTemplateResponse>('/api/v1/admin/prompt-templates', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function updatePromptTemplate(id: string, data: { name?: string; description?: string; content?: string; is_active?: boolean }) {
+  return request<PromptTemplateResponse>(`/api/v1/admin/prompt-templates/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deletePromptTemplate(id: string) {
+  return request<void>(`/api/v1/admin/prompt-templates/${id}`, { method: 'DELETE' });
+}
+
+export function setDefaultPromptTemplate(id: string) {
+  return request<PromptTemplateResponse>(`/api/v1/admin/prompt-templates/${id}/default`, { method: 'PUT' });
+}
+
+
 /* ─── Chat ──────────────────────────────────────────────── */
+
+export function getUserPromptTemplates() {
+  return request<PromptTemplateListResponse>('/api/v1/chat/prompt-templates');
+}
 
 export interface ChatSession {
   id: string;
@@ -270,4 +367,69 @@ export function listDocuments(skip = 0, limit = 50) {
 
 export function deleteDocument(id: string) {
   return request<void>(`/api/v1/documents/${id}`, { method: 'DELETE' });
+}
+
+/* ─── Admin System Stats ─────────────────────────────────── */
+
+export interface GpuInfo {
+  index: number;
+  name: string;
+  vram_used_mb: number;
+  vram_total_mb: number;
+  vram_free_mb: number;
+  vram_percent: number;
+  gpu_util_percent: number;
+  memory_util_percent: number;
+  temperature_c: number | null;
+  power_w: number | null;
+  power_limit_w: number | null;
+}
+
+export interface SystemInfo {
+  cpu_percent: number;
+  ram_used_mb: number;
+  ram_total_mb: number;
+  ram_percent: number;
+  disk_used_gb: number;
+  disk_total_gb: number;
+  disk_percent: number;
+}
+
+export interface VramHistoryPoint {
+  time: string;
+  value: number;
+}
+
+export interface SystemStatsResponse {
+  is_mock: boolean;
+  gpu_count: number;
+  gpus: GpuInfo[];
+  system: SystemInfo;
+  vram_history: VramHistoryPoint[];
+  collected_at: string;
+}
+
+export function getSystemStats() {
+  return request<SystemStatsResponse>('/api/v1/admin/system-stats');
+}
+
+export interface DashboardStatsResponse {
+  feedback: {
+    total_responses: number;
+    likes: number;
+    dislikes: number;
+    no_feedback: number;
+    like_rate: number;
+    dislike_rate: number;
+  };
+  users: {
+    total: number;
+    active: number;
+    inactive: number;
+    new_this_month: number;
+  };
+}
+
+export function getDashboardStats() {
+  return request<DashboardStatsResponse>('/api/v1/admin/dashboard-stats');
 }

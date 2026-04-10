@@ -10,10 +10,10 @@ from sqlalchemy.orm import Session
 from app.models.audit_log import AuditAction
 from app.repositories.audit_repo import audit_repo
 from app.schemas.audit import AuditLogFilter, AuditLogResponse, AuditLogListResponse
+from app.db.session import get_session_local
 
 
 def log_action(
-    db: Session,
     *,
     user_id: Optional[UUID],
     action: AuditAction,
@@ -21,19 +21,35 @@ def log_action(
     resource_id: Optional[UUID] = None,
     ip_address: Optional[str] = None,
     detail: Optional[Any] = None,
+    db: Optional[Session] = None,
 ) -> None:
-    """Append a new audit log entry.  Fire-and-forget — no return value needed."""
-    audit_repo.create(
-        db,
-        obj_in={
-            "user_id": user_id,
-            "action": action,
-            "resource_type": resource_type,
-            "resource_id": resource_id,
-            "ip_address": ip_address,
-            "detail": detail,
-        },
-    )
+    """Append a new audit log entry.
+
+    Creates its own DB session so it can safely run inside BackgroundTasks
+    (where the request's session has already been closed).
+    """
+    own_session = db is None
+    if own_session:
+        db = get_session_local()()
+    try:
+        audit_repo.create(
+            db,
+            obj_in={
+                "user_id": user_id,
+                "action": action,
+                "resource_type": resource_type,
+                "resource_id": resource_id,
+                "ip_address": ip_address,
+                "detail": detail,
+            },
+        )
+    except Exception:
+        if own_session:
+            db.rollback()
+        raise
+    finally:
+        if own_session:
+            db.close()
 
 
 def get_audit_logs(db: Session, filters: AuditLogFilter) -> AuditLogListResponse:
