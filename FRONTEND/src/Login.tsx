@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Lock, Monitor, Moon, Sparkles, Sun, User, Eye, EyeOff } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from './lib/AuthContext';
+import { useToast } from './lib/ToastContext';
 import './styles/chat-auth.css';
 
 type ThemeMode = 'light' | 'dark' | 'system';
@@ -10,6 +11,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
 export default function Login() {
   const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [theme, setTheme] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem('auth-theme') as ThemeMode | null;
@@ -19,7 +21,7 @@ export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ username?: string; password?: string; general?: string }>({});
+  const [errors, setErrors] = useState<{ username?: string; password?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -56,9 +58,10 @@ export default function Login() {
     setIsSubmitting(true);
     try {
       await login(username.trim(), password);
+      showToast('Đăng nhập thành công!', 'success');
       navigate('/chat', { replace: true });
     } catch (err: any) {
-      setErrors({ general: err.message || 'Đăng nhập thất bại' });
+      showToast(err.message || 'Đăng nhập thất bại', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -69,6 +72,7 @@ export default function Login() {
     setErrors({});
     try {
       const { needs_onboarding } = await googleLogin(response.credential);
+      showToast('Đăng nhập thành công!', 'success');
       if (needs_onboarding) {
         // For now, redirect to settings to fill department
         // or show a toast suggesting they update their profile.
@@ -78,7 +82,7 @@ export default function Login() {
         navigate('/chat', { replace: true });
       }
     } catch (err: any) {
-      setErrors({ general: err.message || 'Đăng nhập Google thất bại' });
+      showToast(err.message || 'Đăng nhập Google thất bại', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -137,12 +141,6 @@ export default function Login() {
             {/* Glassmorphism Form Card */}
             <div className="glass-morphism rounded-2xl p-6 ghost-border space-y-4 shadow-2xl">
               <form className="space-y-4" onSubmit={handleSubmit}>
-                {/* General Error Message */}
-                {errors.general && (
-                  <div className="px-4 py-3 rounded-xl bg-error/10 border border-error/20 text-error text-sm font-medium animate-in fade-in">
-                    {errors.general}
-                  </div>
-                )}
                 {/* Username Field */}
                 <div className="space-y-2">
                   <label className="font-label text-sm font-medium text-on-surface-variant ml-1" htmlFor="username">Tên đăng nhập</label>
@@ -221,7 +219,7 @@ export default function Login() {
               <div className="w-full flex justify-center">
                 <GoogleLogin
                   onSuccess={onGoogleSuccess}
-                  onError={() => setErrors({ general: 'Google Login failed' })}
+                  onError={() => showToast('Google Login thất bại', 'error')}
                   useOneTap
                   theme={theme === 'dark' ? 'filled_black' : 'outline'}
                   shape="pill"

@@ -72,6 +72,19 @@ services:
     depends_on:
       - backend
 
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: rag_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "5050:80"
+    depends_on:
+      DataBase:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   minio_data:

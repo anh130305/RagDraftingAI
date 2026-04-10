@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useEffect, useState } from 'react';
 import Sidebar, { ViewType } from './components/Sidebar';
 import TopBar from './components/TopBar';
 import { motion, AnimatePresence } from 'motion/react';
+import FullScreenLoader from './components/FullScreenLoader';
 import './styles/admin.css';
 
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -69,14 +70,7 @@ export default function App() {
         <TopBar theme={theme} setTheme={setTheme} />
 
         <div className="p-8 w-full flex-1 overflow-x-hidden custom-scrollbar">
-          <Suspense
-            fallback={
-              <div className="flex flex-col items-center justify-center h-[60vh] text-center gap-2">
-                <h2 className="text-lg font-bold text-on-surface">Loading view...</h2>
-                <p className="text-sm text-on-surface-variant">Preparing module assets for this section.</p>
-              </div>
-            }
-          >
+          <Suspense fallback={<FullScreenLoader text="Loading view..." />}>
             <AnimatePresence mode="wait">
               <motion.div
                 className="w-full h-full flex flex-col"
@@ -94,7 +88,7 @@ export default function App() {
 
         <footer className="p-8 mt-auto border-t border-outline-variant/5 text-center">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/30">
-            RAG AI Admin Architecture © 2024. All Rights Reserved.
+            RAG AI Admin Architecture © 2026. All Rights Reserved.
           </p>
         </footer>
       </main>

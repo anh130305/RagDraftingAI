@@ -66,6 +66,8 @@ async function request<T>(
             return err.msg || `${label} không hợp lệ`;
           })
           .join('. ');
+      } else if (res.status === 429) {
+        message = 'Bạn đã thao tác quá nhiều, vui lòng thử lại sau.';
       } else {
         message = errorBody.detail || `HTTP ${res.status}`;
       }
@@ -156,6 +158,7 @@ export interface ChatSession {
   user_id: string;
   title: string | null;
   is_archived: boolean;
+  is_pinned: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -165,6 +168,7 @@ export interface ChatMessage {
   session_id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
+  feedback?: 'like' | 'dislike' | null;
   token_count: number | null;
   created_at: string;
 }
@@ -188,6 +192,13 @@ export function getSession(id: string) {
   );
 }
 
+export function updateSession(id: string, data: { title?: string; is_archived?: boolean; is_pinned?: boolean }) {
+  return request<ChatSession>(`/api/v1/chat/sessions/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
 export function deleteSession(id: string) {
   return request<void>(`/api/v1/chat/sessions/${id}`, { method: 'DELETE' });
 }
@@ -206,6 +217,23 @@ export function getMessages(sessionId: string) {
   return request<ChatMessage[]>(
     `/api/v1/chat/sessions/${sessionId}/messages`,
   );
+}
+
+// Mock API Test Response from RAG AI
+export function mockAssistantMessage(sessionId: string) {
+  return request<ChatMessage>(
+    `/api/v1/chat/sessions/${sessionId}/messages/mock`,
+    {
+      method: 'POST',
+    },
+  );
+}
+
+export function submitMessageFeedback(messageId: string, feedback: 'like' | 'dislike' | null) {
+  return request<ChatMessage>(`/api/v1/chat/messages/${messageId}/feedback`, {
+    method: 'PUT',
+    body: JSON.stringify({ feedback }),
+  });
 }
 
 /* ─── Documents ─────────────────────────────────────────── */

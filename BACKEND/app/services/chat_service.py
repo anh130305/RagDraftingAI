@@ -4,12 +4,15 @@ services.chat_service – Chat session and message orchestration.
 
 from typing import List
 from uuid import UUID
+from sqlalchemy.sql import func
+
 
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, ForbiddenError
 from app.repositories.chat_repo import session_repo, message_repo
 from app.models.chat_message import MessageRole
+from app.models.chat_message import ChatMessage
 from app.schemas.chat import (
     ChatSessionCreate,
     ChatSessionUpdate,
@@ -100,6 +103,38 @@ def add_message(
             "content": payload.content,
         },
     )
+    
+    # Explicitly update the session timestamp to push it to the top of Recent Chats
+    s.updated_at = func.now()
+    db.commit()
+    
+    return ChatMessageResponse.model_validate(msg)
+
+# mock AI rep, support FE test
+def add_mock_assistant_message(
+    db: Session,
+    session_id: UUID,
+    user_id: UUID,
+) -> ChatMessageResponse:
+    """Add a mock assistant message for testing purposes."""
+    s = session_repo.get_by_id(db, session_id)
+    if not s:
+        raise NotFoundError("Chat session")
+    if s.user_id != user_id:
+        raise ForbiddenError("You do not own this session")
+
+    msg = message_repo.create(
+        db,
+        obj_in={
+            "session_id": session_id,
+            "role": MessageRole.assistant,
+            "content": "OKE! Tôi đã xử lý xong yêu cầu của bạn. Đây là phản hồi giả lập sau 10 giây chờ đợi.",
+        },
+    )
+    
+    s.updated_at = func.now()
+    db.commit()
+    
     return ChatMessageResponse.model_validate(msg)
 
 
@@ -113,3 +148,19 @@ def get_messages(
         raise ForbiddenError("You do not own this session")
     msgs = message_repo.get_by_session(db, session_id)
     return [ChatMessageResponse.model_validate(m) for m in msgs]
+
+def update_message_feedback(
+    db: Session, message_id: UUID, user_id: UUID, feedback_data: str | None
+) -> ChatMessageResponse:
+    msg = db.query(ChatMessage).filter(ChatMessage.id == message_id).first()
+    if not msg:
+        raise NotFoundError("Chat message")
+    
+    s = session_repo.get_by_id(db, msg.session_id)
+    if not s or s.user_id != user_id:
+        raise ForbiddenError("You do not own this message")
+    
+    msg.feedback = feedback_data
+    db.commit()
+    db.refresh(msg)
+    return ChatMessageResponse.model_validate(msg)

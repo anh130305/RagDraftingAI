@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Lock, Monitor, Moon, Sparkles, Sun, User, Building2, Eye, EyeOff } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from './lib/AuthContext';
+import { useToast } from './lib/ToastContext';
 import './styles/chat-auth.css';
 
 type ThemeMode = 'light' | 'dark' | 'system';
@@ -10,6 +11,7 @@ type ThemeMode = 'light' | 'dark' | 'system';
 export default function Register() {
   const { register, googleLogin } = useAuth();
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [theme, setTheme] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem('auth-theme') as ThemeMode | null;
@@ -28,7 +30,6 @@ export default function Register() {
     confirmPassword?: string;
     department?: string;
     agreedTerms?: string;
-    general?: string;
   }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -111,16 +112,17 @@ export default function Register() {
     setIsSubmitting(true);
     try {
       await register(trimmedUsername, password, department || undefined);
+      showToast('Đăng ký thành công!', 'success');
       navigate('/chat', { replace: true });
     } catch (err: any) {
       if (err.status === 409) {
         setErrors({ username: 'Tên đăng nhập đã được sử dụng' });
       } else if (err.status === 422) {
-        setErrors({ general: err.message || 'Dữ liệu không hợp lệ' });
+        showToast(err.message || 'Dữ liệu không hợp lệ', 'error');
       } else if (!navigator.onLine || err.message === 'Failed to fetch') {
-        setErrors({ general: 'Không thể kết nối đến máy chủ' });
+        showToast('Không thể kết nối đến máy chủ', 'error');
       } else {
-        setErrors({ general: err.message || 'Đăng ký thất bại' });
+        showToast(err.message || 'Đăng ký thất bại', 'error');
       }
     } finally {
       setIsSubmitting(false);
@@ -133,13 +135,14 @@ export default function Register() {
     try {
       // Pass the selected department if available
       const { needs_onboarding } = await googleLogin(response.credential, department || undefined);
+      showToast('Đăng ký thành công!', 'success');
       if (needs_onboarding) {
         navigate('/settings', { replace: true, state: { onboarding: true } });
       } else {
         navigate('/chat', { replace: true });
       }
     } catch (err: any) {
-      setErrors({ general: err.message || 'Đăng ký Google thất bại' });
+      showToast(err.message || 'Đăng ký Google thất bại', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -196,13 +199,6 @@ export default function Register() {
 
           <div className="glass-morphism rounded-2xl p-6 ghost-border space-y-4 shadow-2xl">
             <form className="space-y-4" onSubmit={handleSubmit}>
-              {/* General Error Message */}
-              {errors.general && (
-                <div className="px-4 py-3 rounded-xl bg-error/10 border border-error/20 text-error text-sm font-medium animate-in fade-in">
-                  {errors.general}
-                </div>
-              )}
-
               {/* Username */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest ml-1 font-label">Tên đăng nhập</label>
@@ -348,7 +344,7 @@ export default function Register() {
             <div className="w-full flex justify-center">
               <GoogleLogin
                 onSuccess={onGoogleSuccess}
-                onError={() => setErrors({ general: 'Google registration failed' })}
+                onError={() => showToast('Đăng ký Google thất bại', 'error')}
                 useOneTap
                 theme={theme === 'dark' ? 'filled_black' : 'outline'}
                 shape="pill"
