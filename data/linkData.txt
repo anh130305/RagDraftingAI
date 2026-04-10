@@ -3,3 +3,6 @@ https://www.kaggle.com/datasets/tuongdang/vietnamese-legal-dataset?resource=down
 
 Tải dataset csv trên Kaggle về máy và giải nén, sau đó di chuyển file `vbpl_crawl_2.csv` vào thư mục `dataset` trong dự án của bạn.
 Rồi dùng file convert.py để chuyển đổi file csv sang định dạng parquet, giúp việc đọc dữ liệu nhanh hơn trong quá trình xử lý.
+
+link chromaDB:
+https://drive.google.com/file/d/1Xi8VHnlqJqMNlqBzxr1Nzsza9-w0IjOF/view?usp=drive_link
