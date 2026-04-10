@@ -260,119 +260,119 @@ export default function Chat() {
                 className="w-full flex-1 flex flex-col space-y-6 pt-6"
               >
                 <div className="flex flex-col gap-8 w-full">
-                    {messages.map((msg, idx) => {
-                      const isUser = msg.role === 'user';
-                      const isLatestUser = msg.id === latestUserMsgId;
+                  {messages.map((msg, idx) => {
+                    const isUser = msg.role === 'user';
+                    const isLatestUser = msg.id === latestUserMsgId;
 
-                      return (
-                        <div
-                          key={msg.id || idx}
-                          className={`flex w-full group animate-in fade-in slide-in-from-bottom-2 duration-300 ${isUser ? 'justify-end' : 'justify-start gap-4'}`}
-                        >
-                          {!isUser && (
-                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center shrink-0 mt-1 shadow-sm border border-primary/20">
-                              <Hexagon className="w-4 h-4 text-on-primary-fixed" />
-                            </div>
-                          )}
+                    return (
+                      <div
+                        key={msg.id || idx}
+                        className={`flex w-full group animate-in fade-in slide-in-from-bottom-2 duration-300 ${isUser ? 'justify-end' : 'justify-start gap-4'}`}
+                      >
+                        {!isUser && (
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center shrink-0 mt-1 shadow-sm border border-primary/20">
+                            <Hexagon className="w-4 h-4 text-on-primary-fixed" />
+                          </div>
+                        )}
 
-                          <div className={`flex flex-col max-w-[85%] md:max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
-                            <div className={`px-5 py-3 rounded-2xl shadow-sm ${isUser
-                              ? 'bg-primary text-on-primary-fixed rounded-tr-none'
-                              : 'bg-surface-container-high text-on-surface rounded-tl-none border border-outline-variant/10'
-                              }`}>
-                              <p className="text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap font-body">
-                                {msg.content}
-                              </p>
-                            </div>
+                        <div className={`flex flex-col max-w-[85%] md:max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
+                          <div className={`px-5 py-3 rounded-2xl shadow-sm ${isUser
+                            ? 'bg-primary text-on-primary-fixed rounded-tr-none'
+                            : 'bg-surface-container-high text-on-surface rounded-tl-none border border-outline-variant/10'
+                            }`}>
+                            <p className="text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap font-body">
+                              {msg.content}
+                            </p>
+                          </div>
 
-                            {/* Toolbar */}
-                            <div className={`flex items-center gap-1 mt-2 transition-opacity ${isUser ? 'justify-end' : 'justify-start'}`}>
-                              {isUser ? (
-                                <>
+                          {/* Toolbar */}
+                          <div className={`flex items-center gap-1 mt-2 transition-opacity ${isUser ? 'justify-end' : 'justify-start'}`}>
+                            {isUser ? (
+                              <>
+                                <button
+                                  onClick={() => handleCopy(msg.content, msg.id)}
+                                  className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-md transition-all group/btn relative"
+                                  title="Sao chép"
+                                >
+                                  {copyStatus === msg.id ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
+                                </button>
+                                {isLatestUser && (
                                   <button
-                                    onClick={() => handleCopy(msg.content, msg.id)}
-                                    className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-md transition-all group/btn relative"
-                                    title="Sao chép"
-                                  >
-                                    {copyStatus === msg.id ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
-                                  </button>
-                                  {isLatestUser && (
-                                    <button
-                                      onClick={() => handleEdit(msg.content)}
-                                      className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-md transition-all"
-                                      title="Chỉnh sửa"
-                                    >
-                                      <Pencil className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
-                                </>
-                              ) : (
-                                <>
-                                  <button
-                                    onClick={() => handleFeedback(msg.id, 'like')}
-                                    className={`p-1.5 rounded-md transition-all ${msg.feedback === 'like' ? 'text-primary bg-primary/10' : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'}`}
-                                    title="Câu trả lời tốt"
-                                  >
-                                    <ThumbsUp className={`w-3.5 h-3.5 ${msg.feedback === 'like' ? 'fill-primary' : ''}`} />
-                                  </button>
-                                  <button
-                                    onClick={() => handleFeedback(msg.id, 'dislike')}
-                                    className={`p-1.5 rounded-md transition-all ${msg.feedback === 'dislike' ? 'text-error bg-error/10' : 'text-on-surface-variant hover:text-error hover:bg-error/5'}`}
-                                    title="Câu trả lời tệ"
-                                  >
-                                    <ThumbsDown className={`w-3.5 h-3.5 ${msg.feedback === 'dislike' ? 'fill-error' : ''}`} />
-                                  </button>
-                                  <button
-                                    onClick={handleReload}
+                                    onClick={() => handleEdit(msg.content)}
                                     className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-md transition-all"
-                                    title="Tạo lại"
+                                    title="Chỉnh sửa"
                                   >
-                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    <Pencil className="w-3.5 h-3.5" />
                                   </button>
-                                  <button
-                                    onClick={() => handleCopy(msg.content, msg.id)}
-                                    className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-md transition-all"
-                                    title="Sao chép"
-                                  >
-                                    {copyStatus === msg.id ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleFeedback(msg.id, 'like')}
+                                  className={`p-1.5 rounded-md transition-all ${msg.feedback === 'like' ? 'text-primary bg-primary/10' : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'}`}
+                                  title="Câu trả lời tốt"
+                                >
+                                  <ThumbsUp className={`w-3.5 h-3.5 ${msg.feedback === 'like' ? 'fill-primary' : ''}`} />
+                                </button>
+                                <button
+                                  onClick={() => handleFeedback(msg.id, 'dislike')}
+                                  className={`p-1.5 rounded-md transition-all ${msg.feedback === 'dislike' ? 'text-error bg-error/10' : 'text-on-surface-variant hover:text-error hover:bg-error/5'}`}
+                                  title="Câu trả lời tệ"
+                                >
+                                  <ThumbsDown className={`w-3.5 h-3.5 ${msg.feedback === 'dislike' ? 'fill-error' : ''}`} />
+                                </button>
+                                <button
+                                  onClick={handleReload}
+                                  className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-md transition-all"
+                                  title="Tạo lại"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleCopy(msg.content, msg.id)}
+                                  className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-md transition-all"
+                                  title="Sao chép"
+                                >
+                                  {copyStatus === msg.id ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
+                                </button>
+                              </>
+                            )}
                           </div>
                         </div>
-                      );
-                    })}
-
-                    {sendingSessionId === (sessionId || 'new') && (
-                      <div className="flex justify-start mb-4 animate-in fade-in duration-300 gap-4">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center shrink-0 mt-1 shadow-sm border border-primary/20">
-                          <Hexagon className="w-4 h-4 text-on-primary-fixed" />
-                        </div>
-                        <div className="bg-surface-container-high text-on-surface px-6 py-4 rounded-3xl rounded-tl-none border border-outline-variant/10 shadow-sm flex items-center gap-3">
-                          <AnimatePresence mode="wait">
-                            <motion.span
-                              key={statusText}
-                              initial={{ opacity: 0, scale: 0.95 }}
-                              animate={{
-                                opacity: [0, 1, 0.8, 1],
-                                scale: [0.98, 1, 0.99, 1],
-                              }}
-                              transition={{
-                                duration: 2,
-                                repeat: Infinity,
-                                repeatType: "reverse",
-                                ease: "easeInOut"
-                              }}
-                              className="text-sm font-bold text-primary bg-gradient-to-r from-primary via-primary/70 to-primary bg-[length:200%_auto] animate-shimmer bg-clip-text text-transparent min-w-[180px]"
-                            >
-                              {statusText || "Đang chuẩn bị..."}
-                            </motion.span>
-                          </AnimatePresence>
-                        </div>
                       </div>
-                    )}
-                  </div>
+                    );
+                  })}
+
+                  {sendingSessionId === (sessionId || 'new') && (
+                    <div className="flex justify-start mb-4 animate-in fade-in duration-300 gap-4">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center shrink-0 mt-1 shadow-sm border border-primary/20">
+                        <Hexagon className="w-4 h-4 text-on-primary-fixed" />
+                      </div>
+                      <div className="bg-surface-container-high text-on-surface px-6 py-4 rounded-3xl rounded-tl-none border border-outline-variant/10 shadow-sm flex items-center gap-3">
+                        <AnimatePresence mode="wait">
+                          <motion.span
+                            key={statusText}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{
+                              opacity: [0, 1, 0.8, 1],
+                              scale: [0.98, 1, 0.99, 1],
+                            }}
+                            transition={{
+                              duration: 2,
+                              repeat: Infinity,
+                              repeatType: "reverse",
+                              ease: "easeInOut"
+                            }}
+                            className="text-sm font-bold text-primary bg-gradient-to-r from-primary via-primary/70 to-primary bg-[length:200%_auto] animate-shimmer bg-clip-text text-transparent min-w-[180px]"
+                          >
+                            {statusText || "Đang chuẩn bị..."}
+                          </motion.span>
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
