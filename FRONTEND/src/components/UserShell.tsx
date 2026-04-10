@@ -214,7 +214,7 @@ export default function UserShell({ activeNav, children, isLoading = false, load
       {isHistoryLoading || isLoading ? (
         <FullScreenLoader text={loadingText || 'Đang tải không gian làm việc...'} />
       ) : (
-        <div className="bg-background text-on-surface font-body min-h-screen flex overflow-hidden w-full">
+        <div className="bg-background text-on-surface font-body h-screen flex overflow-hidden w-full">
           <aside className="hidden md:flex h-screen w-64 flex-col bg-surface-low py-6 px-4 shrink-0 border-r border-outline-variant/20">
             <div className="flex items-center gap-3 px-4 mb-10">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
@@ -228,7 +228,7 @@ export default function UserShell({ activeNav, children, isLoading = false, load
               className="flex items-center gap-3 w-full px-5 py-4 mb-8 bg-surface-container-highest rounded-full transition-transform active:scale-95 group"
             >
               <Plus className="w-5 h-5 text-primary" />
-              <span className="font-semibold text-primary font-label">CHAT MỚI</span>
+              <span className="font-semibold text-primary font-label items-center justify-center text-center">CHAT MỚI</span>
             </button>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1" ref={chatListRef}>
@@ -363,10 +363,10 @@ export default function UserShell({ activeNav, children, isLoading = false, load
             </div>
           </aside>
 
-          <main className="flex-1 flex flex-col overflow-hidden">
+          <main className="flex-1 flex flex-col overflow-hidden min-h-0 w-full relative">
             <header className="bg-background/80 backdrop-blur-xl shrink-0 border-b border-outline-variant/20 flex justify-between items-center px-8 w-full z-40 sticky top-0 h-20 transition-all relative">
               <div className="flex items-center gap-2">
-                <span className="text-lg font-black text-on-surface font-headline">RAG Architect</span>
+                <span className="text-lg font-black text-on-surface font-headline">RAG AI</span>
               </div>
 
               {/* Centered Chat Title */}
@@ -378,9 +378,6 @@ export default function UserShell({ activeNav, children, isLoading = false, load
                 </div>
               )}
               <div className="flex items-center gap-4">
-                <button className="ui-icon-btn" title="Thông báo">
-                  <Bell className="w-5 h-5" />
-                </button>
                 <div className="relative" ref={themeMenuRef}>
                   <button
                     className="px-3 py-2 rounded-lg border border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:bg-surface-highest hover:border-outline transition-all"
