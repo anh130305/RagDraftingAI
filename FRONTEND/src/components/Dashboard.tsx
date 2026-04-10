@@ -46,16 +46,16 @@ export default function Dashboard() {
     >
       <header className="flex justify-between items-end">
         <div>
-          <h2 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface mb-2">Nebula Monitoring</h2>
-          <p className="text-on-surface-variant font-medium">Real-time inference and hardware orchestration status.</p>
+          <h2 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface mb-2">Giám sát Nebula</h2>
+          <p className="text-on-surface-variant font-medium">Trạng thái suy luận theo thời gian thực và điều phối phần cứng.</p>
         </div>
         <div className="flex gap-3">
           <div className="flex items-center gap-2 px-4 py-2 bg-surface rounded-lg border border-outline-variant text-xs font-medium">
             <span className="w-2 h-2 bg-tertiary rounded-full animate-pulse shadow-[0_0_8px_rgba(251,180,255,0.6)]"></span>
-            Live Feed Active
+            Đang lấy dữ liệu trực tiếp
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-surface rounded-lg border border-outline-variant text-xs font-medium text-on-surface-variant">
-            Last sync: 2s ago
+            Đồng bộ lần cuối: 2s trước
           </div>
         </div>
       </header>
@@ -65,11 +65,11 @@ export default function Dashboard() {
         <div className="col-span-12 lg:col-span-8 glass-card p-6 rounded-xl flex flex-col h-[400px]">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <h3 className="text-lg font-bold font-headline">VRAM & GPU Utilization</h3>
-              <p className="text-xs text-on-surface-variant">Active across 4 clusters (A100/H100)</p>
+              <h3 className="text-lg font-bold font-headline">Sử dụng VRAM & GPU</h3>
+              <p className="text-xs text-on-surface-variant">Hoạt động trên 4 cụm (A100/H100)</p>
             </div>
             <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">
-              Peak: 94.2%
+              Đỉnh điểm: 94.2%
             </span>
           </div>
           <div className="flex-1 w-full">
@@ -108,8 +108,8 @@ export default function Dashboard() {
         {/* RAG Success Rate */}
         <div className="col-span-12 lg:col-span-4 glass-card p-6 rounded-xl flex flex-col items-center justify-between h-[400px]">
           <div className="w-full text-left">
-            <h3 className="text-lg font-bold font-headline">RAG Success Rate</h3>
-            <p className="text-xs text-on-surface-variant">Retrieval confidence score</p>
+            <h3 className="text-lg font-bold font-headline">Tỷ lệ thành công RAG</h3>
+            <p className="text-xs text-on-surface-variant">Độ tin cậy khi truy xuất</p>
           </div>
           
           <div className="relative w-48 h-48 flex items-center justify-center">
@@ -133,14 +133,14 @@ export default function Dashboard() {
             </ResponsiveContainer>
             <div className="absolute flex flex-col items-center">
               <span className="text-4xl font-extrabold font-headline">91.8%</span>
-              <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest">Confidence</span>
+              <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest">Độ tin cậy</span>
             </div>
           </div>
 
           <div className="w-full space-y-4">
             <div className="space-y-2">
               <div className="flex justify-between text-xs">
-                <span className="text-on-surface-variant">Semantic Hits</span>
+                <span className="text-on-surface-variant">Lượt khớp ngữ nghĩa</span>
                 <span className="font-bold">8,420</span>
               </div>
               <div className="h-1.5 w-full bg-surface-highest rounded-full overflow-hidden">
@@ -148,7 +148,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-on-surface-variant">Vector Latency</span>
+              <span className="text-on-surface-variant">Độ trễ Vector</span>
               <span className="font-bold text-secondary">42ms</span>
             </div>
           </div>
@@ -157,7 +157,7 @@ export default function Dashboard() {
         {/* Token Consumption */}
         <div className="col-span-12 lg:col-span-7 glass-card p-6 rounded-xl flex flex-col h-[280px]">
           <div className="flex justify-between mb-6">
-            <h3 className="text-lg font-bold font-headline">Token Consumption</h3>
+            <h3 className="text-lg font-bold font-headline">Tiêu thụ Token</h3>
             <button className="text-on-surface-variant hover:text-on-surface transition-colors">
               <Activity className="w-5 h-5" />
             </button>
@@ -181,7 +181,7 @@ export default function Dashboard() {
 
         {/* Usage by Department */}
         <div className="col-span-12 lg:col-span-5 glass-card p-6 rounded-xl flex flex-col h-[280px]">
-          <h3 className="text-lg font-bold font-headline mb-6">Usage by Department</h3>
+          <h3 className="text-lg font-bold font-headline mb-6">Sử dụng theo Phòng ban</h3>
           <div className="space-y-6">
             {deptData.map((dept) => (
               <div key={dept.name} className="flex items-center gap-4">
@@ -207,17 +207,17 @@ export default function Dashboard() {
             <AlertCircle className="w-8 h-8" />
           </div>
           <div>
-            <h4 className="font-bold text-on-surface">System Health Alert</h4>
-            <p className="text-xs text-on-surface-variant mt-1">Cluster node C-12 reporting high thermal stress.</p>
+            <h4 className="font-bold text-on-surface">Cảnh báo Sức khỏe Hệ thống</h4>
+            <p className="text-xs text-on-surface-variant mt-1">Node C-12 trong cụm báo hiệu mức nhiệt độ cao.</p>
             <button className="mt-3 text-[10px] font-bold text-error uppercase tracking-widest hover:underline">
-              Investigate Node
+              Kiểm tra Node
             </button>
           </div>
         </div>
 
         <div className="col-span-12 lg:col-span-8 flex flex-wrap gap-6">
           <div className="glass-card px-8 py-6 rounded-xl flex-1 min-w-[200px]">
-            <p className="text-[10px] font-bold uppercase text-on-surface-variant tracking-widest mb-2">Active Threads</p>
+            <p className="text-[10px] font-bold uppercase text-on-surface-variant tracking-widest mb-2">Luồng đang hoạt động</p>
             <div className="flex items-baseline gap-2">
               <p className="text-3xl font-extrabold font-headline">1,402</p>
               <span className="text-sm font-bold text-primary flex items-center">
@@ -227,7 +227,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="glass-card px-8 py-6 rounded-xl flex-1 min-w-[200px]">
-            <p className="text-[10px] font-bold uppercase text-on-surface-variant tracking-widest mb-2">Inference Latency</p>
+            <p className="text-[10px] font-bold uppercase text-on-surface-variant tracking-widest mb-2">Độ trễ suy luận</p>
             <div className="flex items-baseline gap-2">
               <p className="text-3xl font-extrabold font-headline">128ms</p>
               <span className="text-sm font-bold text-secondary flex items-center">

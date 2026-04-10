@@ -172,7 +172,7 @@ export default function UserShell({ activeNav, children, isLoading = false, load
       e.stopPropagation();
     }
     setEditingSessionId(id);
-    setEditingTitle(currentTitle || 'Untitled Chat');
+    setEditingTitle(currentTitle || 'Hội thoại không tên');
     setActiveChatDropdown(null);
   };
 
@@ -212,7 +212,7 @@ export default function UserShell({ activeNav, children, isLoading = false, load
   return (
     <UserThemeContext.Provider value={{ theme, setTheme }}>
       {isHistoryLoading || isLoading ? (
-        <FullScreenLoader text={loadingText || 'Loading workspace...'} />
+        <FullScreenLoader text={loadingText || 'Đang tải không gian làm việc...'} />
       ) : (
         <div className="bg-background text-on-surface font-body min-h-screen flex overflow-hidden w-full">
           <aside className="hidden md:flex h-screen w-64 flex-col bg-surface-low py-6 px-4 shrink-0 border-r border-outline-variant/20">
@@ -228,20 +228,20 @@ export default function UserShell({ activeNav, children, isLoading = false, load
               className="flex items-center gap-3 w-full px-5 py-4 mb-8 bg-surface-container-highest rounded-full transition-transform active:scale-95 group"
             >
               <Plus className="w-5 h-5 text-primary" />
-              <span className="font-semibold text-primary font-label">New Chat</span>
+              <span className="font-semibold text-primary font-label">CHAT MỚI</span>
             </button>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1" ref={chatListRef}>
               {sessions.length === 0 ? (
                 <div className="px-4 py-6 text-center">
-                  <p className="text-xs text-on-surface-variant font-medium opacity-50">No chats yet</p>
+                  <p className="text-xs text-on-surface-variant font-medium opacity-50">Chưa có cuộc trò chuyện nào</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-4 w-full">
                   {/* Pinned Chats */}
                   {sessions.filter(s => s.is_pinned).length > 0 && (
                     <div className="flex flex-col gap-1 w-full">
-                      <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest px-4 mb-1">Pinned</span>
+                      <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest px-4 mb-1">Đã ghim</span>
                       {sessions.filter(s => s.is_pinned).map(chat => (
                         <div key={chat.id} className="relative group w-full">
                           <Link
@@ -296,7 +296,7 @@ export default function UserShell({ activeNav, children, isLoading = false, load
 
                   {/* Recent Chats */}
                   <div className="flex flex-col gap-1 w-full">
-                    <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest px-4 mb-1">Recent Chats</span>
+                    <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest px-4 mb-1">Gần đây</span>
                     {sessions.filter(s => !s.is_pinned).map(chat => (
                       <div key={chat.id} className="relative group w-full">
                         <Link
@@ -315,7 +315,7 @@ export default function UserShell({ activeNav, children, isLoading = false, load
                               className="text-sm font-label bg-transparent outline-none border-b border-primary w-full"
                             />
                           ) : (
-                            <span className="text-sm truncate font-label">{chat.title || 'Untitled Chat'}</span>
+                            <span className="text-sm truncate font-label">{chat.title || 'Hội thoại không tên'}</span>
                           )}
                         </Link>
                         <button
@@ -354,11 +354,11 @@ export default function UserShell({ activeNav, children, isLoading = false, load
             <div className="mt-auto pt-6 border-t border-outline-variant/10 flex flex-col gap-1">
               <a className="ui-nav-item" href="#">
                 <CircleHelp className="w-5 h-5" />
-                <span className="text-sm font-label">Help</span>
+                <span className="text-sm font-label">Trợ giúp</span>
               </a>
               <Link className={`ui-nav-item ${activeNav === 'settings' ? 'ui-nav-item-active' : ''}`} to="/settings">
                 <Settings className="w-5 h-5" />
-                <span className="text-sm font-label">Settings</span>
+                <span className="text-sm font-label">Cài đặt</span>
               </Link>
             </div>
           </aside>
@@ -373,18 +373,18 @@ export default function UserShell({ activeNav, children, isLoading = false, load
               {sessionId && (
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-w-[40%] text-center hidden md:block">
                   <span className="text-sm font-bold text-on-surface font-label truncate block">
-                    {sessions.find(s => s.id === sessionId)?.title || 'New Chat'}
+                    {sessions.find(s => s.id === sessionId)?.title || 'CHAT MỚI'}
                   </span>
                 </div>
               )}
               <div className="flex items-center gap-4">
-                <button className="ui-icon-btn" title="Notifications">
+                <button className="ui-icon-btn" title="Thông báo">
                   <Bell className="w-5 h-5" />
                 </button>
                 <div className="relative" ref={themeMenuRef}>
                   <button
                     className="px-3 py-2 rounded-lg border border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:bg-surface-highest hover:border-outline transition-all"
-                    title="Theme mode"
+                    title="Đổi giao diện"
                     onClick={() => setShowThemeMenu((prev) => !prev)}
                   >
                     <ThemeIcon className="w-5 h-5" />
@@ -396,19 +396,19 @@ export default function UserShell({ activeNav, children, isLoading = false, load
                         onClick={() => { setTheme('light'); setShowThemeMenu(false); }}
                         className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-surface-high transition-colors ${theme === 'light' ? 'text-primary font-medium' : 'text-on-surface'}`}
                       >
-                        <Sun className="w-4 h-4" /> Light
+                        <Sun className="w-4 h-4" /> Sáng
                       </button>
                       <button
                         onClick={() => { setTheme('dark'); setShowThemeMenu(false); }}
                         className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-surface-high transition-colors ${theme === 'dark' ? 'text-primary font-medium' : 'text-on-surface'}`}
                       >
-                        <Moon className="w-4 h-4" /> Dark
+                        <Moon className="w-4 h-4" /> Tối
                       </button>
                       <button
                         onClick={() => { setTheme('system'); setShowThemeMenu(false); }}
                         className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-surface-high transition-colors ${theme === 'system' ? 'text-primary font-medium' : 'text-on-surface'}`}
                       >
-                        <Monitor className="w-4 h-4" /> System
+                        <Monitor className="w-4 h-4" /> Hệ thống
                       </button>
                     </div>
                   )}
@@ -417,7 +417,7 @@ export default function UserShell({ activeNav, children, isLoading = false, load
                   <div
                     className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-primary/20 cursor-pointer bg-primary/10 flex items-center justify-center"
                     onClick={() => setShowProfileMenu((prev) => !prev)}
-                    title={user?.username || 'User'}
+                    title={user?.username || 'Người dùng'}
                   >
                     {user ? (
                       <span className="text-sm font-bold text-primary uppercase">
@@ -433,19 +433,19 @@ export default function UserShell({ activeNav, children, isLoading = false, load
                       {/* User info header */}
                       <div className="px-4 py-3 border-b border-outline-variant/20">
                         <p className="text-sm font-bold text-on-surface truncate">{user?.username}</p>
-                        <p className="text-xs text-on-surface-variant mt-0.5 capitalize">{user?.role} · {user?.department || 'No dept'}</p>
+                        <p className="text-xs text-on-surface-variant mt-0.5 capitalize">{user?.role} · {user?.department || 'Chưa có phòng ban'}</p>
                       </div>
                       <button
                         onClick={() => { setShowProfileMenu(false); navigate('/settings'); }}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-surface-high transition-colors text-on-surface font-medium"
                       >
-                        <Settings className="w-4 h-4" /> Settings
+                        <Settings className="w-4 h-4" /> Cài đặt
                       </button>
                       <button
                         onClick={handleLogout}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-error/10 transition-colors text-error font-bold tracking-wide"
                       >
-                        <LogOut className="w-4 h-4" /> Log Out
+                        <LogOut className="w-4 h-4" /> Đăng xuất
                       </button>
                     </div>
                   )}

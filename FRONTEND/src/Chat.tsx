@@ -198,7 +198,7 @@ export default function Chat() {
   }, []);
 
   return (
-    <UserShell activeNav="chat" isLoading={isLoading} loadingText="Loading Conversation...">
+    <UserShell activeNav="chat" isLoading={isLoading} loadingText="Đang tải đoạn chat...">
       <div className="relative flex-1 flex flex-col overflow-hidden">
         {/* Chat Area */}
         <section className="flex-1 flex flex-col items-center px-2 md:px-12 pb-4 overflow-y-auto w-full relative no-scrollbar">
@@ -213,10 +213,10 @@ export default function Chat() {
               >
                 <div className="w-full max-w-4xl text-center mb-12">
                   <h1 className="text-5xl md:text-6xl font-extrabold font-headline mb-4 bg-gradient-to-r from-on-surface via-on-surface to-primary bg-clip-text text-transparent">
-                    How can I help you today?
+                    Tôi có thể giúp gì cho bạn hôm nay?
                   </h1>
                   <p className="text-on-surface-variant text-lg max-w-2xl mx-auto font-body">
-                    Harness the power of RAG AI to build, create, and solve. What's on your mind?
+                    Khai phá sức mạnh của RAG AI để xây dựng, sáng tạo và giải quyết vấn đề. Bạn đang nghĩ gì?
                   </p>
                 </div>
                 {/* Suggestion Bento Grid */}
@@ -225,29 +225,29 @@ export default function Chat() {
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-4 text-primary group-hover:scale-110 transition-transform">
                       <Palette className="w-5 h-5" />
                     </div>
-                    <p className="font-semibold text-sm mb-1">Create Image</p>
-                    <p className="text-on-surface-variant text-xs leading-relaxed">Visualise concepts with DALL-E 3</p>
+                    <p className="font-semibold text-sm mb-1">Tạo hình ảnh</p>
+                    <p className="text-on-surface-variant text-xs leading-relaxed">Trực quan hoá ý tưởng</p>
                   </div>
                   <div className="group cursor-pointer p-6 bg-surface-container hover:bg-surface-container-highest rounded-xl transition-all duration-300 border border-transparent hover:border-primary/20">
                     <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center mb-4 text-secondary group-hover:scale-110 transition-transform">
                       <Code2 className="w-5 h-5" />
                     </div>
-                    <p className="font-semibold text-sm mb-1">Code Assistant</p>
-                    <p className="text-on-surface-variant text-xs leading-relaxed">Debug and optimize architecture</p>
+                    <p className="font-semibold text-sm mb-1">Trợ lý lập trình</p>
+                    <p className="text-on-surface-variant text-xs leading-relaxed">Tìm kiếm lỗi và tối ưu kiến trúc</p>
                   </div>
                   <div className="group cursor-pointer p-6 bg-surface-container hover:bg-surface-container-highest rounded-xl transition-all duration-300 border border-transparent hover:border-primary/20">
                     <div className="w-10 h-10 rounded-full bg-tertiary/10 flex items-center justify-center mb-4 text-tertiary group-hover:scale-110 transition-transform">
                       <MessageSquare className="w-5 h-5" />
                     </div>
-                    <p className="font-semibold text-sm mb-1">Content Writer</p>
-                    <p className="text-on-surface-variant text-xs leading-relaxed">Draft professional narratives</p>
+                    <p className="font-semibold text-sm mb-1">Viết nội dung</p>
+                    <p className="text-on-surface-variant text-xs leading-relaxed">Lên bản nháp chuyên nghiệp</p>
                   </div>
                   <div className="group cursor-pointer p-6 bg-surface-container hover:bg-surface-container-highest rounded-xl transition-all duration-300 border border-transparent hover:border-primary/20">
                     <div className="w-10 h-10 rounded-full bg-primary-fixed-dim/10 flex items-center justify-center mb-4 text-primary-fixed-dim group-hover:scale-110 transition-transform">
                       <Compass className="w-5 h-5" />
                     </div>
-                    <p className="font-semibold text-sm mb-1">Plan a Trip</p>
-                    <p className="text-on-surface-variant text-xs leading-relaxed">Curated travel itineraries</p>
+                    <p className="font-semibold text-sm mb-1">Lên kế hoạch</p>
+                    <p className="text-on-surface-variant text-xs leading-relaxed">Sắp xếp các lịch trình chi tiết</p>
                   </div>
                 </div>
               </motion.div>
@@ -292,7 +292,7 @@ export default function Chat() {
                                   <button
                                     onClick={() => handleCopy(msg.content, msg.id)}
                                     className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-md transition-all group/btn relative"
-                                    title="Copy"
+                                    title="Sao chép"
                                   >
                                     {copyStatus === msg.id ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
                                   </button>
@@ -300,7 +300,7 @@ export default function Chat() {
                                     <button
                                       onClick={() => handleEdit(msg.content)}
                                       className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-md transition-all"
-                                      title="Edit"
+                                      title="Chỉnh sửa"
                                     >
                                       <Pencil className="w-3.5 h-3.5" />
                                     </button>
@@ -311,28 +311,28 @@ export default function Chat() {
                                   <button
                                     onClick={() => handleFeedback(msg.id, 'like')}
                                     className={`p-1.5 rounded-md transition-all ${msg.feedback === 'like' ? 'text-primary bg-primary/10' : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'}`}
-                                    title="Good response"
+                                    title="Câu trả lời tốt"
                                   >
                                     <ThumbsUp className={`w-3.5 h-3.5 ${msg.feedback === 'like' ? 'fill-primary' : ''}`} />
                                   </button>
                                   <button
                                     onClick={() => handleFeedback(msg.id, 'dislike')}
                                     className={`p-1.5 rounded-md transition-all ${msg.feedback === 'dislike' ? 'text-error bg-error/10' : 'text-on-surface-variant hover:text-error hover:bg-error/5'}`}
-                                    title="Bad response"
+                                    title="Câu trả lời tệ"
                                   >
                                     <ThumbsDown className={`w-3.5 h-3.5 ${msg.feedback === 'dislike' ? 'fill-error' : ''}`} />
                                   </button>
                                   <button
                                     onClick={handleReload}
                                     className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-md transition-all"
-                                    title="Regenerate"
+                                    title="Tạo lại"
                                   >
                                     <RotateCcw className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     onClick={() => handleCopy(msg.content, msg.id)}
                                     className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-md transition-all"
-                                    title="Copy"
+                                    title="Sao chép"
                                   >
                                     {copyStatus === msg.id ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
                                   </button>
@@ -398,11 +398,11 @@ export default function Chat() {
       <nav className="md:hidden fixed bottom-0 left-0 w-full glass-morphism border-t border-outline-variant/10 flex justify-around items-center h-20 px-4 z-50">
         <a className="flex flex-col items-center gap-1 text-primary" href="#">
           <MessageSquare className="w-5 h-5" />
-          <span className="text-[10px] font-bold">Chat</span>
+          <span className="text-[10px] font-bold">Trò chuyện</span>
         </a>
         <a className="flex flex-col items-center gap-1 text-on-surface-variant" href="#">
           <History className="w-5 h-5" />
-          <span className="text-[10px] font-bold">History</span>
+          <span className="text-[10px] font-bold">Lịch sử</span>
         </a>
         <div className="relative -top-6">
           <button className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-primary-container shadow-xl shadow-primary/20 flex items-center justify-center text-on-primary-fixed">
@@ -411,11 +411,11 @@ export default function Chat() {
         </div>
         <a className="flex flex-col items-center gap-1 text-on-surface-variant" href="#">
           <Sparkles className="w-5 h-5" />
-          <span className="text-[10px] font-bold">Explore</span>
+          <span className="text-[10px] font-bold">Khám phá</span>
         </a>
         <a className="flex flex-col items-center gap-1 text-on-surface-variant" href="#">
           <Settings className="w-5 h-5" />
-          <span className="text-[10px] font-bold">Menu</span>
+          <span className="text-[10px] font-bold">Danh mục</span>
         </a>
       </nav>
     </UserShell>

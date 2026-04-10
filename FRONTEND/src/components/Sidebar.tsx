@@ -29,12 +29,12 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
   // Removed outside click listener state
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'knowledge', label: 'Knowledge Base', icon: Database },
-    { id: 'mlops', label: 'MLOps Config', icon: Settings2 },
-    { id: 'users', label: 'User Management', icon: BrainCircuit }, // Using BrainCircuit for user management as per image vibe
-    { id: 'health', label: 'System Health', icon: Activity },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'dashboard', label: 'Bảng điều khiển', icon: LayoutDashboard },
+    { id: 'knowledge', label: 'Cơ sở tri thức', icon: Database },
+    { id: 'mlops', label: 'Cấu hình MLOps', icon: Settings2 },
+    { id: 'users', label: 'Quản lý người dùng', icon: BrainCircuit }, // Using BrainCircuit for user management as per image vibe
+    { id: 'health', label: 'Tình trạng hệ thống', icon: Activity },
+    { id: 'settings', label: 'Cài đặt', icon: Settings },
   ];
 
   return (
@@ -45,13 +45,13 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
         </div>
         <div>
           <h1 className="text-xl font-bold tracking-tight text-on-surface leading-none font-headline">RAG AI</h1>
-          <p className="text-[10px] text-on-surface-variant tracking-widest uppercase mt-1 font-bold">Admin Console</p>
+          <p className="text-[10px] text-on-surface-variant tracking-widest uppercase mt-1 font-bold">Bảng điều khiển quản trị</p>
         </div>
       </div>
 
       <button className="mb-8 w-full py-3 px-4 rounded-full gradient-primary text-surface font-bold flex items-center justify-center gap-2 hover:scale-[0.98] transition-transform duration-100 shadow-lg shadow-primary/10">
         <Plus className="w-5 h-5" />
-        <span className="text-sm">New Experiment</span>
+        <span className="text-sm">Thử nghiệm mới</span>
       </button>
 
       <nav className="flex-1 space-y-1">
@@ -83,14 +83,14 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
           </div>
           <div className="flex-1 min-w-0">
             <h4 className="text-sm font-bold text-on-surface truncate">Adrian Valerius</h4>
-            <p className="text-xs text-on-surface-variant truncate">Admin Stratos</p>
+            <p className="text-xs text-on-surface-variant truncate">Quản trị viên Stratos</p>
           </div>
         </div>
         <button 
           className="w-full mt-2 flex items-center justify-center gap-2 px-2 py-2.5 text-sm rounded-xl text-error bg-error/10 hover:bg-error hover:text-on-error transition-all font-bold tracking-wide"
         >
           <LogOut className="w-4 h-4" />
-          <span>Log Out</span>
+          <span>Đăng xuất</span>
         </button>
       </div>
     </aside>

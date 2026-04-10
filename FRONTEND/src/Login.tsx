@@ -120,7 +120,7 @@ export default function Login() {
           <button
             onClick={cycleTheme}
             className="absolute top-6 right-6 px-3 py-2 rounded-lg border border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:bg-surface-highest hover:border-outline transition-all"
-            title="Toggle Theme"
+            title="Đổi giao diện"
           >
             <ThemeIcon className="w-5 h-5" />
           </button>
@@ -219,7 +219,7 @@ export default function Login() {
               <div className="w-full flex justify-center">
                 <GoogleLogin
                   onSuccess={onGoogleSuccess}
-                  onError={() => showToast('Google Login thất bại', 'error')}
+                  onError={() => showToast('Đăng nhập Google thất bại', 'error')}
                   useOneTap
                   theme={theme === 'dark' ? 'filled_black' : 'outline'}
                   shape="pill"
@@ -239,9 +239,9 @@ export default function Login() {
       {/* Footer - Privacy/Terms/Security only */}
       <footer className="fixed bottom-0 w-full flex justify-center items-center px-12 py-6 lg:w-1/2 right-0 z-50 bg-transparent">
         <div className="flex items-center gap-6">
-          <a className="font-body text-xs tracking-wide uppercase text-on-surface-variant/40 hover:text-on-surface-variant transition-colors" href="#">Privacy</a>
-          <a className="font-body text-xs tracking-wide uppercase text-on-surface-variant/40 hover:text-on-surface-variant transition-colors" href="#">Terms</a>
-          <a className="font-body text-xs tracking-wide uppercase text-on-surface-variant/40 hover:text-on-surface-variant transition-colors" href="#">Security</a>
+          <a className="font-body text-xs tracking-wide uppercase text-on-surface-variant/40 hover:text-on-surface-variant transition-colors" href="#">Bảo mật</a>
+          <a className="font-body text-xs tracking-wide uppercase text-on-surface-variant/40 hover:text-on-surface-variant transition-colors" href="#">Điều khoản</a>
+          <a className="font-body text-xs tracking-wide uppercase text-on-surface-variant/40 hover:text-on-surface-variant transition-colors" href="#">An ninh</a>
         </div>
       </footer>
     </div>

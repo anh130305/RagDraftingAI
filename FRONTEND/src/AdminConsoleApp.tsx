@@ -70,7 +70,7 @@ export default function App() {
         <TopBar theme={theme} setTheme={setTheme} />
 
         <div className="p-8 w-full flex-1 overflow-x-hidden custom-scrollbar">
-          <Suspense fallback={<FullScreenLoader text="Loading view..." />}>
+          <Suspense fallback={<FullScreenLoader text="Đang tải trang..." />}>
             <AnimatePresence mode="wait">
               <motion.div
                 className="w-full h-full flex flex-col"

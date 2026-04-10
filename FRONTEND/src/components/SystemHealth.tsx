@@ -4,10 +4,10 @@ import { Activity, Cpu, HardDrive, Network, Server, AlertTriangle, CheckCircle2,
 import { cn } from '../lib/utils';
 
 const metrics = [
-  { id: 'cpu', label: 'Global CPU Load', value: '42%', icon: Cpu, color: 'primary', status: 'normal' },
-  { id: 'mem', label: 'Memory Usage', value: '78%', icon: HardDrive, color: 'secondary', status: 'warning' },
-  { id: 'net', label: 'Network I/O', value: '1.2 GB/s', icon: Network, color: 'tertiary', status: 'normal' },
-  { id: 'err', label: 'Error Rate', value: '0.01%', icon: Activity, color: 'error', status: 'normal' },
+  { id: 'cpu', label: 'Tải CPU Toàn cục', value: '42%', icon: Cpu, color: 'primary', status: 'normal' },
+  { id: 'mem', label: 'Sử dụng Bộ nhớ', value: '78%', icon: HardDrive, color: 'secondary', status: 'warning' },
+  { id: 'net', label: 'I/O Mạng', value: '1.2 GB/s', icon: Network, color: 'tertiary', status: 'normal' },
+  { id: 'err', label: 'Tỷ lệ Lỗi', value: '0.01%', icon: Activity, color: 'error', status: 'normal' },
 ];
 
 const nodes = [
@@ -18,10 +18,10 @@ const nodes = [
 ];
 
 const logs = [
-  { id: 1, time: '10:42:05 AM', level: 'INFO', message: 'Model weights synced across eu-west-1 cluster successfully.' },
-  { id: 2, time: '10:38:12 AM', level: 'WARN', message: 'High memory pressure detected on node-03. Auto-scaling triggered.' },
-  { id: 3, time: '10:15:00 AM', level: 'ERROR', message: 'Failed to fetch external knowledge base source: timeout.' },
-  { id: 4, time: '09:55:22 AM', level: 'INFO', message: 'Scheduled maintenance completed for database shards.' },
+  { id: 1, time: '10:42:05 AM', level: 'INFO', message: 'Đồng bộ trọng số model qua cụm eu-west-1 thành công.' },
+  { id: 2, time: '10:38:12 AM', level: 'WARN', message: 'Phát hiện áp lực bộ nhớ cao trên node-03. Đã kích hoạt Auto-scaling.' },
+  { id: 3, time: '10:15:00 AM', level: 'ERROR', message: 'Lỗi khi tải nguồn cơ sở tri thức bên ngoài: hết thời gian chờ.' },
+  { id: 4, time: '09:55:22 AM', level: 'INFO', message: 'Hoàn thành bảo trì định kỳ cho các phân vùng cơ sở dữ liệu.' },
 ];
 
 export default function SystemHealth() {
@@ -33,12 +33,12 @@ export default function SystemHealth() {
     >
       <header className="flex justify-between items-end">
         <div>
-          <h2 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface mb-2">System Health</h2>
-          <p className="text-on-surface-variant max-w-2xl">Monitor infrastructure vitals, node status, and real-time event logs across the global network.</p>
+          <h2 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface mb-2">Tình trạng Hệ thống</h2>
+          <p className="text-on-surface-variant max-w-2xl">Giám sát các chỉ số hạ tầng quan trọng, trạng thái node và sự kiện hệ thống theo thời gian thực.</p>
         </div>
         <div className="flex items-center gap-3 px-5 py-2.5 bg-surface-low border border-outline-variant rounded-full">
           <span className="w-2.5 h-2.5 rounded-full bg-success shadow-[0_0_10px_var(--color-success)] animate-pulse"></span>
-          <span className="text-xs font-bold uppercase tracking-widest text-on-surface">All Systems Operational</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-on-surface">Tất cả Hệ thống Hoạt động Tốt</span>
         </div>
       </header>
 
@@ -70,9 +70,9 @@ export default function SystemHealth() {
           <div className="p-6 border-b border-outline-variant flex justify-between items-center">
             <h3 className="font-headline font-bold text-lg text-on-surface flex items-center gap-2">
               <Server className="w-5 h-5 text-primary" />
-              Active Nodes
+              Các Node Hoạt động
             </h3>
-            <span className="text-xs text-on-surface-variant font-medium">4 / 4 Online</span>
+            <span className="text-xs text-on-surface-variant font-medium">4 / 4 Đang trực tuyến</span>
           </div>
           <div className="p-6 flex-1">
             <div className="space-y-6">
@@ -92,7 +92,7 @@ export default function SystemHealth() {
                         <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">{node.region}</p>
                       </div>
                       <div className="text-right">
-                        <span className="text-xs font-mono text-on-surface">{node.load}% Load</span>
+                        <span className="text-xs font-mono text-on-surface">{node.load}% Tải</span>
                       </div>
                     </div>
                     <div className="h-1.5 w-full bg-surface-highest rounded-full overflow-hidden">
@@ -103,7 +103,7 @@ export default function SystemHealth() {
                     </div>
                   </div>
                   <div className="hidden sm:block text-right shrink-0 w-24">
-                    <p className="text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Uptime</p>
+                    <p className="text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Thời gian hoạt động</p>
                     <p className="text-sm font-mono text-on-surface">{node.uptime}</p>
                   </div>
                 </div>
@@ -117,7 +117,7 @@ export default function SystemHealth() {
           <div className="p-6 border-b border-outline-variant flex justify-between items-center">
             <h3 className="font-headline font-bold text-lg text-on-surface flex items-center gap-2">
               <Clock className="w-5 h-5 text-tertiary" />
-              System Events
+              Sự kiện Hệ thống
             </h3>
           </div>
           <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
