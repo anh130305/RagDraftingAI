@@ -35,6 +35,7 @@ class ChatMessage(Base):
         nullable=False,
     )
     content = Column(String, nullable=False)
+    feedback = Column(String, nullable=True)  # 'like' or 'dislike'
     token_count = Column(Integer, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
 

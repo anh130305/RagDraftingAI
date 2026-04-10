@@ -22,6 +22,7 @@ class ChatSessionUpdate(BaseModel):
     """PUT /chat/sessions/{id}"""
     title: Optional[str] = None
     is_archived: Optional[bool] = None
+    is_pinned: Optional[bool] = None
 
 
 class ChatSessionResponse(BaseModel):
@@ -29,6 +30,7 @@ class ChatSessionResponse(BaseModel):
     user_id: UUID
     title: Optional[str] = None
     is_archived: bool
+    is_pinned: bool
     created_at: datetime
     updated_at: datetime
 
@@ -41,12 +43,17 @@ class ChatMessageCreate(BaseModel):
     """POST /chat/sessions/{id}/messages"""
     content: str = Field(..., min_length=1)
 
+class ChatMessageFeedbackUpdate(BaseModel):
+    """PUT /chat/messages/{id}/feedback"""
+    feedback: Optional[str] = Field(None, description="'like', 'dislike', or null")
+
 
 class ChatMessageResponse(BaseModel):
     id: UUID
     session_id: UUID
     role: MessageRole
     content: str
+    feedback: Optional[str] = None
     token_count: Optional[int] = None
     created_at: datetime
 

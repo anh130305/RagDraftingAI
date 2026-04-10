@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useNavigate } from 'react-router-dom';
 import * as api from './api';
 import type { UserResponse } from './api';
+import FullScreenLoader from '../components/FullScreenLoader';
 
 interface AuthState {
   user: UserResponse | null;
@@ -136,16 +137,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   }, [isLoading, isAuthenticated, navigate]);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-on-surface-variant tracking-wide uppercase">
-            Đang xác thực...
-          </p>
-        </div>
-      </div>
-    );
+    return <FullScreenLoader text="Đang xác thực..." />;
   }
 
   return isAuthenticated ? <>{children}</> : null;
@@ -163,11 +155,7 @@ export function RedirectIfAuth({ children }: { children: React.ReactNode }) {
   }, [isLoading, isAuthenticated, navigate]);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <FullScreenLoader text="Đang tải..." />;
   }
 
   return !isAuthenticated ? <>{children}</> : null;

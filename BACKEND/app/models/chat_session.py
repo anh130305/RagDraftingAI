@@ -24,10 +24,10 @@ class ChatSession(Base):
     )
     title = Column(String, nullable=True)
     is_archived = Column(Boolean, nullable=False, default=False)
+    is_pinned = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(
-        DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
-    )
+    updated_at = Column(DateTime, nullable=False, server_default=func.now())
+
 
     # ── Relationships ───────────────────────────────────────────
     user = relationship("User", back_populates="chat_sessions")

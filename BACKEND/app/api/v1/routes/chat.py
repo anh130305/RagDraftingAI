@@ -17,6 +17,7 @@ from app.schemas.chat import (
     ChatMessageCreate,
     ChatMessageResponse,
     ChatSessionWithMessages,
+    ChatMessageFeedbackUpdate,
 )
 from app.services import chat_service
 
@@ -100,3 +101,34 @@ def send_message(
     current_user: User = Depends(get_current_user),
 ):
     return chat_service.add_message(db, session_id, current_user.id, payload)
+
+#API Mock Test Reponse from RAG AI
+@router.post(
+    "/sessions/{session_id}/messages/mock",
+    response_model=ChatMessageResponse,
+    status_code=201,
+)
+def send_mock_assistant_message(
+    session_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Mock endpoint: used by Frontend to create a fake AI response after the simulated 10s wait.
+    TODO: Remove this once actual LLM integration is in place.
+    """
+    return chat_service.add_mock_assistant_message(db, session_id, current_user.id)
+
+
+@router.put(
+    "/messages/{message_id}/feedback",
+    response_model=ChatMessageResponse,
+)
+def update_message_feedback(
+    message_id: UUID,
+    payload: ChatMessageFeedbackUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update feedback (like/dislike) for an AI message."""
+    return chat_service.update_message_feedback(db, message_id, current_user.id, payload.feedback)
