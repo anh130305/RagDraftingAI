@@ -117,10 +117,17 @@ def extract_text_from_file(
 def list_documents(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    session_id: Optional[UUID] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return document_service.list_documents(db, skip=skip, limit=limit)
+    return document_service.list_documents(
+        db,
+        user_id=current_user.id,
+        session_id=session_id,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)

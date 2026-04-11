@@ -4,6 +4,8 @@ services.chat_service – Chat session and message orchestration.
 
 from typing import List
 from uuid import UUID
+import asyncio
+import random
 from sqlalchemy.sql import func
 
 
@@ -123,33 +125,56 @@ def add_message(
     
     return ChatMessageResponse.model_validate(msg)
 
-# mock AI rep, support FE test
-def add_mock_assistant_message(
+# AI response generation (Refactored from mock)
+def create_assistant_response(
     db: Session,
     session_id: UUID,
-    user_id: UUID,
+    content: str = "OKE! Tôi đã xử lý xong yêu cầu của bạn."
 ) -> ChatMessageResponse:
-    """Add a mock assistant message for testing purposes."""
-    s = session_repo.get_by_id(db, session_id)
-    if not s:
-        raise NotFoundError("Chat session")
-    if s.user_id != user_id:
-        raise ForbiddenError("You do not own this session")
-
+    """Internal helper to create an assistant message in the database."""
     msg = message_repo.create(
         db,
         obj_in={
             "session_id": session_id,
             "role": MessageRole.assistant,
-            "content": "OKE! Tôi đã xử lý xong yêu cầu của bạn. Đây là phản hồi giả lập sau 10 giây chờ đợi.",
+            "content": content,
         },
     )
     
-    s.updated_at = func.now()
-    db.commit()
+    # Update session timestamp
+    s = session_repo.get_by_id(db, session_id)
+    if s:
+        s.updated_at = func.now()
     
+    db.commit()
     return ChatMessageResponse.model_validate(msg)
 
+async def generate_assistant_response_task(
+    session_id: UUID,
+    user_query: str,
+):
+    """
+    Background task to simulate RAG/LLM processing and save assistant response.
+    Currently used to satisfy the 'persistent response' requirement.
+    """
+    from app.db.session import get_session_local
+    
+    # Simulate processing time (5-8 seconds)
+    await asyncio.sleep(random.uniform(5, 8))
+    
+    # Get a fresh DB session for the background thread
+    db = get_session_local()()
+    try:
+        # Here we would normally call the RAG process
+        # For now, we use a mock response logic
+        content = f"OKE! Tôi đã nhận được yêu cầu: '{user_query[:50]}...'. Đây là phản hồi giả lập được xử lý ngầm (Background Task). Dù bạn có reload trang thì tôi vẫn sẽ trả lời!"
+        
+        create_assistant_response(db, session_id, content)
+        print(f"Background task completed for session {session_id}")
+    except Exception as e:
+        print(f"Error in background task: {e}")
+    finally:
+        db.close()
 
 def get_messages(
     db: Session, session_id: UUID, user_id: UUID

@@ -40,6 +40,10 @@ interface UserThemeContextValue {
   setTheme: (theme: ThemeMode) => void;
 }
 
+type PreviewDocument = api.DocumentResponse & {
+  mappedUrl: string;
+};
+
 const UserThemeContext = React.createContext<UserThemeContextValue | null>(null);
 
 interface UserShellProps {
@@ -88,7 +92,7 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
   const [modalFiles, setModalFiles] = useState<api.DocumentResponse[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [fileTab, setFileTab] = useState<'uploaded' | 'created'>('uploaded');
-  const [previewFile, setPreviewFile] = useState<api.DocumentResponse | null>(null);
+  const [previewFile, setPreviewFile] = useState<PreviewDocument | null>(null);
 
   const currentSession = sessions.find(s => s.id === sessionId);
 
@@ -151,14 +155,36 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
   }, [user]);
 
   useEffect(() => {
-    if (showFilesModal) {
-      setLoadingFiles(true);
-      api.listDocuments(0, 50)
-        .then(res => setModalFiles(res.items))
-        .catch(console.error)
-        .finally(() => setLoadingFiles(false));
+    if (!showFilesModal) return;
+
+    let isCancelled = false;
+
+    // File modal in chat context must only show files attached to the current session.
+    if (!sessionId) {
+      setModalFiles([]);
+      setLoadingFiles(false);
+      return;
     }
-  }, [showFilesModal]);
+
+    setLoadingFiles(true);
+    api.listDocuments(0, 50, sessionId)
+      .then((res) => {
+        if (!isCancelled) setModalFiles(res.items);
+      })
+      .catch((err) => {
+        if (!isCancelled) {
+          console.error('Failed to load session files:', err);
+          setModalFiles([]);
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) setLoadingFiles(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [showFilesModal, sessionId]);
 
   const handleNewChat = () => {
     navigate('/chat', { replace: true });
@@ -587,11 +613,11 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {modalFiles.map(file => {
-                          const fileUrl = file.file_path.startsWith('http') ? file.file_path : `/api/v1/${file.file_path}`;
+                          const fileUrl = api.resolveDocumentFileUrl(file.file_path);
                           return (
                             <div
                               key={file.id}
-                              onClick={() => setPreviewFile({ ...file, mappedUrl: fileUrl } as any)}
+                              onClick={() => setPreviewFile({ ...file, mappedUrl: fileUrl })}
                               className="p-3 rounded-xl border border-outline-variant/50 bg-surface-high flex items-start gap-3 hover:border-primary/30 transition-colors group cursor-pointer"
                             >
                               <div className="p-2.5 bg-surface rounded-lg text-primary shrink-0">
@@ -634,7 +660,7 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                     <h3 className="font-bold text-on-surface truncate flex-1 pr-4">{previewFile.title}</h3>
                     <div className="flex items-center gap-3">
                       <a
-                        href={(previewFile as any).mappedUrl || previewFile.file_path}
+                        href={previewFile.mappedUrl}
                         download
                         className="flex items-center gap-2 px-4 py-1.5 bg-primary text-on-primary hover:bg-primary/90 rounded-lg transition-colors text-sm font-semibold"
                       >
@@ -647,10 +673,10 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                   </div>
                   <div className="flex-1 overflow-hidden bg-surface-lowest flex items-center justify-center relative">
                     {(() => {
-                      const filePath = ((previewFile as any).mappedUrl || previewFile.file_path).toLowerCase();
+                      const filePath = previewFile.mappedUrl.toLowerCase();
                       const isWord = filePath.endsWith('.docx') || filePath.endsWith('.doc');
                       const isPDF = filePath.endsWith('.pdf');
-                      const finalUrl = (previewFile as any).mappedUrl || previewFile.file_path;
+                      const finalUrl = previewFile.mappedUrl;
 
                       if (isWord) {
                         return (
