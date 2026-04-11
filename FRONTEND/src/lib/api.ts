@@ -173,6 +173,7 @@ export function updateAdminUser(id: string, data: { role?: string; is_active?: b
 export interface AuditLogResponse {
   id: string;
   user_id: string | null;
+  user_name?: string | null;
   action: string;
   resource_type: string | null;
   resource_id: string | null;

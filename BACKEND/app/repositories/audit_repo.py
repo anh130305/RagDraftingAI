@@ -9,6 +9,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
+from sqlalchemy.orm import joinedload
 
 from app.models.audit_log import AuditLog, AuditAction
 from app.repositories.base_repo import BaseRepository
@@ -40,7 +41,7 @@ class AuditRepository(BaseRepository[AuditLog]):
         skip: int = 0,
         limit: int = 50,
     ) -> List[AuditLog]:
-        q = db.query(AuditLog)
+        q = db.query(AuditLog).options(joinedload(AuditLog.user))
         if user_id:
             q = q.filter(AuditLog.user_id == user_id)
         if action:

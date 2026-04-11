@@ -23,6 +23,7 @@ class AuditAction(str, enum.Enum):
     create_session = "create_session"
     delete_session = "delete_session"
     update_user = "update_user"
+    download_document = "download_document"
 
 
 class AuditLog(Base):
@@ -47,6 +48,12 @@ class AuditLog(Base):
 
     # ── Relationships ───────────────────────────────────────────
     user = relationship("User", back_populates="audit_logs")
+
+    @property
+    def user_name(self) -> str | None:
+        if not self.user:
+            return None
+        return self.user.username or self.user.email
 
     def __repr__(self) -> str:
         return f"<AuditLog action={self.action.value}  user_id={self.user_id}>"

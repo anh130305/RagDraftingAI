@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { 
+import {
   Activity, Cpu, HardDrive, Network,
-  AlertTriangle, Search, Filter, RefreshCw, 
-  ChevronLeft, ChevronRight, FileText, UserPlus, LogIn, Trash2, Database, KeyRound
+  AlertTriangle, Search, Filter, RefreshCw,
+  ChevronLeft, ChevronRight, FileText, UserPlus, LogIn, Trash2, Database, KeyRound, Download
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import * as api from '../lib/api';
@@ -16,6 +16,7 @@ const auditActionLabels: Record<string, string> = {
   login: 'Đăng nhập',
   logout: 'Đăng xuất',
   upload_document: 'Tải lên Tài liệu',
+  download_document: 'Tải xuống Tài liệu',
   delete_document: 'Xóa Tài liệu',
   query: 'Truy vấn RAG',
   create_session: 'Tạo Phiên',
@@ -28,6 +29,7 @@ const getActionConfig = (action: string) => {
     case 'login': return { icon: LogIn, color: 'text-success', bg: 'bg-success/10', border: 'border-success/20' };
     case 'logout': return { icon: LogIn, color: 'text-on-surface-variant', bg: 'bg-surface-high', border: 'border-outline-variant' };
     case 'upload_document': return { icon: FileText, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' };
+    case 'download_document': return { icon: Download, color: 'text-secondary', bg: 'bg-secondary/10', border: 'border-secondary/20' };
     case 'delete_document': return { icon: Trash2, color: 'text-error', bg: 'bg-error/10', border: 'border-error/20' };
     case 'query': return { icon: Database, color: 'text-tertiary', bg: 'bg-tertiary/10', border: 'border-tertiary/20' };
     case 'update_user': return { icon: UserPlus, color: 'text-secondary', bg: 'bg-secondary/10', border: 'border-secondary/20' };
@@ -40,7 +42,7 @@ export default function SystemHealth() {
   const [logs, setLogs] = useState<api.AuditLogResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  
+
   // Chart Data
   const [chartData, setChartData] = useState<any[]>([]);
 
@@ -58,7 +60,7 @@ export default function SystemHealth() {
         res.items.forEach(log => {
           counts[log.action] = (counts[log.action] || 0) + 1;
         });
-        
+
         const data = Object.entries(counts).map(([action, count]) => {
           const label = auditActionLabels[action] || action;
           let fill = '#8b5cf6'; // default primary
@@ -67,7 +69,7 @@ export default function SystemHealth() {
           if (action === 'query') fill = '#3b82f6';
           return { name: label, count, fill };
         });
-        
+
         data.sort((a, b) => b.count - a.count);
         setChartData(data);
       } catch (err) {
@@ -83,7 +85,7 @@ export default function SystemHealth() {
       const skip = (page - 1) * limit;
       const params: Record<string, any> = { skip, limit };
       if (actionFilter) params.action = actionFilter;
-      
+
       const res = await api.getAuditLogs(params);
       setLogs(res.items);
       setTotal(res.total);
@@ -102,7 +104,7 @@ export default function SystemHealth() {
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8"
@@ -131,7 +133,7 @@ export default function SystemHealth() {
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-on-surface-variant)' }} dy={10} />
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-on-surface-variant)' }} />
-            <Tooltip 
+            <Tooltip
               cursor={{ fill: 'rgba(255,255,255,0.02)' }}
               contentStyle={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-outline-variant)', borderRadius: '12px', fontSize: '12px', color: 'var(--color-on-surface)' }}
               itemStyle={{ fontWeight: 'bold' }}
@@ -152,13 +154,13 @@ export default function SystemHealth() {
           <div className="flex items-center gap-4 w-full lg:w-auto">
             <h3 className="font-headline font-bold text-lg text-on-surface flex items-center gap-2 shrink-0">
               <Activity className="w-5 h-5 text-primary" />
-              Nhật ký Audit 
+              Nhật ký Audit
               <span className="text-xs font-mono bg-surface-high px-2 py-0.5 rounded-full text-on-surface-variant ml-2 border border-outline-variant">
                 {total}
               </span>
             </h3>
             <div className="h-6 w-px bg-outline-variant hidden lg:block"></div>
-            
+
             <div className="relative min-w-[200px]">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Filter className="h-4 w-4 text-on-surface-variant" />
@@ -180,7 +182,7 @@ export default function SystemHealth() {
           </div>
 
           <div className="flex items-center gap-2 w-full lg:w-auto">
-            <button 
+            <button
               onClick={fetchLogs}
               className="px-4 py-2 border border-outline-variant rounded-xl text-on-surface text-sm font-bold bg-surface hover:bg-surface-high transition-colors flex items-center gap-2 shrink-0"
             >
@@ -224,7 +226,7 @@ export default function SystemHealth() {
               ) : (
                 logs.map((log) => {
                   const conf = getActionConfig(log.action);
-                  
+
                   return (
                     <tr key={log.id} className="hover:bg-surface-highest/30 transition-colors group">
                       <td className="px-5 py-3 align-top">
@@ -240,7 +242,7 @@ export default function SystemHealth() {
                       </td>
                       <td className="px-5 py-3 align-top">
                         <code className="text-[11px] font-mono bg-surface-high/50 text-on-surface px-1.5 py-0.5 rounded border border-outline-variant/30 text-nowrap">
-                          {log.user_id ? `${log.user_id.split('-')[0]}...` : 'System'}
+                          {log.user_name ? log.user_name : log.user_id ? `${log.user_id.split('-')[0]}...` : 'System'}
                         </code>
                       </td>
                       <td className="px-5 py-3 align-top text-xs text-on-surface-variant">
@@ -277,7 +279,7 @@ export default function SystemHealth() {
             Hiển thị <strong className="text-on-surface">{logs.length}</strong> kết quả trên trang này
           </p>
           <div className="flex gap-2">
-            <button 
+            <button
               disabled={page <= 1 || loading}
               onClick={() => setPage(p => Math.max(1, p - 1))}
               className="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant bg-surface text-on-surface hover:bg-surface-high disabled:opacity-50 transition-colors"
@@ -287,7 +289,7 @@ export default function SystemHealth() {
             <div className="flex items-center px-4 font-mono text-xs font-bold bg-surface-high rounded-lg border border-outline-variant">
               {page} / {totalPages || 1}
             </div>
-            <button 
+            <button
               disabled={page >= totalPages || loading}
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               className="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant bg-surface text-on-surface hover:bg-surface-high disabled:opacity-50 transition-colors"

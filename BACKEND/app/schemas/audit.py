@@ -29,6 +29,7 @@ class AuditLogFilter(BaseModel):
 class AuditLogResponse(BaseModel):
     id: UUID
     user_id: Optional[UUID] = None
+    user_name: Optional[str] = None
     action: AuditAction
     resource_type: Optional[str] = None
     resource_id: Optional[UUID] = None
