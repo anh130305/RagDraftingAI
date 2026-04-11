@@ -28,13 +28,6 @@ class Settings(BaseSettings):
     # ── RAG Service ──────────────────────────────────────────
     RAG_SERVICE_URL: str = "http://localhost:8001"
 
-    # ── MinIO / Object storage ───────────────────────────────
-    MINIO_ENDPOINT: str = "localhost:9000"
-    MINIO_ACCESS_KEY: str = "minioadmin"
-    MINIO_SECRET_KEY: str = "minioadmin"
-    MINIO_BUCKET: str = "documents"
-    MINIO_SECURE: bool = False
-
     # ── Google OAuth ─────────────────────────────────────────
     GOOGLE_CLIENT_ID: str | None = None
     GOOGLE_CLIENT_SECRET: str | None = None
