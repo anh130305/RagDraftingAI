@@ -687,7 +687,7 @@ export default function Chat() {
                     previewFile.name,
                     previewFile.fileType,
                   )}
-                  download
+                  download={previewFile.name}
                   className="flex items-center gap-2 px-3 py-1.5 bg-primary text-on-primary hover:bg-primary/90 rounded-lg transition-colors text-sm font-semibold"
                 >
                   <Download className="w-4 h-4" /> Tải về
@@ -726,7 +726,7 @@ export default function Chat() {
                       <FileText className="w-16 h-16 text-blue-400 opacity-60" />
                       <h4 className="text-lg font-bold text-on-surface">Không thể xem trước Word trực tiếp</h4>
                       <p className="text-sm text-on-surface-variant">Trình duyệt không hỗ trợ xem trước .docx. Hãy tải về để mở bằng Microsoft Word.</p>
-                      <a href={downloadUrl} download className="px-6 py-2.5 bg-primary text-on-primary rounded-xl font-bold hover:bg-primary/90 transition-colors">
+                      <a href={downloadUrl} download={previewFile.name} className="px-6 py-2.5 bg-primary text-on-primary rounded-xl font-bold hover:bg-primary/90 transition-colors">
                         Tải xuống
                       </a>
                     </div>

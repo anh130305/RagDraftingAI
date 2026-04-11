@@ -38,12 +38,38 @@ export function resolveDocumentFileUrl(filePath: string): string {
   return joinApiUrl(`api/v1/${withoutLeadingSlash}`);
 }
 
-function applyCloudinaryUploadFlag(url: string, flag: 'fl_inline' | 'fl_attachment'): string {
+function sanitizeCloudinaryFilename(name: string): string {
+  if (!name) return 'document';
+  
+  // Remove extension if present in name to avoid double extension in flag
+  const nameWithoutExt = name.includes('.') ? name.split('.').slice(0, -1).join('.') : name;
+  
+  // Simple Vietnamese character normalization
+  const signedChars = "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ";
+  const unsignedChars = "aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyydAAAAAAAAAAAAAAAAAEEEEEEEEEEEIIIIIOOOOOOOOOOOOOOOOOUUUUUUUUUUUYYYYYD";
+  let unsignedName = nameWithoutExt.split('').map(c => {
+    const idx = signedChars.indexOf(c);
+    return idx > -1 ? unsignedChars[idx] : c;
+  }).join('');
+
+  // Replace spaces and special chars with underscores, keep only alphanumeric and - _
+  return unsignedName
+    .replace(/\s+/g, '_')
+    .replace(/[^a-zA-Z0-9-_]/g, '')
+    .substring(0, 100) || 'document';
+}
+
+function applyCloudinaryUploadFlag(url: string, flag: string, value?: string): string {
   if (!url || !CLOUDINARY_UPLOAD_URL_REGEX.test(url)) return url;
-  if (url.includes(`/${flag}/`) || url.includes(`/${flag},`) || url.includes(`,${flag},`) || url.includes(`,${flag}/`)) {
+  
+  const fullFlag = value ? `${flag}:${value}` : flag;
+  
+  // Check if flag already exists in any form (standalone or with value)
+  if (url.includes(`/${flag}`) || url.includes(`,${flag}`)) {
     return url;
   }
-  return url.replace('/upload/', `/upload/${flag}/`);
+  
+  return url.replace('/upload/', `/upload/${fullFlag}/`);
 }
 
 function ensureCloudinaryExtension(url: string, extension?: string): string {
@@ -125,7 +151,12 @@ export function getDocumentDownloadUrl(
   fileType?: string | null,
 ): string {
   const normalized = normalizeCloudinaryDocumentUrl(url, { kind, fileName, fileType });
-  return applyCloudinaryUploadFlag(normalized, 'fl_attachment');
+  const downloadName = sanitizeCloudinaryFilename(fileName || 'document');
+  const attachmentUrl = applyCloudinaryUploadFlag(normalized, 'fl_attachment', downloadName);
+  
+  // Add a cache buster to ensure the browser fetches the fresh version with headers.
+  const separator = attachmentUrl.includes('?') ? '&' : '?';
+  return `${attachmentUrl}${separator}t=${Date.now()}`;
 }
 
 function stripQueryHash(value: string): string {

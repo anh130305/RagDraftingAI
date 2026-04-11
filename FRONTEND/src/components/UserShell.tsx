@@ -730,7 +730,7 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                               <a
                                 title="Tải xuống tệp gốc"
                                 href={downloadUrl}
-                                download
+                                download={file.title}
                                 onClick={(e) => e.stopPropagation()}
                                 target="_blank"
                                 rel="noreferrer"
@@ -766,7 +766,7 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                           previewFile.title,
                           previewFile.file_type,
                         )}
-                        download
+                        download={previewFile.title}
                         className="flex items-center gap-2 px-4 py-1.5 bg-primary text-on-primary hover:bg-primary/90 rounded-lg transition-colors text-sm font-semibold"
                       >
                         <Download className="w-4 h-4" /> Tải về
@@ -820,7 +820,7 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                             </p>
                             <a
                               href={downloadUrl}
-                              download
+                              download={previewFile.title}
                               className="px-6 py-3 bg-primary text-on-primary rounded-xl font-bold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
                             >
                               Tải xuống tài liệu gốc
