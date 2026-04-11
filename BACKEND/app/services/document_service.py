@@ -19,6 +19,24 @@ from app.schemas.document import (
 from app.schemas.internal import RAGCallbackPayload
 from app.services import cloudinary_service
 
+_CLOUDINARY_PUBLIC_CHECKED: set[str] = set()
+
+
+def _ensure_docs_public_delivery(docs: list) -> None:
+    """Best-effort repair for older Cloudinary assets that may return 401 on preview."""
+    for doc in docs:
+        public_id = getattr(doc, "cloudinary_public_id", None)
+        if not public_id or public_id in _CLOUDINARY_PUBLIC_CHECKED:
+            continue
+        try:
+            cloudinary_service.ensure_public_delivery(public_id)
+            # Mark as checked regardless of result to avoid hammering the API
+            # on every list call; a failed repair won't block document listing.
+            _CLOUDINARY_PUBLIC_CHECKED.add(public_id)
+        except Exception:
+            # Listing documents should not fail because of storage ACL repair attempts.
+            continue
+
 
 # ── Upload ───────────────────────────────────────────────────
 
@@ -67,6 +85,7 @@ def list_documents(
         skip=skip,
         limit=limit,
     )
+    _ensure_docs_public_delivery(docs)
     total = document_repo.count_by_uploader(db, user_id, session_id=session_id)
     return DocumentListResponse(
         items=[DocumentResponse.model_validate(d) for d in docs],

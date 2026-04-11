@@ -93,6 +93,10 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [fileTab, setFileTab] = useState<'uploaded' | 'created'>('uploaded');
   const [previewFile, setPreviewFile] = useState<PreviewDocument | null>(null);
+  const [previewRenderUrl, setPreviewRenderUrl] = useState<string | null>(null);
+  const [preparingPreview, setPreparingPreview] = useState(false);
+  const [previewLoadFailed, setPreviewLoadFailed] = useState(false);
+  const previewObjectUrlRef = useRef<string | null>(null);
 
   const currentSession = sessions.find(s => s.id === sessionId);
 
@@ -185,6 +189,92 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
       isCancelled = true;
     };
   }, [showFilesModal, sessionId]);
+
+  useEffect(() => {
+    setPreviewLoadFailed(false);
+
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current);
+      previewObjectUrlRef.current = null;
+    }
+
+    if (!previewFile) {
+      setPreviewRenderUrl(null);
+      setPreparingPreview(false);
+      return;
+    }
+
+    const previewKind = api.inferDocumentPreviewKind({
+      fileName: previewFile.title,
+      fileType: previewFile.file_type,
+      filePath: previewFile.mappedUrl,
+    });
+    const previewSourceUrl = api.getDocumentPreviewUrl(
+      previewFile.mappedUrl,
+      previewKind,
+      previewFile.title,
+      previewFile.file_type,
+    );
+
+    // For PDF, build a local blob URL to avoid blank previews from remote header/content-type quirks.
+    if (previewKind === 'pdf') {
+      const controller = new AbortController();
+      let cancelled = false;
+
+      const preparePdfPreview = async () => {
+        setPreparingPreview(true);
+        try {
+          const response = await fetch(previewSourceUrl, {
+            signal: controller.signal,
+            credentials: 'omit',
+          });
+          if (!response.ok) {
+            throw new Error(`Failed to fetch preview file (HTTP ${response.status})`);
+          }
+
+          const rawBlob = await response.blob();
+          if (cancelled) return;
+
+          const normalizedBlob = rawBlob.type === 'application/pdf'
+            ? rawBlob
+            : new Blob([rawBlob], { type: 'application/pdf' });
+
+          const objectUrl = URL.createObjectURL(normalizedBlob);
+          previewObjectUrlRef.current = objectUrl;
+          setPreviewRenderUrl(objectUrl);
+        } catch (err) {
+          if (!cancelled) {
+            console.warn('Unable to prepare local PDF preview. Falling back to source URL.', err);
+            setPreviewRenderUrl(previewSourceUrl);
+          }
+        } finally {
+          if (!cancelled) {
+            setPreparingPreview(false);
+          }
+        }
+      };
+
+      void preparePdfPreview();
+
+      return () => {
+        cancelled = true;
+        controller.abort();
+      };
+    }
+
+    setPreparingPreview(false);
+    setPreviewRenderUrl(previewSourceUrl);
+    return;
+  }, [previewFile]);
+
+  useEffect(() => {
+    return () => {
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+        previewObjectUrlRef.current = null;
+      }
+    };
+  }, []);
 
   const handleNewChat = () => {
     navigate('/chat', { replace: true });
@@ -614,6 +704,12 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {modalFiles.map(file => {
                           const fileUrl = api.resolveDocumentFileUrl(file.file_path);
+                          const fileKind = api.inferDocumentPreviewKind({
+                            fileName: file.title,
+                            fileType: file.file_type,
+                            filePath: fileUrl,
+                          });
+                          const downloadUrl = api.getDocumentDownloadUrl(fileUrl, fileKind, file.title, file.file_type);
                           return (
                             <div
                               key={file.id}
@@ -633,7 +729,7 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                               </div>
                               <a
                                 title="Tải xuống tệp gốc"
-                                href={fileUrl}
+                                href={downloadUrl}
                                 download
                                 onClick={(e) => e.stopPropagation()}
                                 target="_blank"
@@ -660,7 +756,16 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                     <h3 className="font-bold text-on-surface truncate flex-1 pr-4">{previewFile.title}</h3>
                     <div className="flex items-center gap-3">
                       <a
-                        href={previewFile.mappedUrl}
+                        href={api.getDocumentDownloadUrl(
+                          previewFile.mappedUrl,
+                          api.inferDocumentPreviewKind({
+                            fileName: previewFile.title,
+                            fileType: previewFile.file_type,
+                            filePath: previewFile.mappedUrl,
+                          }),
+                          previewFile.title,
+                          previewFile.file_type,
+                        )}
                         download
                         className="flex items-center gap-2 px-4 py-1.5 bg-primary text-on-primary hover:bg-primary/90 rounded-lg transition-colors text-sm font-semibold"
                       >
@@ -673,10 +778,36 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                   </div>
                   <div className="flex-1 overflow-hidden bg-surface-lowest flex items-center justify-center relative">
                     {(() => {
-                      const filePath = previewFile.mappedUrl.toLowerCase();
-                      const isWord = filePath.endsWith('.docx') || filePath.endsWith('.doc');
-                      const isPDF = filePath.endsWith('.pdf');
-                      const finalUrl = previewFile.mappedUrl;
+                      const previewKind = api.inferDocumentPreviewKind({
+                        fileName: previewFile.title,
+                        fileType: previewFile.file_type,
+                        filePath: previewFile.mappedUrl,
+                      });
+                      const isWord = previewKind === 'word';
+                      const isPDF = previewKind === 'pdf';
+                      const inlineUrl = api.getDocumentPreviewUrl(
+                        previewFile.mappedUrl,
+                        previewKind,
+                        previewFile.title,
+                        previewFile.file_type,
+                      );
+                      const downloadUrl = api.getDocumentDownloadUrl(
+                        previewFile.mappedUrl,
+                        previewKind,
+                        previewFile.title,
+                        previewFile.file_type,
+                      );
+                      const finalUrl = previewRenderUrl || inlineUrl;
+
+                      if (preparingPreview) {
+                        return (
+                          <div className="flex flex-col items-center gap-4 py-16 text-center px-8">
+                            <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                            <h4 className="text-base font-bold">Đang chuẩn bị bản xem trước...</h4>
+                            <p className="font-medium text-on-surface-variant">Hệ thống đang tối ưu tệp để hiển thị trong trình duyệt.</p>
+                          </div>
+                        );
+                      }
 
                       if (isWord) {
                         return (
@@ -688,7 +819,7 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                               Vui lòng sử dụng tính năng bên dưới để tải tệp về thiết bị.
                             </p>
                             <a
-                              href={finalUrl}
+                              href={downloadUrl}
                               download
                               className="px-6 py-3 bg-primary text-on-primary rounded-xl font-bold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
                             >
@@ -700,21 +831,80 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
 
                       if (isPDF) {
                         return (
-                          <embed
-                            src={finalUrl}
-                            type="application/pdf"
-                            className="w-full h-full border-none"
-                          />
+                          <div className="w-full h-full relative">
+                            <iframe
+                              src={finalUrl}
+                              title="PDF Preview"
+                              className="w-full h-full border-none"
+                              onLoad={() => setPreviewLoadFailed(false)}
+                            />
+                            {previewLoadFailed && (
+                              <div className="absolute inset-0 bg-surface-lowest/95 flex flex-col items-center justify-center text-center px-6 gap-3">
+                                <p className="font-semibold text-on-surface">Không thể hiển thị PDF trực tiếp trong khung xem trước.</p>
+                                <a
+                                  href={inlineUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="px-4 py-2 rounded-lg bg-primary text-on-primary font-semibold hover:bg-primary/90 transition-colors"
+                                >
+                                  Mở trong tab mới
+                                </a>
+                              </div>
+                            )}
+                          </div>
                         );
                       }
 
-                      // Default iframe for other types (Images, etc.)
+                      if (previewKind === 'image') {
+                        return (
+                          <div className="w-full h-full flex items-center justify-center p-4 bg-surface-lowest">
+                            <img
+                              src={finalUrl}
+                              alt={previewFile.title}
+                              className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                              onLoad={() => setPreviewLoadFailed(false)}
+                              onError={() => setPreviewLoadFailed(true)}
+                            />
+                            {previewLoadFailed && (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 gap-3">
+                                <p className="font-semibold text-on-surface">Không thể tải hình ảnh xem trước.</p>
+                                <a
+                                  href={inlineUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="px-4 py-2 rounded-lg bg-primary text-on-primary font-semibold hover:bg-primary/90 transition-colors"
+                                >
+                                  Mở ảnh gốc
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      // Default iframe for other types (Text, etc.)
                       return (
-                        <iframe
-                          src={finalUrl}
-                          className="w-full h-full border-none bg-white"
-                          title="Document Preview"
-                        />
+                        <div className="w-full h-full relative">
+                          <iframe
+                            src={finalUrl}
+                            className="w-full h-full border-none bg-white"
+                            title="Document Preview"
+                            onLoad={() => setPreviewLoadFailed(false)}
+                          />
+                          {previewLoadFailed && (
+                            <div className="absolute inset-0 bg-surface-lowest/95 flex flex-col items-center justify-center text-center px-6 gap-3">
+                              <p className="font-semibold text-on-surface">Không thể hiển thị xem trước trực tiếp cho tệp này.</p>
+                              <a
+                                href={inlineUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-4 py-2 rounded-lg bg-primary text-on-primary font-semibold hover:bg-primary/90 transition-colors"
+                              >
+                                Mở trong tab mới
+                              </a>
+                            </div>
+                          )}
+                        </div>
                       );
                     })()}
                   </div>
