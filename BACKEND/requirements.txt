@@ -37,3 +37,12 @@ requests
 # System monitoring (GPU/VRAM via NVIDIA, CPU/RAM cross-platform)
 psutil
 nvidia-ml-py
+
+# File Processing & OCR
+pytesseract
+Pillow
+pymupdf
+python-docx
+
+# Cloud Storage
+cloudinary

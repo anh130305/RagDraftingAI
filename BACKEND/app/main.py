@@ -4,6 +4,8 @@ main.py – FastAPI application entry point.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
 
 import time
 import logging
@@ -55,6 +57,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Static Files ─────────────────────────────────────────────
+os.makedirs("uploads", exist_ok=True)
+app.mount("/api/v1/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # ── Routes ───────────────────────────────────────────────────
 app.include_router(api_router)

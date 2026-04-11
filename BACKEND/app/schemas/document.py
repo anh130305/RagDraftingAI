@@ -34,6 +34,8 @@ class DocumentResponse(BaseModel):
     file_size: Optional[int] = None
     status: DocStatus
     uploaded_by: Optional[UUID] = None
+    session_id: Optional[UUID] = None
+    cloudinary_public_id: Optional[str] = None
     chunk_count: int
     error_message: Optional[str] = None
     created_at: datetime

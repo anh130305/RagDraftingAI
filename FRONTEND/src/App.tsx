@@ -4,6 +4,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, RequireAuth, RedirectIfAuth } from './lib/AuthContext';
 import { ToastProvider } from './lib/ToastContext';
 import FullScreenLoader from './components/FullScreenLoader';
+import UserLayout from './components/UserLayout';
 
 const AdminConsoleApp = lazy(() => import('./AdminConsoleApp'));
 const Chat = lazy(() => import('./Chat'));
@@ -30,10 +31,14 @@ export default function App() {
                 <Route path="/login" element={<RedirectIfAuth><Login /></RedirectIfAuth>} />
                 <Route path="/register" element={<RedirectIfAuth><Register /></RedirectIfAuth>} />
 
-                {/* Protected routes — require authentication */}
-                <Route path="/chat/:sessionId?" element={<RequireAuth><Chat /></RequireAuth>} />
-                <Route path="/settings" element={<RequireAuth><WorkspaceSettings /></RequireAuth>} />
-                <Route path="/chat/settings" element={<RequireAuth><WorkspaceSettings /></RequireAuth>} />
+                {/* Protected user routes — share a single persistent UserLayout (sidebar stays alive) */}
+                <Route element={<RequireAuth><UserLayout /></RequireAuth>}>
+                  <Route path="/chat/:sessionId?" element={<Chat />} />
+                  <Route path="/settings" element={<WorkspaceSettings />} />
+                  <Route path="/chat/settings" element={<WorkspaceSettings />} />
+                </Route>
+
+                {/* Admin console — has its own layout */}
                 <Route path="/admin" element={<RequireAuth><AdminConsoleApp /></RequireAuth>} />
 
                 {/* Catch-all */}
@@ -46,3 +51,4 @@ export default function App() {
     </GoogleOAuthProvider>
   );
 }
+

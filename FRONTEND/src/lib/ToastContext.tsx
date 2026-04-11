@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AlertCircle, CheckCircle, Info, X, XCircle } from 'lucide-react';
 
-export type ToastType = 'success' | 'error' | 'info' | 'warning';
+export type ToastType = 'success' | 'error' | 'info' | 'warning' | 'system-error';
 
 export interface Toast {
   id: string;
@@ -50,16 +50,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 50, scale: 0.95 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              className={`pointer-events-auto flex items-start gap-3 rounded-2xl glass-morphism border p-4 shadow-[0_8px_30px_rgba(0,0,0,0.12)] min-w-[280px] max-w-sm backdrop-blur-xl ${toast.type === 'error'
-                ? 'bg-error/10 border-error/20 text-on-surface'
-                : toast.type === 'success'
-                  ? 'bg-emerald-500/10 border-emerald-500/20 text-on-surface'
-                  : toast.type === 'warning'
-                    ? 'bg-amber-500/10 border-amber-500/20 text-on-surface'
-                    : 'bg-surface/70 border-outline-variant/30 text-on-surface'
+              className={`pointer-events-auto flex items-start gap-3 rounded-2xl glass-morphism border p-4 shadow-[0_8px_30px_rgba(0,0,0,0.12)] min-w-[280px] max-w-sm backdrop-blur-xl ${toast.type === 'system-error'
+                ? 'bg-error/20 border-error text-on-surface'
+                : toast.type === 'error'
+                  ? 'bg-error/10 border-error/20 text-on-surface'
+                  : toast.type === 'success'
+                    ? 'bg-emerald-500/10 border-emerald-500/20 text-on-surface'
+                    : toast.type === 'warning'
+                      ? 'bg-amber-500/10 border-amber-500/20 text-on-surface'
+                      : 'bg-surface/70 border-outline-variant/30 text-on-surface'
                 }`}
             >
               <div className="shrink-0 mt-0.5">
+                {toast.type === 'system-error' && <XCircle className="w-5 h-5 text-error animate-pulse" />}
                 {toast.type === 'error' && <XCircle className="w-5 h-5 text-error" />}
                 {toast.type === 'success' && <CheckCircle className="w-5 h-5 text-emerald-500" />}
                 {toast.type === 'warning' && <AlertCircle className="w-5 h-5 text-amber-500" />}

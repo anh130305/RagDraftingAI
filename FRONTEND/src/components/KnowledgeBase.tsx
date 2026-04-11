@@ -7,9 +7,11 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import * as api from '../lib/api';
+import { useToast } from '../lib/ToastContext';
 import type { DocumentResponse } from '../lib/api';
 
 export default function KnowledgeBase() {
+  const { showToast } = useToast();
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -79,7 +81,7 @@ export default function KnowledgeBase() {
       await api.deleteDocument(id);
       await fetchDocuments();
     } catch (err: any) {
-      alert(err.message || 'Lỗi khi xóa tài liệu');
+      showToast(err.message || 'Lỗi khi xóa tài liệu', 'error');
     }
   };
 

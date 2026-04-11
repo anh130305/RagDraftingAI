@@ -3,7 +3,8 @@ import { motion } from 'motion/react';
 import {
   Activity, Cpu, HardDrive, Network,
   AlertTriangle, Search, Filter, RefreshCw,
-  ChevronLeft, ChevronRight, FileText, UserPlus, LogIn, Trash2, Database, KeyRound, Download
+  ChevronLeft, ChevronRight, FileText, UserPlus, LogIn, Trash2, Database, KeyRound, Download,
+  Cloud, AlertCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import * as api from '../lib/api';
@@ -21,7 +22,8 @@ const auditActionLabels: Record<string, string> = {
   query: 'Truy vấn RAG',
   create_session: 'Tạo Phiên',
   delete_session: 'Xóa Phiên',
-  update_user: 'Cập nhật User'
+  update_user: 'Cập nhật User',
+  storage_error: 'Lỗi Lưu trữ'
 };
 
 const getActionConfig = (action: string) => {
@@ -34,6 +36,7 @@ const getActionConfig = (action: string) => {
     case 'query': return { icon: Database, color: 'text-tertiary', bg: 'bg-tertiary/10', border: 'border-tertiary/20' };
     case 'update_user': return { icon: UserPlus, color: 'text-secondary', bg: 'bg-secondary/10', border: 'border-secondary/20' };
     case 'create_session': return { icon: Activity, color: 'text-primary', bg: 'bg-primary/5', border: 'border-primary/10' };
+    case 'storage_error': return { icon: Cloud, color: 'text-error', bg: 'bg-error/10', border: 'border-error/20' };
     default: return { icon: KeyRound, color: 'text-on-surface-variant', bg: 'bg-surface-high', border: 'border-outline-variant' };
   }
 };
@@ -49,7 +52,17 @@ export default function SystemHealth() {
   // Filters
   const [actionFilter, setActionFilter] = useState<string>('');
   const [page, setPage] = useState(1);
+  const [sysStats, setSysStats] = useState<api.SystemStatsResponse | null>(null);
   const limit = 20;
+
+  const fetchStats = async () => {
+    try {
+      const res = await api.getSystemStats();
+      setSysStats(res);
+    } catch (err) {
+      console.error("Failed to fetch system stats:", err);
+    }
+  };
 
   useEffect(() => {
     // Fetch stats for chart (aggregated from recent 500 logs)
@@ -98,6 +111,7 @@ export default function SystemHealth() {
 
   useEffect(() => {
     fetchLogs();
+    fetchStats();
     // eslint-disable-next-line
   }, [page, actionFilter]);
 
@@ -115,12 +129,42 @@ export default function SystemHealth() {
           <p className="text-xs text-on-surface-variant max-w-2xl font-medium">Giám sát các chỉ số hạ tầng quan trọng và theo dõi nhật ký hoạt động trên toàn hệ thống.</p>
         </div>
         <div className="flex gap-3">
+          {sysStats?.storage && (
+            <div className={cn(
+              "px-4 py-2 font-bold rounded-xl border flex items-center gap-2 text-xs shadow-sm",
+              sysStats.storage.status === 'healthy' 
+                ? "bg-surface text-on-surface-variant border-outline-variant"
+                : "bg-error/10 text-error border-error/30"
+            )}>
+              <Cloud className={cn("w-4 h-4", sysStats.storage.status === 'healthy' ? "text-primary" : "animate-pulse")} />
+              <span>
+                Lưu trữ: {sysStats.storage.status === 'healthy' ? 'Đã kết nối' : 'Lỗi cấu hình'}
+              </span>
+            </div>
+          )}
           <div className="px-4 py-2 bg-surface text-on-surface-variant font-bold rounded-xl border border-outline-variant flex items-center gap-2 text-xs shadow-sm">
             <span className="w-2.5 h-2.5 rounded-full bg-success shadow-[0_0_10px_var(--color-success)] animate-pulse"></span>
             Hệ thống Hoạt động Tốt
           </div>
         </div>
       </header>
+
+      {sysStats?.storage?.status === 'error' && (
+        <section className="p-4 bg-error/5 border border-error/20 rounded-2xl flex items-start gap-4 animate-in slide-in-from-top-4 duration-300">
+          <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center text-error shrink-0">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-bold text-error">Cảnh báo Cấu hình Lưu trữ</h4>
+            <p className="text-sm text-on-surface-variant mt-0.5">
+              Hệ thống không thể kết nối đến Cloudinary. Các tệp đính kèm sẽ không thể tải lên.
+            </p>
+            <div className="mt-3 p-3 bg-surface-low border border-outline-variant rounded-lg font-mono text-[10px] text-on-surface-variant">
+              {sysStats.storage.error_message}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Audit Logs Chart */}
       <div className="glass-card p-6 pb-2 rounded-2xl border border-outline-variant h-[320px] mb-8">

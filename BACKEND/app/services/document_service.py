@@ -17,6 +17,7 @@ from app.schemas.document import (
     DocumentChunkResponse,
 )
 from app.schemas.internal import RAGCallbackPayload
+from app.services import cloudinary_service
 
 
 # ── Upload ───────────────────────────────────────────────────
@@ -29,6 +30,8 @@ def upload_document(
     file_type: Optional[str] = None,
     file_size: Optional[int] = None,
     uploaded_by: UUID,
+    session_id: Optional[UUID] = None,
+    cloudinary_public_id: Optional[str] = None,
 ) -> DocumentResponse:
     """Register a document in the DB with status=pending."""
     doc = document_repo.create(
@@ -39,6 +42,8 @@ def upload_document(
             "file_type": file_type,
             "file_size": file_size,
             "uploaded_by": uploaded_by,
+            "session_id": session_id,
+            "cloudinary_public_id": cloudinary_public_id,
             "status": DocStatus.pending,
         },
     )
@@ -83,6 +88,11 @@ def delete_document(db: Session, doc_id: UUID) -> None:
     doc = document_repo.get_by_id(db, doc_id)
     if not doc:
         raise NotFoundError("Document")
+    
+    # If it's a Cloudinary document, delete from storage
+    if doc.cloudinary_public_id:
+        cloudinary_service.delete_from_cloudinary(doc.cloudinary_public_id)
+
     document_repo.delete(db, id=doc_id)
 
 

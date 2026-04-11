@@ -7,6 +7,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import * as api from '../lib/api';
+import { useToast } from '../lib/ToastContext';
 import type { UserResponse } from '../lib/api';
 
 const permissions = [
@@ -40,6 +41,7 @@ const permissions = [
 ];
 
 export default function UserManagement() {
+  const { showToast } = useToast();
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +72,7 @@ export default function UserManagement() {
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole as any } : u));
       await api.updateAdminUser(userId, { role: newRole });
     } catch (err: any) {
-      alert(err.message || 'Lỗi khi cập nhật vai trò');
+      showToast(err.message || 'Lỗi khi cập nhật vai trò', 'error');
       fetchUsers(); // Rollback on error
     }
   };
@@ -81,7 +83,7 @@ export default function UserManagement() {
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: !currentStatus } : u));
       await api.updateAdminUser(userId, { is_active: !currentStatus });
     } catch (err: any) {
-      alert(err.message || 'Lỗi khi cập nhật trạng thái');
+      showToast(err.message || 'Lỗi khi cập nhật trạng thái', 'error');
       fetchUsers(); // Rollback on error
     }
   };

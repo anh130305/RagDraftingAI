@@ -24,6 +24,7 @@ class AuditAction(str, enum.Enum):
     delete_session = "delete_session"
     update_user = "update_user"
     download_document = "download_document"
+    storage_error = "storage_error"
 
 
 class AuditLog(Base):

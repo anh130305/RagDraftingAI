@@ -27,6 +27,8 @@ class Document(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title = Column(String, nullable=False)
     file_path = Column(String, nullable=False)
+    cloudinary_public_id = Column(String, nullable=True)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("chat_sessions.id", ondelete="SET NULL"), nullable=True, index=True)
     file_type = Column(String(20), nullable=True)
     file_size = Column(BigInteger, nullable=True)
     status = Column(

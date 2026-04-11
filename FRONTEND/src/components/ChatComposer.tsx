@@ -29,6 +29,7 @@ interface ChatComposerProps {
   onValueChange?: (val: string) => void;
   onUploadFile?: (file: File) => void | Promise<void>;
   onUploadImage?: (file: File) => void | Promise<void>;
+  chatSessionId?: string;
 }
 
 type AttachmentKind = 'image' | 'document';
@@ -43,6 +44,7 @@ interface PendingAttachment {
   typeLabel: AttachmentTypeLabel;
   previewUrl?: string;
   uploadStatus: AttachmentUploadStatus;
+  extractedText?: string;
 }
 
 interface UploadProgress {
@@ -61,6 +63,7 @@ export default function ChatComposer({
   onValueChange,
   onUploadFile,
   onUploadImage,
+  chatSessionId,
 }: ChatComposerProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -75,6 +78,7 @@ export default function ChatComposer({
   const [isListening, setIsListening] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
+
   const [isUploading, setIsUploading] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
@@ -144,7 +148,7 @@ export default function ChatComposer({
     return { kind: 'document', typeLabel: 'Tệp' };
   };
 
-  const addAttachments = (files: FileList | File[]) => {
+  const addAttachments = async (files: FileList | File[]) => {
     const incomingFiles = Array.from(files);
     if (incomingFiles.length === 0) return;
 
@@ -156,7 +160,7 @@ export default function ChatComposer({
         kind: info.kind,
         typeLabel: info.typeLabel,
         previewUrl: info.kind === 'image' ? URL.createObjectURL(file) : undefined,
-        uploadStatus: 'pending',
+        uploadStatus: 'uploading' as AttachmentUploadStatus, // set uploading immediately
       } satisfies PendingAttachment;
     });
 
@@ -176,13 +180,9 @@ export default function ChatComposer({
 
       if (combined.length > 5) {
         showToast('Chỉ cho phép tải lên tối đa 5 tệp tin cùng một lúc.', 'warning');
-
         for (let i = 5; i < combined.length; i++) {
-          if (combined[i].previewUrl) {
-            URL.revokeObjectURL(combined[i].previewUrl!);
-          }
+          if (combined[i].previewUrl) URL.revokeObjectURL(combined[i].previewUrl!);
         }
-
         return combined.slice(0, 5);
       }
 
@@ -190,6 +190,25 @@ export default function ChatComposer({
     });
 
     setIsMenuOpen(false);
+
+    // ONLY extract text for in-context RAG usage.
+    for (const attachment of nextAttachments) {
+      try {
+        const res = await api.extractTextFromImage(attachment.file);
+        setAttachments(current => current.map(item =>
+          item.id === attachment.id
+            ? { ...item, uploadStatus: 'uploaded', extractedText: res.text }
+            : item
+        ));
+      } catch (err) {
+        showToast(`Lỗi khi trích xuất văn bản từ ${attachment.file.name}`, 'error');
+        setAttachments(current => current.map(item =>
+          item.id === attachment.id
+            ? { ...item, uploadStatus: 'failed' }
+            : item
+        ));
+      }
+    }
   };
 
   const removeAttachment = (id: string) => {
@@ -252,6 +271,7 @@ export default function ChatComposer({
   );
 
   const uploadSingleAttachment = async (attachment: PendingAttachment) => {
+    // Text extraction is already done in addAttachments. This is just a fallback to retry.
     setActiveUploadId(attachment.id);
     setAttachments((current) =>
       current.map((item) =>
@@ -262,16 +282,11 @@ export default function ChatComposer({
     );
 
     try {
-      if (attachment.kind === 'image') {
-        await onUploadImage?.(attachment.file);
-      } else {
-        await onUploadFile?.(attachment.file);
-      }
-
+      const res = await api.extractTextFromImage(attachment.file);
       setAttachments((current) =>
         current.map((item) =>
           item.id === attachment.id
-            ? { ...item, uploadStatus: 'uploaded' }
+            ? { ...item, uploadStatus: 'uploaded', extractedText: res.text }
             : item,
         ),
       );
@@ -304,48 +319,53 @@ export default function ChatComposer({
     if (disabled || isUploading || retryingAttachmentId) return;
 
     const trimmedValue = value.trim();
-    if (!trimmedValue && attachments.length === 0) return;
+    const hasAttachments = attachments.length > 0;
+    const uploadedAttachments = attachments.filter(a => a.uploadStatus === 'uploaded');
+    const isReady = attachments.every(a => a.uploadStatus === 'uploaded' || a.uploadStatus === 'failed');
+
+    // Text is always required — files alone cannot be sent
+    if (!trimmedValue) return;
+    if (hasAttachments && !isReady) {
+      showToast('Vui lòng đợi tệp được xử lý xong.', 'warning');
+      return;
+    }
 
     setIsMenuOpen(false);
     setIsUploading(true);
 
-    if (trimmedValue) {
-      onValueChange?.('');
-    }
+    // Snapshot file references BEFORE clearing UI (we need them for Cloudinary upload)
+    const filesToUpload = uploadedAttachments.map(a => a.file);
+
+    // Build extracted content for AI context
+    const extractedContent = uploadedAttachments
+      .filter(a => a.extractedText)
+      .map(a => `[Nội dung tệp ${a.file.name}]:\n${a.extractedText}`)
+      .join('\n\n');
+
+    // Build final message for AI
+    const finalMessage = trimmedValue
+      ? (extractedContent ? trimmedValue + '\n\n' + extractedContent : trimmedValue)
+      : extractedContent;
+
+    // Clear UI immediately - don't make user wait
+    onValueChange?.('');
+    clearAttachments();
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (imageInputRef.current) imageInputRef.current.value = '';
+
+    // Upload successfully extracted files to Cloudinary.
+    filesToUpload.forEach(file => {
+      api.uploadDocument(file, file.name, chatSessionId).catch(err => {
+        console.warn('Cloudinary upload failed:', err);
+        showToast(`Lỗi lưu trữ tệp "${file.name}": ${err.message || 'Hệ thống bận'}`, 'system-error');
+      });
+    });
 
     try {
-      const targets = attachments.filter((item) => item.uploadStatus !== 'uploaded');
-
-      for (let index = 0; index < targets.length; index += 1) {
-        const attachment = targets[index];
-        setActiveUploadId(attachment.id);
-        setUploadProgress({
-          current: index + 1,
-          total: targets.length,
-          fileName: attachment.file.name,
-        });
-
-        const uploaded = await uploadSingleAttachment(attachment);
-        if (!uploaded) {
-          throw new Error('UPLOAD_FAILED');
-        }
-      }
-
-      setActiveUploadId(null);
-      setUploadProgress(null);
-
-      if (trimmedValue) {
-        await onSend?.(trimmedValue);
-      }
-
-      clearAttachments();
+      await onSend?.(finalMessage);
     } catch {
-      if (trimmedValue) {
-        onValueChange?.(trimmedValue);
-      }
+      // Send failed - UI already cleared, keep it clean
     } finally {
-      setActiveUploadId(null);
-      setUploadProgress(null);
       setIsUploading(false);
     }
   };
@@ -402,7 +422,7 @@ export default function ChatComposer({
       }).webkitSpeechRecognition;
 
     if (!speechRecognitionCtor) {
-      alert('Trình duyệt này chưa hỗ trợ nhập liệu bằng giọng nói.');
+      showToast('Trình duyệt này chưa hỗ trợ nhập liệu bằng giọng nói.', 'warning');
       return;
     }
 
@@ -561,11 +581,10 @@ export default function ChatComposer({
               {attachments.map((attachment) => (
                 <div
                   key={attachment.id}
-                  className={`group inline-flex w-[180px] shrink-0 items-center gap-2 rounded-[14px] border bg-surface-container-high p-1.5 shadow-sm ${attachment.uploadStatus === 'failed'
-                    ? 'border-error/60 ring-2 ring-error/15'
-                    : activeUploadId === attachment.id
-                      ? 'border-primary/45 ring-2 ring-primary/20'
-                      : 'border-outline-variant/20'
+                  className={`group inline-flex w-[180px] shrink-0 items-center gap-2 rounded-[14px] border bg-surface-container-high p-1.5 shadow-sm ${attachment.uploadStatus === 'failed' ? 'border-error/60 ring-2 ring-error/15'
+                    : attachment.uploadStatus === 'uploading' ? 'border-primary/50 ring-2 ring-primary/20 animate-pulse'
+                      : attachment.uploadStatus === 'uploaded' ? 'border-green-500/40 ring-1 ring-green-500/10'
+                        : 'border-outline-variant/20'
                     }`}
                 >
                   {attachment.kind === 'image' ? (
@@ -575,17 +594,24 @@ export default function ChatComposer({
                         alt={attachment.file.name}
                         className="h-full w-full object-cover"
                       />
+                      {attachment.uploadStatus === 'uploading' && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[10px]">
+                          <Loader2 className="w-4 h-4 text-white animate-spin" />
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] ${attachment.typeLabel === 'Excel'
+                      className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] ${attachment.typeLabel === 'Excel'
                         ? 'bg-emerald-500/10 text-emerald-600'
                         : attachment.typeLabel === 'Word'
                           ? 'bg-blue-500/10 text-blue-600'
                           : 'bg-red-500/10 text-red-600'
                         }`}
                     >
-                      {attachment.typeLabel === 'Excel' ? (
+                      {attachment.uploadStatus === 'uploading' ? (
+                        <Loader2 className="w-4 h-4 animate-spin opacity-70" />
+                      ) : attachment.typeLabel === 'Excel' ? (
                         <FileSpreadsheet className="w-4 h-4" />
                       ) : (
                         <FileText className="w-4 h-4" />
@@ -597,8 +623,16 @@ export default function ChatComposer({
                     <p className="truncate text-[12px] font-medium text-on-surface leading-tight">
                       {attachment.file.name}
                     </p>
-                    <p className="truncate text-[10px] text-on-surface-variant mt-0.5">
-                      {attachment.kind === 'image' ? 'Ảnh' : attachment.typeLabel} • {formatFileSize(attachment.file.size)}
+                    <p className="truncate text-[10px] mt-0.5">
+                      {attachment.uploadStatus === 'uploading' ? (
+                        <span className="text-primary">Đang đọc...</span>
+                      ) : attachment.uploadStatus === 'uploaded' ? (
+                        <span className="text-green-600">Đã đọc xong ✓</span>
+                      ) : attachment.uploadStatus === 'failed' ? (
+                        <span className="text-error">Lỗi đọc</span>
+                      ) : (
+                        <span className="text-on-surface-variant">{attachment.kind === 'image' ? 'Ảnh' : attachment.typeLabel} • {formatFileSize(attachment.file.size)}</span>
+                      )}
                     </p>
                   </div>
 
@@ -805,7 +839,7 @@ export default function ChatComposer({
           <button
             className="ml-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-container text-on-primary-fixed hover:opacity-90 transition-opacity active:scale-95 disabled:grayscale disabled:opacity-50 disabled:pointer-events-none"
             type="submit"
-            disabled={(!value.trim() && attachments.length === 0) || disabled || isUploading || !!retryingAttachmentId}
+            disabled={!value.trim() || disabled || isUploading || !!retryingAttachmentId}
           >
             <ArrowRight className="w-5 h-5" />
           </button>

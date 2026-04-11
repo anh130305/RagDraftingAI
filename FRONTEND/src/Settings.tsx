@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { CheckCheck, ChevronDown, Edit2, LogOut, Loader2, Save, X, Mail, Lock, Camera } from 'lucide-react';
-import UserShell from './components/UserShell';
 import ThemeModeRow from './components/ThemeModeRow';
 import SettingsRow from './components/SettingsRow';
 import { useAuth } from './lib/AuthContext';
@@ -80,11 +79,11 @@ function SettingsContent() {
     // Chỉ cho phép nhập 1 ký tự số
     if (value.length > 1) value = value.slice(-1);
     if (!/^\d*$/.test(value)) return;
-    
+
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-    
+
     // Tự động chuyển focus sang ô tiếp theo
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
@@ -160,7 +159,7 @@ function SettingsContent() {
                 <h3 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-4">Bảo mật</h3>
 
                 <SettingsRow title="Đổi Mật khẩu" description="Cập nhật mật khẩu tài khoản để tăng cường bảo mật.">
-                  <button 
+                  <button
                     onClick={() => setIsPasswordModalOpen(true)}
                     className="px-6 py-2 rounded-full bg-surface-highest text-on-surface text-sm font-bold border border-outline-variant hover:bg-surface-variant transition-all cursor-pointer"
                   >
@@ -174,7 +173,7 @@ function SettingsContent() {
                       {user.email}
                     </span>
                   ) : (
-                    <button 
+                    <button
                       onClick={() => {
                         setIsEmailModalOpen(true);
                         setEmailStep('email');
@@ -210,12 +209,12 @@ function SettingsContent() {
                   <div className="absolute bottom-1 right-1 bg-surface/80 backdrop-blur-md p-2.5 rounded-full text-on-surface border border-outline-variant/30 shadow-xl transition-all duration-300 group-hover:scale-110 group-hover:bg-surface">
                     <Camera className="w-4 h-4 text-primary" />
                   </div>
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handleAvatarChange} 
-                    accept="image/*" 
-                    className="hidden" 
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleAvatarChange}
+                    accept="image/*"
+                    className="hidden"
                   />
                 </div>
                 <h3 className="text-2xl font-bold font-headline mb-1">{user?.username || 'Khách'}</h3>
@@ -257,8 +256,8 @@ function SettingsContent() {
       {isPasswordModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/60 backdrop-blur-sm px-4">
           <div className="glass-panel w-full max-w-md rounded-2xl border border-outline-variant/30 p-8 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
-            <button 
-              onClick={() => setIsPasswordModalOpen(false)} 
+            <button
+              onClick={() => setIsPasswordModalOpen(false)}
               className="absolute right-4 top-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors"
             >
               <X className="w-4 h-4" />
@@ -269,47 +268,47 @@ function SettingsContent() {
               </div>
               <h3 className="text-xl font-bold font-headline">Đổi Mật Khẩu</h3>
             </div>
-            
+
             <div className="space-y-5">
               <div>
                 <label className="block text-xs font-bold text-on-surface-variant mb-1.5 uppercase tracking-widest">Mật khẩu cũ</label>
-                <input 
-                  type="password" 
-                  value={oldPassword} 
-                  onChange={(e) => setOldPassword(e.target.value)} 
+                <input
+                  type="password"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
                   className="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-on-surface-variant/50 hover:bg-surface-container"
                   placeholder="Nhập mật khẩu hiện tại"
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold text-on-surface-variant mb-1.5 uppercase tracking-widest">Mật khẩu mới</label>
-                <input 
-                  type="password" 
-                  value={newPassword} 
-                  onChange={(e) => setNewPassword(e.target.value)} 
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
                   className="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-on-surface-variant/50 hover:bg-surface-container"
                   placeholder="Nhập mật khẩu mới"
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold text-on-surface-variant mb-1.5 uppercase tracking-widest">Nhập lại mật khẩu</label>
-                <input 
-                  type="password" 
-                  value={confirmPassword} 
-                  onChange={(e) => setConfirmPassword(e.target.value)} 
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-on-surface-variant/50 hover:bg-surface-container"
                   placeholder="Xác nhận mật khẩu mới"
                 />
               </div>
-              
+
               <div className="pt-2 flex justify-end gap-3">
-                <button 
+                <button
                   onClick={() => setIsPasswordModalOpen(false)}
                   className="px-5 py-2 rounded-xl text-sm font-bold text-on-surface-variant hover:bg-surface-variant transition-colors"
                 >
                   Hủy
                 </button>
-                <button 
+                <button
                   onClick={handlePasswordSubmit}
                   className="px-6 py-2 bg-primary text-on-primary-fixed rounded-xl text-sm font-bold hover:scale-105 transition-all shadow-lg shadow-primary/20"
                 >
@@ -325,8 +324,8 @@ function SettingsContent() {
       {isEmailModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/60 backdrop-blur-sm px-4">
           <div className="glass-panel w-full max-w-md rounded-2xl border border-outline-variant/30 p-8 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
-            <button 
-              onClick={() => setIsEmailModalOpen(false)} 
+            <button
+              onClick={() => setIsEmailModalOpen(false)}
               className="absolute right-4 top-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors"
             >
               <X className="w-4 h-4" />
@@ -348,22 +347,22 @@ function SettingsContent() {
                 </p>
                 <div>
                   <label className="block text-xs font-bold text-on-surface-variant mb-1.5 uppercase tracking-widest">Địa chỉ Email</label>
-                  <input 
-                    type="email" 
-                    value={newEmail} 
-                    onChange={(e) => setNewEmail(e.target.value)} 
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
                     className="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-on-surface-variant/50 hover:bg-surface-container"
                     placeholder="ví dụ: admin@example.com"
                   />
                 </div>
                 <div className="flex justify-end gap-3 pt-2">
-                  <button 
+                  <button
                     onClick={() => setIsEmailModalOpen(false)}
                     className="px-5 py-2 rounded-xl text-sm font-bold text-on-surface-variant hover:bg-surface-variant transition-colors"
                   >
                     Hủy
                   </button>
-                  <button 
+                  <button
                     onClick={handleEmailSubmit}
                     disabled={!newEmail}
                     className="px-6 py-2 bg-secondary text-on-secondary-fixed rounded-xl text-sm font-bold hover:scale-105 transition-all shadow-lg shadow-secondary/20 disabled:opacity-50 disabled:hover:scale-100"
@@ -392,13 +391,13 @@ function SettingsContent() {
                   ))}
                 </div>
                 <div className="flex justify-end gap-3 pt-2">
-                  <button 
+                  <button
                     onClick={() => setEmailStep('email')}
                     className="px-5 py-2 rounded-xl text-sm font-bold text-on-surface-variant hover:bg-surface-variant transition-colors"
                   >
                     Quay lại
                   </button>
-                  <button 
+                  <button
                     onClick={handleEmailSubmit}
                     disabled={otp.some(d => d === '')}
                     className="px-6 py-2 bg-primary text-on-primary-fixed rounded-xl text-sm font-bold hover:scale-105 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:hover:scale-100"
@@ -417,13 +416,13 @@ function SettingsContent() {
 
 export default function Settings() {
   return (
-    <UserShell activeNav="settings">
+    <>
       <SettingsContent />
 
       <div className="fixed bottom-8 right-8 z-50 flex items-center gap-3 glass-panel px-4 py-2 rounded-full border border-outline-variant/20 shadow-2xl">
         <div className="w-2 h-2 rounded-full bg-tertiary animate-pulse shadow-[0_0_8px_rgba(251,180,255,0.8)]" />
         <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Hệ thống Sẵn sàng</span>
       </div>
-    </UserShell>
+    </>
   );
 }
