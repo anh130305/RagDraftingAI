@@ -2,6 +2,10 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const DEFAULT_TIMEOUT = 15000; // 15 seconds
 const ABSOLUTE_HTTP_URL_REGEX = /^https?:\/\//i;
 
+export type DocumentPreviewKind = 'pdf' | 'word' | 'image' | 'other';
+const CLOUDINARY_UPLOAD_URL_REGEX = /https:\/\/res\.cloudinary\.com\/[^/]+\/(image|raw|video)\/upload\//i;
+const CLOUDINARY_RAW_UPLOAD_URL_REGEX = /https:\/\/res\.cloudinary\.com\/[^/]+\/raw\/upload\//i;
+
 function joinApiUrl(path: string): string {
   const normalizedBase = API_BASE.replace(/\/+$/, '');
   const normalizedPath = path.replace(/^\/+/, '');
@@ -32,6 +36,145 @@ export function resolveDocumentFileUrl(filePath: string): string {
   }
 
   return joinApiUrl(`api/v1/${withoutLeadingSlash}`);
+}
+
+function applyCloudinaryUploadFlag(url: string, flag: 'fl_inline' | 'fl_attachment'): string {
+  if (!url || !CLOUDINARY_UPLOAD_URL_REGEX.test(url)) return url;
+  if (url.includes(`/${flag}/`) || url.includes(`/${flag},`) || url.includes(`,${flag},`) || url.includes(`,${flag}/`)) {
+    return url;
+  }
+  return url.replace('/upload/', `/upload/${flag}/`);
+}
+
+function ensureCloudinaryExtension(url: string, extension?: string): string {
+  if (!url || !CLOUDINARY_UPLOAD_URL_REGEX.test(url)) return url;
+
+  const ext = (extension || '').replace(/^\./, '').trim().toLowerCase();
+  if (!ext) return url;
+
+  const [withoutHash, hashPart = ''] = url.split('#');
+  const [pathPart, queryPart = ''] = withoutHash.split('?');
+
+  const segments = pathPart.split('/');
+  const lastSegment = segments[segments.length - 1] || '';
+  
+  try {
+    const decodedLastSegment = decodeURIComponent(lastSegment).toLowerCase();
+    if (decodedLastSegment.endsWith(`.${ext}`)) return url;
+    if (decodedLastSegment.includes('.')) return url;
+  } catch (e) {
+    if (lastSegment.includes('.')) return url;
+  }
+
+  const separator = queryPart ? '?' : '';
+  const hashSeparator = hashPart ? '#' : '';
+
+  return `${pathPart}.${ext}${separator}${queryPart}${hashSeparator}${hashPart}`;
+}
+
+function inferPreferredExtension(input: {
+  kind?: DocumentPreviewKind;
+  fileName?: string | null;
+  fileType?: string | null;
+  filePath?: string | null;
+}): string | undefined {
+  const fromName = extractExtension(input.fileName);
+  if (fromName) return fromName;
+
+  const fileType = (input.fileType || '').toLowerCase();
+  if (input.kind === 'pdf' || fileType.includes('pdf')) return 'pdf';
+  if (fileType.includes('wordprocessingml')) return 'docx';
+  if (fileType.includes('msword')) return 'doc';
+  if (fileType.startsWith('image/')) {
+    const subtype = fileType.split('/')[1]?.split(';')[0]?.trim().toLowerCase();
+    if (subtype) return subtype === 'jpeg' ? 'jpg' : subtype;
+  }
+
+  const fromPath = extractExtension(input.filePath);
+  if (fromPath) return fromPath;
+
+  return undefined;
+}
+
+function normalizeCloudinaryDocumentUrl(url: string, input: {
+  kind?: DocumentPreviewKind;
+  fileName?: string | null;
+  fileType?: string | null;
+} = {}): string {
+  const extension = inferPreferredExtension({
+    ...input,
+    filePath: url,
+  });
+  return ensureCloudinaryExtension(url, extension);
+}
+
+export function getDocumentPreviewUrl(
+  url: string,
+  kind?: DocumentPreviewKind,
+  fileName?: string | null,
+  fileType?: string | null,
+): string {
+  const normalized = normalizeCloudinaryDocumentUrl(url, { kind, fileName, fileType });
+  return normalized;
+}
+
+export function getDocumentDownloadUrl(
+  url: string,
+  kind?: DocumentPreviewKind,
+  fileName?: string | null,
+  fileType?: string | null,
+): string {
+  const normalized = normalizeCloudinaryDocumentUrl(url, { kind, fileName, fileType });
+  return applyCloudinaryUploadFlag(normalized, 'fl_attachment');
+}
+
+function stripQueryHash(value: string): string {
+  return value.split('#')[0].split('?')[0];
+}
+
+function extractExtension(value?: string | null): string {
+  if (!value) return '';
+  const cleaned = stripQueryHash(value).trim();
+  if (!cleaned) return '';
+
+  const normalized = cleaned.replace(/\\/g, '/');
+  const segment = normalized.split('/').pop() || normalized;
+  const decoded = (() => {
+    try {
+      return decodeURIComponent(segment);
+    } catch {
+      return segment;
+    }
+  })();
+
+  const lastDot = decoded.lastIndexOf('.');
+  if (lastDot === -1 || lastDot === decoded.length - 1) return '';
+  return decoded.slice(lastDot + 1).toLowerCase();
+}
+
+export function inferDocumentPreviewKind(input: {
+  fileName?: string | null;
+  fileType?: string | null;
+  filePath?: string | null;
+}): DocumentPreviewKind {
+  const fileType = (input.fileType || '').toLowerCase();
+
+  if (fileType.includes('pdf')) return 'pdf';
+  if (
+    fileType.includes('msword') ||
+    fileType.includes('wordprocessingml') ||
+    fileType.includes('application/vnd.openxmlformats-officedocument.wordprocessingml')
+  ) {
+    return 'word';
+  }
+  if (fileType.startsWith('image/')) return 'image';
+
+  const ext = extractExtension(input.fileName) || extractExtension(input.filePath);
+  if (ext === 'pdf') return 'pdf';
+  if (ext === 'doc' || ext === 'docx') return 'word';
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext)) return 'image';
+
+  return 'other';
 }
 
 /**  Generic fetch wrapper with auth token injection, timeout and error handling. */

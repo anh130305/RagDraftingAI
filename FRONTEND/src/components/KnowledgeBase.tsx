@@ -80,7 +80,7 @@ export default function KnowledgeBase() {
   const handleDelete = async (id: string) => {
     const isConfirmed = await confirm({
       title: 'Xóa tài liệu',
-      message: 'Bạn có chắc muốn xóa tài liệu này không? Việc này sẽ xóa toàn bộ vector liên quan.',
+      message: 'Bạn có chắc muốn xóa tài liệu này không? Việc này sẽ xóa toàn bộ file liên quan.',
       confirmLabel: 'Xóa tài liệu',
       variant: 'danger'
     });

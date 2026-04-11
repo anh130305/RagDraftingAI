@@ -84,7 +84,7 @@ export default function Chat() {
   const [composerStatus, setComposerStatus] = useState<string | undefined>(undefined);
   const composerStatusTimerRef = useRef<number | null>(null);
   // File preview state
-  const [previewFile, setPreviewFile] = useState<{ name: string; url: string } | null>(null);
+  const [previewFile, setPreviewFile] = useState<{ name: string; url: string; fileType?: string | null } | null>(null);
   const [lookingUpFile, setLookingUpFile] = useState(false);
   const pollingIntervalRef = useRef<number | null>(null);
   const pollingRetryRef = useRef(0);
@@ -148,7 +148,7 @@ export default function Chat() {
 
       if (match) {
         const url = api.resolveDocumentFileUrl(match.file_path);
-        setPreviewFile({ name: match.title, url });
+        setPreviewFile({ name: match.title, url, fileType: match.file_type });
       } else {
         showToast('Không tìm thấy tệp để xem trước. Vui lòng thử lại sau vài giây.', 'warning');
         console.warn('File not found in document store:', fileName);
@@ -677,7 +677,16 @@ export default function Chat() {
               <h3 className="font-bold text-on-surface truncate flex-1 pr-4">{previewFile.name}</h3>
               <div className="flex items-center gap-2">
                 <a
-                  href={previewFile.url}
+                  href={api.getDocumentDownloadUrl(
+                    previewFile.url,
+                    api.inferDocumentPreviewKind({
+                      fileName: previewFile.name,
+                      fileType: previewFile.fileType,
+                      filePath: previewFile.url,
+                    }),
+                    previewFile.name,
+                    previewFile.fileType,
+                  )}
                   download
                   className="flex items-center gap-2 px-3 py-1.5 bg-primary text-on-primary hover:bg-primary/90 rounded-lg transition-colors text-sm font-semibold"
                 >
@@ -691,9 +700,25 @@ export default function Chat() {
             {/* Content */}
             <div className="flex-1 overflow-hidden bg-surface-lowest flex items-center justify-center relative">
               {(() => {
-                const fileName = previewFile.name.toLowerCase();
-                const isWord = fileName.endsWith('.docx') || fileName.endsWith('.doc');
-                const isPDF = fileName.endsWith('.pdf');
+                const previewKind = api.inferDocumentPreviewKind({
+                  fileName: previewFile.name,
+                  fileType: previewFile.fileType,
+                  filePath: previewFile.url,
+                });
+                const isWord = previewKind === 'word';
+                const isPDF = previewKind === 'pdf';
+                const inlineUrl = api.getDocumentPreviewUrl(
+                  previewFile.url,
+                  previewKind,
+                  previewFile.name,
+                  previewFile.fileType,
+                );
+                const downloadUrl = api.getDocumentDownloadUrl(
+                  previewFile.url,
+                  previewKind,
+                  previewFile.name,
+                  previewFile.fileType,
+                );
 
                 if (isWord) {
                   return (
@@ -701,7 +726,7 @@ export default function Chat() {
                       <FileText className="w-16 h-16 text-blue-400 opacity-60" />
                       <h4 className="text-lg font-bold text-on-surface">Không thể xem trước Word trực tiếp</h4>
                       <p className="text-sm text-on-surface-variant">Trình duyệt không hỗ trợ xem trước .docx. Hãy tải về để mở bằng Microsoft Word.</p>
-                      <a href={previewFile.url} download className="px-6 py-2.5 bg-primary text-on-primary rounded-xl font-bold hover:bg-primary/90 transition-colors">
+                      <a href={downloadUrl} download className="px-6 py-2.5 bg-primary text-on-primary rounded-xl font-bold hover:bg-primary/90 transition-colors">
                         Tải xuống
                       </a>
                     </div>
@@ -711,7 +736,7 @@ export default function Chat() {
                 if (isPDF) {
                   return (
                     <embed
-                      src={previewFile.url}
+                      src={inlineUrl}
                       type="application/pdf"
                       className="w-full h-full border-none"
                     />
@@ -720,7 +745,7 @@ export default function Chat() {
 
                 // Default iframe for other types (Images, etc.)
                 return (
-                  <iframe src={previewFile.url} className="w-full h-full border-none" title="File Preview" />
+                  <iframe src={inlineUrl} className="w-full h-full border-none" title="File Preview" />
                 );
               })()}
             </div>
