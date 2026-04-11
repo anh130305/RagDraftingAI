@@ -126,6 +126,14 @@ def send_message(
     current_user: User = Depends(get_current_user),
 ):
     msg = chat_service.add_message(db, session_id, current_user.id, payload)
+    
+    # Trigger intentional AI response in background
+    background_tasks.add_task(
+        chat_service.generate_assistant_response_task,
+        session_id=session_id,
+        user_query=payload.content
+    )
+
     # Log the query event
     background_tasks.add_task(
         audit_service.log_action,

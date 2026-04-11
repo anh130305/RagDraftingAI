@@ -55,11 +55,19 @@ def upload_document(
 def list_documents(
     db: Session,
     *,
+    user_id: UUID,
+    session_id: Optional[UUID] = None,
     skip: int = 0,
     limit: int = 50,
 ) -> DocumentListResponse:
-    docs = document_repo.get_all(db, skip=skip, limit=limit)
-    total = document_repo.count(db)
+    docs = document_repo.get_by_uploader(
+        db,
+        user_id,
+        session_id=session_id,
+        skip=skip,
+        limit=limit,
+    )
+    total = document_repo.count_by_uploader(db, user_id, session_id=session_id)
     return DocumentListResponse(
         items=[DocumentResponse.model_validate(d) for d in docs],
         total=total,

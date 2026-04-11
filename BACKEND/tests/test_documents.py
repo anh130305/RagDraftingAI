@@ -70,6 +70,51 @@ class TestListDocuments:
         )
         assert resp.status_code == 200
 
+    def test_list_documents_by_session(self, client, normal_auth):
+        session_a = client.post(
+            "/api/v1/chat/sessions",
+            headers=normal_auth,
+            json={"title": "Session A"},
+        ).json()["id"]
+        session_b = client.post(
+            "/api/v1/chat/sessions",
+            headers=normal_auth,
+            json={"title": "Session B"},
+        ).json()["id"]
+
+        client.post(
+            "/api/v1/documents/upload",
+            headers=normal_auth,
+            files={"file": ("a.pdf", io.BytesIO(b"a"), "application/pdf")},
+            data={"title": "Doc A", "chat_session_id": session_a},
+        )
+        client.post(
+            "/api/v1/documents/upload",
+            headers=normal_auth,
+            files={"file": ("b.pdf", io.BytesIO(b"b"), "application/pdf")},
+            data={"title": "Doc B", "chat_session_id": session_b},
+        )
+
+        resp_a = client.get(
+            "/api/v1/documents",
+            headers=normal_auth,
+            params={"session_id": session_a},
+        )
+        assert resp_a.status_code == 200
+        data_a = resp_a.json()
+        assert data_a["total"] == 1
+        assert data_a["items"][0]["title"] == "Doc A"
+
+        resp_b = client.get(
+            "/api/v1/documents",
+            headers=normal_auth,
+            params={"session_id": session_b},
+        )
+        assert resp_b.status_code == 200
+        data_b = resp_b.json()
+        assert data_b["total"] == 1
+        assert data_b["items"][0]["title"] == "Doc B"
+
 
 class TestGetDocument:
     """GET /api/v1/documents/{id}"""

@@ -77,6 +77,7 @@ export default function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sendingSessionId, setSendingSessionId] = useState<string | null>(null);
+  const [isSubmittingMessage, setIsSubmittingMessage] = useState(false);
   const [composerValue, setComposerValue] = useState('');
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [statusText, setStatusText] = useState('');
@@ -85,6 +86,14 @@ export default function Chat() {
   // File preview state
   const [previewFile, setPreviewFile] = useState<{ name: string; url: string } | null>(null);
   const [lookingUpFile, setLookingUpFile] = useState(false);
+  const pollingIntervalRef = useRef<number | null>(null);
+  const pollingRetryRef = useRef(0);
+  const pollingInFlightRef = useRef(false);
+  const pollingActiveRef = useRef(false);
+  const pollingSessionIdRef = useRef<string | null>(null);
+  const pollingTargetUserMessageIdRef = useRef<string | null>(null);
+  const autoResumeAttemptedUserMessageIdRef = useRef<string | null>(null);
+  const pollingTerminatedUserMessageIdRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages or status changes
@@ -95,23 +104,57 @@ export default function Chat() {
   // Look up file URL from DB and open preview
   const handleFileChipClick = async (fileName: string) => {
     if (lookingUpFile) return;
+    if (!sessionId) {
+      showToast('Không xác định được phiên chat hiện tại để tìm tệp.', 'warning');
+      return;
+    }
+
     setLookingUpFile(true);
     try {
-      const docs = await api.listDocuments(0, 100);
+      // Search only documents attached to this chat session.
+      const docs = await api.listDocuments(0, 100, sessionId);
+      const normalize = (value: string) => value.trim().toLowerCase();
+      const stripExt = (value: string) => value.replace(/\.[^/.]+$/, '');
+      const safeDecode = (value: string) => {
+        try {
+          return decodeURIComponent(value);
+        } catch {
+          return value;
+        }
+      };
+
+      const target = normalize(fileName);
+      const targetWithoutExt = stripExt(target);
+
       // Find the document whose title or file_path matches the filename
-      const match = docs.items.find(d =>
-        d.title === fileName ||
-        d.file_path.includes(fileName) ||
-        d.title.replace(/\.[^/.]+$/, '') === fileName.replace(/\.[^/.]+$/, '')
-      );
+      const match = docs.items.find((d) => {
+        const title = normalize(d.title);
+        const titleWithoutExt = stripExt(title);
+
+        const filePathName = d.file_path.split('/').pop() || d.file_path;
+        const decodedPathName = normalize(safeDecode(filePathName));
+        const pathWithoutExt = stripExt(decodedPathName);
+
+        const filePathRaw = normalize(d.file_path);
+
+        return (
+          title === target ||
+          titleWithoutExt === targetWithoutExt ||
+          decodedPathName === target ||
+          pathWithoutExt === targetWithoutExt ||
+          filePathRaw.includes(target)
+        );
+      });
+
       if (match) {
-        const url = match.file_path.startsWith('http') ? match.file_path : `/api/v1/${match.file_path}`;
+        const url = api.resolveDocumentFileUrl(match.file_path);
         setPreviewFile({ name: match.title, url });
       } else {
-        // File not yet in DB (upload may be in progress) - show a brief toast
+        showToast('Không tìm thấy tệp để xem trước. Vui lòng thử lại sau vài giây.', 'warning');
         console.warn('File not found in document store:', fileName);
       }
     } catch (err) {
+      showToast('Không thể tải liên kết xem trước tệp.', 'error');
       console.error('Failed to look up file:', err);
     } finally {
       setLookingUpFile(false);
@@ -142,71 +185,198 @@ export default function Chat() {
     }
   }, [sessionId]);
 
+  const stopPolling = () => {
+    if (pollingIntervalRef.current !== null) {
+      window.clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    pollingRetryRef.current = 0;
+    pollingInFlightRef.current = false;
+    pollingActiveRef.current = false;
+    pollingSessionIdRef.current = null;
+    pollingTargetUserMessageIdRef.current = null;
+  };
+
+  useEffect(() => {
+    stopPolling();
+    setSendingSessionId(null);
+    setStatusText('');
+    autoResumeAttemptedUserMessageIdRef.current = null;
+    pollingTerminatedUserMessageIdRef.current = null;
+  }, [sessionId]);
+
+  const startPolling = (sid: string, targetUserMessageId?: string) => {
+    if (!sid) return;
+    if (pollingActiveRef.current && pollingSessionIdRef.current === sid) return;
+
+    stopPolling();
+    pollingActiveRef.current = true;
+    pollingSessionIdRef.current = sid;
+    setSendingSessionId(sid);
+    pollingRetryRef.current = 0;
+    pollingTargetUserMessageIdRef.current = targetUserMessageId || null;
+
+    const maxRetries = 30; // 30 retries * 2s = 60s max wait
+    const statuses = [
+      'AI đang suy nghĩ...',
+      'Đang phân tích yêu cầu...',
+      'Đang trích xuất dữ liệu...',
+      'Đang chuẩn bị phản hồi...',
+    ];
+
+    const tick = async () => {
+      if (pollingInFlightRef.current) return;
+      pollingInFlightRef.current = true;
+      setStatusText(statuses[pollingRetryRef.current % statuses.length]);
+
+      try {
+        const updatedMessages = await api.getMessages(sid);
+        setMessages(updatedMessages);
+
+        const latestUserMessageId = [...updatedMessages]
+          .reverse()
+          .find((m) => m.role === 'user')?.id || null;
+
+        const targetId = pollingTargetUserMessageIdRef.current;
+        const hasAssistantAfterTarget = (() => {
+          if (!targetId) {
+            const lastMsg = updatedMessages[updatedMessages.length - 1];
+            return !!lastMsg && lastMsg.role === 'assistant';
+          }
+
+          const targetIndex = updatedMessages.findIndex((m) => m.id === targetId);
+          if (targetIndex === -1) return false;
+
+          return updatedMessages
+            .slice(targetIndex + 1)
+            .some((m) => m.role === 'assistant');
+        })();
+
+        if (hasAssistantAfterTarget) {
+          pollingTerminatedUserMessageIdRef.current = null;
+          stopPolling();
+          setStatusText('');
+          setSendingSessionId(null);
+          window.dispatchEvent(new Event('chat_activity_updated'));
+          return;
+        }
+
+        pollingRetryRef.current += 1;
+        if (pollingRetryRef.current >= maxRetries) {
+          pollingTerminatedUserMessageIdRef.current = targetId || latestUserMessageId;
+          stopPolling();
+          setStatusText('');
+          setSendingSessionId(null);
+          showToast('Quá thời gian phản hồi. Vui lòng thử lại.', 'warning');
+        }
+      } catch (err) {
+        console.error('Polling error:', err);
+        pollingRetryRef.current += 1;
+        if (pollingRetryRef.current >= maxRetries) {
+          pollingTerminatedUserMessageIdRef.current = pollingTargetUserMessageIdRef.current;
+          stopPolling();
+          setStatusText('');
+          setSendingSessionId(null);
+          showToast('Không thể đồng bộ phản hồi từ máy chủ. Vui lòng thử lại.', 'error');
+        }
+      } finally {
+        pollingInFlightRef.current = false;
+      }
+    };
+
+    void tick();
+    pollingIntervalRef.current = window.setInterval(() => {
+      void tick();
+    }, 2000);
+  };
+
   // ── Handle sending message ──────────────────────────────────
   const handleSend = async (content: string) => {
-    if (sendingSessionId || statusText) return; // Prevent spam clicks
+    if (isSubmittingMessage || sendingSessionId) return;
+
     let currentId = sessionId;
+    let optimisticMessageId: string | null = null;
 
     // Clear thanh nhập Input ngay sau khi sendMessage
     setComposerValue('');
+    setIsSubmittingMessage(true);
+    setStatusText('Đang gửi tin nhắn...');
 
     try {
-      setSendingSessionId(currentId || 'new');
-
       // Nếu chưa có session, tạo session mới trước
       if (!currentId) {
-        const title = content.length > 30 ? content.slice(0, 30) + '...' : content;
+        const title = content.length > 30 ? `${content.slice(0, 30)}...` : content;
         const newSession = await api.createSession(title);
         currentId = newSession.id;
-        // Navigation will happen, but we want to keep the "sending" state for this new ID
-        setSendingSessionId(currentId);
-      }
-
-      // Gửi tin nhắn thực tế (Chỉ có tin nhắn User được lưu ở DB lúc này)
-      const userMessage = await api.sendMessage(currentId, content);
-
-      // Cập nhật UI ngay lập tức với tin nhắn của user
-      setMessages(prev => [...prev, userMessage]);
-
-      // Nếu là session mới, cập nhật URL
-      if (!sessionId && currentId) {
         navigate(`/chat/${currentId}`, { replace: true });
       }
 
-      // Phát sự kiện để Sidebar cập nhật lại thứ tự
-      window.dispatchEvent(new Event('chat_activity_updated'));
-
-      // (Giả lập) Đợi phản hồi từ AI trong 10 giây với các thông điệp trạng thái động
-      const statuses = [
-        "Đang xử lý đầu vào...",
-        "Đang phân tích dữ liệu...",
-        "Đang truy xuất kiến thức...",
-        "Đang chuẩn bị câu trả lời..."
-      ];
-
-      for (const status of statuses) {
-        setStatusText(status);
-        await new Promise((resolve) => setTimeout(resolve, 2500));
+      if (!currentId) {
+        throw new Error('Không thể xác định session hiện tại');
       }
 
-      // SAU 10 GIÂY: Gọi API Mock để Backend lưu tin nhắn AI vào DB
-      await api.mockAssistantMessage(currentId);
+      // Render ngay lập tức để UI phản hồi tức thì, không phụ thuộc độ trễ API
+      optimisticMessageId = `temp-${Date.now()}`;
+      const optimisticMessage: ChatMessage = {
+        id: optimisticMessageId,
+        session_id: currentId,
+        role: 'user',
+        content,
+        feedback: null,
+        token_count: null,
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, optimisticMessage]);
 
-      // Cập nhật lại danh sách messages từ DB
-      const updatedMessages = await api.getMessages(currentId);
-      setMessages(updatedMessages);
+      // Gửi tin nhắn thực tế để backend lưu và xử lý AI trong nền
+      const userMessage = await api.sendMessage(currentId, content);
+      setMessages((prev) => {
+        const withoutOptimistic = prev.filter((m) => m.id !== optimisticMessageId);
+        if (withoutOptimistic.some((m) => m.id === userMessage.id)) {
+          return withoutOptimistic;
+        }
+        return [...withoutOptimistic, userMessage];
+      });
 
-      // Cập nhật thẻ chat lại trên sidebar (sau 10s)
+      // Bắt đầu polling chỉ sau khi user message đã được backend chấp nhận
+      pollingTerminatedUserMessageIdRef.current = null;
+      autoResumeAttemptedUserMessageIdRef.current = userMessage.id;
+      startPolling(currentId, userMessage.id);
+
+      // Cập nhật sidebar
       window.dispatchEvent(new Event('chat_activity_updated'));
-
     } catch (err: any) {
+      if (optimisticMessageId) {
+        setMessages((prev) => prev.filter((m) => m.id !== optimisticMessageId));
+      }
+      stopPolling();
+      setSendingSessionId(null);
+      setStatusText('');
       console.error('Failed to send message:', err);
       showToast('Có lỗi xảy ra khi gửi tin nhắn.', 'system-error');
     } finally {
-      setSendingSessionId(null);
-      setStatusText('');
+      setIsSubmittingMessage(false);
     }
   };
+
+  // Handle reloads / page revisits: if last message is from user, resume polling automatically
+  useEffect(() => {
+    if (!sessionId || isLoading || isSubmittingMessage || sendingSessionId) return;
+    if (pollingActiveRef.current) return;
+    if (messages.length === 0) return;
+
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.role !== 'user') return;
+
+    // After timeout/error, do not auto-restart polling for the same user message.
+    if (pollingTerminatedUserMessageIdRef.current === lastMsg.id) return;
+
+    // Only auto-resume once per unresolved user message to avoid infinite loop restarts.
+    if (autoResumeAttemptedUserMessageIdRef.current === lastMsg.id) return;
+
+    autoResumeAttemptedUserMessageIdRef.current = lastMsg.id;
+    startPolling(sessionId, lastMsg.id);
+  }, [messages, isLoading, isSubmittingMessage, sendingSessionId, sessionId]);
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -219,7 +389,7 @@ export default function Chat() {
   };
 
   const handleReload = () => {
-    if (sendingSessionId || statusText) return; // Prevent spam clicks
+    if (isSubmittingMessage || sendingSessionId) return; // Prevent spam clicks
     if (messages.length > 0) {
       const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
       if (lastUserMsg) handleSend(lastUserMsg.content);
@@ -249,6 +419,7 @@ export default function Chat() {
 
   useEffect(() => {
     return () => {
+      stopPolling();
       if (composerStatusTimerRef.current) {
         window.clearTimeout(composerStatusTimerRef.current);
       }
@@ -446,7 +617,7 @@ export default function Chat() {
                     );
                   })}
 
-                  {sendingSessionId === (sessionId || 'new') && (
+                  {(isSubmittingMessage || sendingSessionId === (sessionId || 'new')) && (
                     <div className="flex justify-start mb-4 animate-in fade-in duration-300 gap-4">
                       <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center shrink-0 mt-1 shadow-sm border border-primary/20">
                         <Hexagon className="w-4 h-4 text-on-primary-fixed" />
@@ -468,7 +639,7 @@ export default function Chat() {
                             }}
                             className="text-sm font-bold text-primary bg-gradient-to-r from-primary via-primary/70 to-primary bg-[length:200%_auto] animate-shimmer bg-clip-text text-transparent min-w-[180px]"
                           >
-                            {statusText || "Đang chuẩn bị..."}
+                            {statusText || 'Đang chuẩn bị...'}
                           </motion.span>
                         </AnimatePresence>
                       </div>
@@ -485,7 +656,7 @@ export default function Chat() {
         <div className="w-full shrink-0 flex justify-center px-2 md:px-12 pb-1">
           <ChatComposer
             onSend={handleSend}
-            disabled={!!sendingSessionId}
+            disabled={isSubmittingMessage || !!sendingSessionId}
             value={composerValue}
             onValueChange={setComposerValue}
             statusMessage={composerStatus}

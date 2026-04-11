@@ -1,5 +1,38 @@
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const DEFAULT_TIMEOUT = 15000; // 15 seconds
+const ABSOLUTE_HTTP_URL_REGEX = /^https?:\/\//i;
+
+function joinApiUrl(path: string): string {
+  const normalizedBase = API_BASE.replace(/\/+$/, '');
+  const normalizedPath = path.replace(/^\/+/, '');
+  return `${normalizedBase}/${normalizedPath}`;
+}
+
+/**
+ * Resolve a document file_path from backend into a fully qualified URL.
+ * Handles legacy relative paths (uploads/*), API-prefixed paths, and full HTTP URLs.
+ */
+export function resolveDocumentFileUrl(filePath: string): string {
+  const rawPath = (filePath || '').trim();
+  if (!rawPath) return rawPath;
+
+  if (ABSOLUTE_HTTP_URL_REGEX.test(rawPath)) {
+    return rawPath;
+  }
+
+  const normalized = rawPath.replace(/\\/g, '/');
+  const withoutLeadingSlash = normalized.replace(/^\/+/, '');
+
+  if (withoutLeadingSlash.startsWith('api/v1/')) {
+    return joinApiUrl(withoutLeadingSlash);
+  }
+
+  if (withoutLeadingSlash.startsWith('uploads/')) {
+    return joinApiUrl(`api/v1/${withoutLeadingSlash}`);
+  }
+
+  return joinApiUrl(`api/v1/${withoutLeadingSlash}`);
+}
 
 /**  Generic fetch wrapper with auth token injection, timeout and error handling. */
 async function request<T>(
@@ -317,16 +350,6 @@ export function getMessages(sessionId: string) {
   );
 }
 
-// Mock API Test Response from RAG AI
-export function mockAssistantMessage(sessionId: string) {
-  return request<ChatMessage>(
-    `/api/v1/chat/sessions/${sessionId}/messages/mock`,
-    {
-      method: 'POST',
-    },
-  );
-}
-
 export function submitMessageFeedback(messageId: string, feedback: 'like' | 'dislike' | null) {
   return request<ChatMessage>(`/api/v1/chat/messages/${messageId}/feedback`, {
     method: 'PUT',
@@ -344,6 +367,7 @@ export interface DocumentResponse {
   file_size: number | null;
   status: 'pending' | 'processing' | 'ready' | 'failed';
   uploaded_by: string | null;
+  session_id?: string | null;
   chunk_count: number;
   error_message: string | null;
   created_at: string;
@@ -370,9 +394,18 @@ export function extractTextFromImage(file: File) {
   });
 }
 
-export function listDocuments(skip = 0, limit = 50) {
+export function listDocuments(skip = 0, limit = 50, sessionId?: string) {
+  const params = new URLSearchParams({
+    skip: String(skip),
+    limit: String(limit),
+  });
+
+  if (sessionId) {
+    params.set('session_id', sessionId);
+  }
+
   return request<{ items: DocumentResponse[]; total: number }>(
-    `/api/v1/documents?skip=${skip}&limit=${limit}`,
+    `/api/v1/documents?${params.toString()}`,
   );
 }
 
