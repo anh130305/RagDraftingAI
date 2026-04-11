@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, RequireAuth, RedirectIfAuth } from './lib/AuthContext';
 import { ToastProvider } from './lib/ToastContext';
+import { ConfirmProvider } from './lib/ConfirmContext';
 import FullScreenLoader from './components/FullScreenLoader';
 import UserLayout from './components/UserLayout';
 
@@ -22,29 +23,31 @@ export default function App() {
       <BrowserRouter>
         <AuthProvider>
           <ToastProvider>
-            <Suspense fallback={<LoadingFallback />}>
-              <Routes>
-                {/* Default redirect */}
-                <Route path="/" element={<Navigate to="/chat" replace />} />
+            <ConfirmProvider>
+              <Suspense fallback={<LoadingFallback />}>
+                <Routes>
+                  {/* Default redirect */}
+                  <Route path="/" element={<Navigate to="/chat" replace />} />
 
-                {/* Public routes — redirect to /chat if already logged in */}
-                <Route path="/login" element={<RedirectIfAuth><Login /></RedirectIfAuth>} />
-                <Route path="/register" element={<RedirectIfAuth><Register /></RedirectIfAuth>} />
+                  {/* Public routes — redirect to /chat if already logged in */}
+                  <Route path="/login" element={<RedirectIfAuth><Login /></RedirectIfAuth>} />
+                  <Route path="/register" element={<RedirectIfAuth><Register /></RedirectIfAuth>} />
 
-                {/* Protected user routes — share a single persistent UserLayout (sidebar stays alive) */}
-                <Route element={<RequireAuth><UserLayout /></RequireAuth>}>
-                  <Route path="/chat/:sessionId?" element={<Chat />} />
-                  <Route path="/settings" element={<WorkspaceSettings />} />
-                  <Route path="/chat/settings" element={<WorkspaceSettings />} />
-                </Route>
+                  {/* Protected user routes — share a single persistent UserLayout (sidebar stays alive) */}
+                  <Route element={<RequireAuth><UserLayout /></RequireAuth>}>
+                    <Route path="/chat/:sessionId?" element={<Chat />} />
+                    <Route path="/settings" element={<WorkspaceSettings />} />
+                    <Route path="/chat/settings" element={<WorkspaceSettings />} />
+                  </Route>
 
-                {/* Admin console — has its own layout */}
-                <Route path="/admin" element={<RequireAuth><AdminConsoleApp /></RequireAuth>} />
+                  {/* Admin console — has its own layout */}
+                  <Route path="/admin" element={<RequireAuth><AdminConsoleApp /></RequireAuth>} />
 
-                {/* Catch-all */}
-                <Route path="*" element={<Navigate to="/chat" replace />} />
-              </Routes>
-            </Suspense>
+                  {/* Catch-all */}
+                  <Route path="*" element={<Navigate to="/chat" replace />} />
+                </Routes>
+              </Suspense>
+            </ConfirmProvider>
           </ToastProvider>
         </AuthProvider>
       </BrowserRouter>

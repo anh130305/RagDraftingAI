@@ -26,6 +26,7 @@ import {
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useToast } from '../lib/ToastContext';
+import { useConfirm } from '../lib/ConfirmContext';
 import * as api from '../lib/api';
 import type { ChatSession } from '../lib/api';
 import '../styles/chat-auth.css';
@@ -60,6 +61,7 @@ export function useUserTheme() {
 export default function UserShell({ children, isLoading = false, loadingText }: Omit<UserShellProps, 'activeNav'>) {
   const { user, logout } = useAuth();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const location = useLocation();
   const activeNav: UserNav = location.pathname.startsWith('/settings') ? 'settings' : 'chat';
   const [theme, setTheme] = useState<ThemeMode>(() => {
@@ -169,10 +171,18 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
       e.stopPropagation();
     }
     try {
-      if (confirm('Bạn có chắc chắn muốn xóa hội thoại này?')) {
+      const isConfirmed = await confirm({
+        title: 'Xóa hội thoại',
+        message: 'Bạn có chắc chắn muốn xóa hội thoại này? Toàn bộ nội dung tin nhắn sẽ bị mất vĩnh viễn.',
+        confirmLabel: 'Xóa ngay',
+        variant: 'danger'
+      });
+
+      if (isConfirmed) {
         await api.deleteSession(id);
         setSessions(prev => prev.filter(s => s.id !== id));
         if (sessionId === id) navigate('/chat');
+        showToast('Đã xóa hội thoại thành công', 'success');
       }
     } catch (err) {
       console.error('Failed to delete session:', err);

@@ -10,6 +10,7 @@ import os
 import time
 import logging
 from sqlalchemy.exc import OperationalError
+from sqlalchemy import text
 
 from app.core.config import settings
 from app.api.v1.router import api_router
@@ -21,6 +22,18 @@ from app.core.rate_limit import init_rate_limiting
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+def ensure_runtime_schema() -> None:
+    """Apply safe, idempotent schema fixes for existing deployments."""
+    engine = get_engine()
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_documents_session_id "
+                "ON documents (session_id)"
+            )
+        )
+
 # ── Create tables with retry logic ───────────────────────────
 max_retries = 10
 retry_delay = 3
@@ -29,6 +42,7 @@ for attempt in range(max_retries):
     try:
         logger.info(f"Connecting to database (Attempt {attempt + 1}/{max_retries})...")
         Base.metadata.create_all(bind=get_engine())
+        ensure_runtime_schema()
         logger.info("Database connection successful. Tables verified.")
         break
     except OperationalError as e:
