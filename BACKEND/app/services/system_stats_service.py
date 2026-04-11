@@ -18,6 +18,9 @@ try:
 except ImportError:
     _PSUTIL_OK = False
 
+from app.services import cloudinary_service
+
+
 # ── pynvml (NVIDIA only) ──────────────────────────────────────────────────────
 try:
     from pynvml import (  # provided by nvidia-ml-py package
@@ -196,6 +199,7 @@ def get_system_stats() -> dict[str, Any]:
         "gpu_count": len(gpus) if not is_mock else 0,
         "gpus": gpus,
         "system": system,
+        "storage": cloudinary_service.get_health_status(),
         "vram_history": list(_vram_history),
         "collected_at": datetime.utcnow().isoformat() + "Z",
     }

@@ -5,7 +5,7 @@ routes.documents – Document upload, listing, detail, and chunk retrieval.
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, UploadFile, File, Form, Query, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, UploadFile, File, Form, Query, Request, BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_current_user
@@ -13,6 +13,12 @@ from app.models.user import User
 from app.schemas.document import DocumentResponse, DocumentWithChunks, DocumentListResponse
 from app.services import document_service, audit_service
 from app.models.audit_log import AuditAction
+from app.services import cloudinary_service
+import io
+import pytesseract
+import fitz
+import docx
+from PIL import Image
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -23,11 +29,35 @@ def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     title: Optional[str] = Form(None),
+    chat_session_id: Optional[str] = Form("general"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Upload a document."""
-    file_path = f"uploads/{file.filename}"
+    try:
+        # Use cloudinary if configured
+        cloudinary_res = cloudinary_service.upload_to_cloudinary(
+            file, 
+            user_id=str(current_user.id), 
+            session_id=chat_session_id
+        )
+        file_path = cloudinary_res["url"]
+        cloudinary_public_id = cloudinary_res["public_id"]
+    except Exception as e:
+        # Log failure to audit trail
+        background_tasks.add_task(
+            audit_service.log_action,
+            user_id=current_user.id,
+            action=AuditAction.storage_error,
+            resource_type="storage",
+            detail={"error": str(e), "filename": file.filename},
+            ip_address=request.client.host if request.client else None
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Máy chủ gặp lỗi lưu trữ. Vui lòng thử lại sau hoặc liên hệ quản trị viên."
+        )
+
 
     doc = document_service.upload_document(
         db,
@@ -36,6 +66,8 @@ def upload_document(
         file_type=file.content_type,
         file_size=file.size,
         uploaded_by=current_user.id,
+        session_id=UUID(chat_session_id) if chat_session_id and chat_session_id != "general" else None,
+        cloudinary_public_id=cloudinary_public_id,
     )
     
     background_tasks.add_task(
@@ -49,6 +81,37 @@ def upload_document(
     
     return doc
 
+
+@router.post("/extract-text")
+def extract_text_from_file(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """Run extraction on uploaded image, pdf, or docx and return extracted text."""
+    try:
+        contents = file.file.read()
+        filename = file.filename.lower() if file.filename else ""
+        
+        if filename.endswith(".pdf"):
+            doc = fitz.open(stream=contents, filetype="pdf")
+            text = ""
+            for page in doc:
+                text += page.get_text()
+            doc.close()
+            return {"text": text.strip()}
+            
+        elif filename.endswith(".docx"):
+            doc = docx.Document(io.BytesIO(contents))
+            text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+            return {"text": text.strip()}
+            
+        else: # assume image
+            image = Image.open(io.BytesIO(contents))
+            text = pytesseract.image_to_string(image, lang='vie+eng')
+            return {"text": text.strip()}
+            
+    except Exception as e:
+        return {"text": "", "error": str(e)}
 
 @router.get("", response_model=DocumentListResponse)
 def list_documents(

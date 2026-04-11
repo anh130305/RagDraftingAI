@@ -16,17 +16,63 @@ import {
   Pencil,
   Hexagon,
   Check,
+  FileText,
+  X,
+  Download,
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import * as api from './lib/api';
 import type { ChatMessage } from './lib/api';
+import { useToast } from './lib/ToastContext';
 import ChatComposer from './components/ChatComposer';
-import UserShell from './components/UserShell';
 
 export default function Chat() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const isLanding = !sessionId;
+
+  // Parse message content: separate typed text from [Nội dung tệp X]: blocks
+  const parseMessageContent = (content: string): { text: string; fileNames: string[] } => {
+    const fileNames: string[] = [];
+    // Match [Nội dung tệp ...]: blocks
+    const extractPattern = /\[Nội dung tệp (.+?)\]:[\s\S]*?(?=\[Nội dung tệp |$)/g;
+    // Match [Tệp đính kèm: ...] placeholders (when no extraction happened)
+    const attachPattern = /\[Tệp đính kèm: (.+?)\]/g;
+    let match;
+    while ((match = extractPattern.exec(content)) !== null) fileNames.push(match[1]);
+    // Reset to check attach pattern only if nothing from extract
+    if (fileNames.length === 0) {
+      while ((match = attachPattern.exec(content)) !== null) fileNames.push(match[1]);
+    }
+    // Remove file blocks from visible text
+    let text = content
+      .replace(/\[Nội dung tệp .+?\]:[\s\S]*?(?=\[Nội dung tệp |$)/g, '')
+      .replace(/\[Tệp đính kèm: .+?\]/g, '')
+      .trim();
+    return { text, fileNames };
+  };
+
+  // Get icon/color info for a file chip based on its extension
+  const getFileChipInfo = (fileName: string) => {
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    const baseName = fileName.includes('.') ? fileName.slice(0, fileName.lastIndexOf('.')) : fileName;
+    const typeMap: Record<string, { label: string; iconBg: string; iconColor: string }> = {
+      pdf: { label: 'PDF', iconBg: 'bg-red-500/15', iconColor: 'text-red-400' },
+      docx: { label: 'DOCX', iconBg: 'bg-blue-500/15', iconColor: 'text-blue-400' },
+      doc: { label: 'DOC', iconBg: 'bg-blue-500/15', iconColor: 'text-blue-400' },
+      xlsx: { label: 'XLSX', iconBg: 'bg-green-500/15', iconColor: 'text-green-400' },
+      xls: { label: 'XLS', iconBg: 'bg-green-500/15', iconColor: 'text-green-400' },
+      ipynb: { label: 'IPYNB', iconBg: 'bg-red-500/15', iconColor: 'text-red-400' },
+      txt: { label: 'TXT', iconBg: 'bg-gray-500/15', iconColor: 'text-gray-400' },
+      png: { label: 'PNG', iconBg: 'bg-purple-500/15', iconColor: 'text-purple-400' },
+      jpg: { label: 'JPG', iconBg: 'bg-purple-500/15', iconColor: 'text-purple-400' },
+      jpeg: { label: 'JPEG', iconBg: 'bg-purple-500/15', iconColor: 'text-purple-400' },
+      md: { label: 'MD', iconBg: 'bg-sky-500/15', iconColor: 'text-sky-400' },
+    };
+    const info = typeMap[ext] || { label: ext.toUpperCase() || 'FILE', iconBg: 'bg-primary/15', iconColor: 'text-primary' };
+    return { baseName, ext: ext.toUpperCase(), ...info };
+  };
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -36,6 +82,41 @@ export default function Chat() {
   const [statusText, setStatusText] = useState('');
   const [composerStatus, setComposerStatus] = useState<string | undefined>(undefined);
   const composerStatusTimerRef = useRef<number | null>(null);
+  // File preview state
+  const [previewFile, setPreviewFile] = useState<{ name: string; url: string } | null>(null);
+  const [lookingUpFile, setLookingUpFile] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages or status changes
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, statusText]);
+
+  // Look up file URL from DB and open preview
+  const handleFileChipClick = async (fileName: string) => {
+    if (lookingUpFile) return;
+    setLookingUpFile(true);
+    try {
+      const docs = await api.listDocuments(0, 100);
+      // Find the document whose title or file_path matches the filename
+      const match = docs.items.find(d =>
+        d.title === fileName ||
+        d.file_path.includes(fileName) ||
+        d.title.replace(/\.[^/.]+$/, '') === fileName.replace(/\.[^/.]+$/, '')
+      );
+      if (match) {
+        const url = match.file_path.startsWith('http') ? match.file_path : `/api/v1/${match.file_path}`;
+        setPreviewFile({ name: match.title, url });
+      } else {
+        // File not yet in DB (upload may be in progress) - show a brief toast
+        console.warn('File not found in document store:', fileName);
+      }
+    } catch (err) {
+      console.error('Failed to look up file:', err);
+    } finally {
+      setLookingUpFile(false);
+    }
+  };
 
   // Find the index of the latest user message
   const latestUserMsgIndex = [...messages].reverse().findIndex(m => m.role === 'user');
@@ -118,9 +199,9 @@ export default function Chat() {
       // Cập nhật thẻ chat lại trên sidebar (sau 10s)
       window.dispatchEvent(new Event('chat_activity_updated'));
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to send message:', err);
-      alert('Có lỗi xảy ra khi gửi tin nhắn.');
+      showToast('Có lỗi xảy ra khi gửi tin nhắn.', 'system-error');
     } finally {
       setSendingSessionId(null);
       setStatusText('');
@@ -135,29 +216,6 @@ export default function Chat() {
 
   const handleEdit = (content: string) => {
     setComposerValue(content);
-  };
-
-  const handleUploadAttachment = async (file: File) => {
-    if (sendingSessionId || statusText) return;
-
-    try {
-      if (composerStatusTimerRef.current) {
-        window.clearTimeout(composerStatusTimerRef.current);
-      }
-
-      setComposerStatus(`Đang tải lên ${file.name}...`);
-      await api.uploadDocument(file, file.name);
-      setComposerStatus(`Đã tải lên ${file.name}`);
-
-      composerStatusTimerRef.current = window.setTimeout(() => {
-        setComposerStatus(undefined);
-      }, 3000);
-    } catch (err) {
-      console.error('Failed to upload attachment:', err);
-      setComposerStatus(undefined);
-      alert('Có lỗi xảy ra khi tải tệp lên.');
-      throw err;
-    }
   };
 
   const handleReload = () => {
@@ -198,8 +256,17 @@ export default function Chat() {
   }, []);
 
   return (
-    <UserShell activeNav="chat" isLoading={isLoading} loadingText="Đang tải đoạn chat...">
+    <>
       <div className="relative flex-1 flex flex-col overflow-hidden">
+        {/* Inline loading overlay when switching sessions */}
+        {isLoading && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm text-on-surface-variant font-medium">Đang tải đoạn chat...</span>
+            </div>
+          </div>
+        )}
         {/* Chat Area */}
         <section className="flex-1 flex flex-col items-center px-2 md:px-12 pb-4 overflow-y-auto w-full relative no-scrollbar">
           <AnimatePresence mode="wait">
@@ -275,15 +342,50 @@ export default function Chat() {
                           </div>
                         )}
 
-                        <div className={`flex flex-col max-w-[85%] md:max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
-                          <div className={`px-5 py-3 rounded-2xl shadow-sm ${isUser
-                            ? 'bg-primary text-on-primary-fixed rounded-tr-none'
-                            : 'bg-surface-container-high text-on-surface rounded-tl-none border border-outline-variant/10'
-                            }`}>
-                            <p className="text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap font-body">
-                              {msg.content}
-                            </p>
-                          </div>
+                        <div className={`flex flex-col gap-2 max-w-[85%] md:max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
+                          {(() => {
+                            const { text, fileNames } = isUser ? parseMessageContent(msg.content) : { text: msg.content, fileNames: [] };
+                            return (
+                              <>
+                                {/* File attachment bubbles - each as its own card */}
+                                {fileNames.map((name, i) => {
+                                  const chipInfo = getFileChipInfo(name);
+                                  return (
+                                    <div
+                                      key={i}
+                                      onClick={() => handleFileChipClick(name)}
+                                      className="flex items-center gap-3 px-4 py-3 bg-surface-container-high border border-outline-variant/20 rounded-2xl rounded-br-none shadow-sm min-w-[180px] max-w-[260px] self-end cursor-pointer hover:border-primary/40 hover:bg-surface-highest transition-colors"
+                                    >
+                                      <div className={`w-9 h-9 rounded-xl ${chipInfo.iconBg} flex items-center justify-center shrink-0`}>
+                                        {lookingUpFile
+                                          ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin opacity-60" />
+                                          : <FileText className={`w-4.5 h-4.5 ${chipInfo.iconColor}`} />}
+                                      </div>
+                                      <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-semibold text-on-surface truncate" title={name}>{chipInfo.baseName}</p>
+                                        <p className={`text-xs font-bold mt-0.5 ${chipInfo.iconColor}`}>{chipInfo.label}</p>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                                {/* Text bubble */}
+                                {text && (
+                                  <div className={`px-5 py-3 rounded-2xl shadow-sm ${isUser
+                                    ? 'bg-primary text-on-primary-fixed rounded-tr-none'
+                                    : 'bg-surface-container-high text-on-surface rounded-tl-none border border-outline-variant/10'
+                                    }`}>
+                                    <p className="text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap font-body">{text}</p>
+                                  </div>
+                                )}
+                                {/* Fallback if only files with no typed text and no extract */}
+                                {!text && fileNames.length === 0 && (
+                                  <div className="px-5 py-3 rounded-2xl shadow-sm bg-primary text-on-primary-fixed rounded-tr-none">
+                                    <p className="text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap font-body">{msg.content}</p>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
 
                           {/* Toolbar */}
                           <div className={`flex items-center gap-1 mt-2 transition-opacity ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -372,6 +474,7 @@ export default function Chat() {
                       </div>
                     </div>
                   )}
+                  <div ref={messagesEndRef} className="h-10 shrink-0" />
                 </div>
               </motion.div>
             )}
@@ -385,15 +488,74 @@ export default function Chat() {
             disabled={!!sendingSessionId}
             value={composerValue}
             onValueChange={setComposerValue}
-            onUploadFile={handleUploadAttachment}
-            onUploadImage={handleUploadAttachment}
             statusMessage={composerStatus}
+            chatSessionId={sessionId}
           />
         </div>
         {/* Subtle Ambient Background Decorations */}
         <div className="absolute top-1/4 -left-20 w-96 h-96 bg-primary/5 rounded-full blur-[120px] -z-10"></div>
         <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-tertiary/5 rounded-full blur-[120px] -z-10"></div>
       </div>
+
+      {/* File Preview Modal */}
+      {previewFile && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setPreviewFile(null)}>
+          <div className="bg-surface border border-outline-variant rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="px-5 py-3 border-b border-outline-variant/30 flex justify-between items-center bg-surface-low shrink-0">
+              <h3 className="font-bold text-on-surface truncate flex-1 pr-4">{previewFile.name}</h3>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewFile.url}
+                  download
+                  className="flex items-center gap-2 px-3 py-1.5 bg-primary text-on-primary hover:bg-primary/90 rounded-lg transition-colors text-sm font-semibold"
+                >
+                  <Download className="w-4 h-4" /> Tải về
+                </a>
+                <button onClick={() => setPreviewFile(null)} className="p-2 hover:bg-surface-highest rounded-full text-on-surface-variant transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            {/* Content */}
+            <div className="flex-1 overflow-hidden bg-surface-lowest flex items-center justify-center relative">
+              {(() => {
+                const fileName = previewFile.name.toLowerCase();
+                const isWord = fileName.endsWith('.docx') || fileName.endsWith('.doc');
+                const isPDF = fileName.endsWith('.pdf');
+
+                if (isWord) {
+                  return (
+                    <div className="flex flex-col items-center gap-4 py-12 text-center px-8">
+                      <FileText className="w-16 h-16 text-blue-400 opacity-60" />
+                      <h4 className="text-lg font-bold text-on-surface">Không thể xem trước Word trực tiếp</h4>
+                      <p className="text-sm text-on-surface-variant">Trình duyệt không hỗ trợ xem trước .docx. Hãy tải về để mở bằng Microsoft Word.</p>
+                      <a href={previewFile.url} download className="px-6 py-2.5 bg-primary text-on-primary rounded-xl font-bold hover:bg-primary/90 transition-colors">
+                        Tải xuống
+                      </a>
+                    </div>
+                  );
+                }
+
+                if (isPDF) {
+                  return (
+                    <embed
+                      src={previewFile.url}
+                      type="application/pdf"
+                      className="w-full h-full border-none"
+                    />
+                  );
+                }
+
+                // Default iframe for other types (Images, etc.)
+                return (
+                  <iframe src={previewFile.url} className="w-full h-full border-none" title="File Preview" />
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Mobile BottomNavBar (Visible only on mobile) */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full glass-morphism border-t border-outline-variant/10 flex justify-around items-center h-20 px-4 z-50">
         <a className="flex flex-col items-center gap-1 text-primary" href="#">
@@ -418,6 +580,7 @@ export default function Chat() {
           <span className="text-[10px] font-bold">Danh mục</span>
         </a>
       </nav>
-    </UserShell>
+    </>
   );
 }
+

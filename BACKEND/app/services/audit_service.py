@@ -3,7 +3,7 @@ services.audit_service – Audit log creation and retrieval.
 """
 
 from typing import Optional, Any
-from uuid import UUID
+from uuid import UUID, UUID as py_uuid
 
 from sqlalchemy.orm import Session
 
@@ -31,6 +31,15 @@ def log_action(
     own_session = db is None
     if own_session:
         db = get_session_local()()
+        
+    try:
+        if isinstance(user_id, str):
+            user_id = py_uuid(user_id)
+        if isinstance(resource_id, str):
+            resource_id = py_uuid(resource_id)
+    except ValueError:
+        pass
+        
     try:
         audit_repo.create(
             db,

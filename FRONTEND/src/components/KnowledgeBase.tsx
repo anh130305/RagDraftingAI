@@ -7,9 +7,13 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import * as api from '../lib/api';
+import { useToast } from '../lib/ToastContext';
+import { useConfirm } from '../lib/ConfirmContext';
 import type { DocumentResponse } from '../lib/api';
 
 export default function KnowledgeBase() {
+  const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -74,12 +78,21 @@ export default function KnowledgeBase() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Bạn có chắc muốn xóa tài liệu này không? Việc này sẽ xóa toàn bộ vector liên quan.')) return;
+    const isConfirmed = await confirm({
+      title: 'Xóa tài liệu',
+      message: 'Bạn có chắc muốn xóa tài liệu này không? Việc này sẽ xóa toàn bộ vector liên quan.',
+      confirmLabel: 'Xóa tài liệu',
+      variant: 'danger'
+    });
+
+    if (!isConfirmed) return;
+
     try {
       await api.deleteDocument(id);
       await fetchDocuments();
+      showToast('Đã xóa tài liệu thành công', 'success');
     } catch (err: any) {
-      alert(err.message || 'Lỗi khi xóa tài liệu');
+      showToast(err.message || 'Lỗi khi xóa tài liệu', 'error');
     }
   };
 

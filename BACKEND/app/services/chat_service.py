@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, ForbiddenError
 from app.repositories.chat_repo import session_repo, message_repo
+from app.services import cloudinary_service
+from app.models.document import Document
 from app.models.chat_message import MessageRole
 from app.models.chat_message import ChatMessage
 from app.schemas.chat import (
@@ -77,6 +79,17 @@ def delete_session(db: Session, session_id: UUID, user_id: UUID) -> None:
         raise NotFoundError("Chat session")
     if s.user_id != user_id:
         raise ForbiddenError("You do not own this session")
+    
+    # Broad cleanup on Cloudinary: delete the entire folder for this session.
+    # Storage cleanup should not block DB deletion if it fails.
+    try:
+        cloudinary_service.delete_session_folder(str(user_id), str(session_id))
+    except Exception:
+        pass
+
+    # Clean up associated documents in DB (cascades to chunks)
+    db.query(Document).filter(Document.session_id == session_id).delete(synchronize_session=False)
+
     session_repo.delete(db, id=session_id)
 
 

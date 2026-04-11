@@ -350,11 +350,21 @@ export interface DocumentResponse {
   updated_at: string;
 }
 
-export function uploadDocument(file: File, title?: string) {
+export function uploadDocument(file: File, title?: string, chatSessionId?: string) {
   const formData = new FormData();
   formData.append('file', file);
   if (title) formData.append('title', title);
+  if (chatSessionId) formData.append('chat_session_id', chatSessionId);
   return request<DocumentResponse>('/api/v1/documents/upload', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+export function extractTextFromImage(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return request<{ text: string }>('/api/v1/documents/extract-text', {
     method: 'POST',
     body: formData,
   });
@@ -406,6 +416,11 @@ export interface SystemStatsResponse {
   gpu_count: number;
   gpus: GpuInfo[];
   system: SystemInfo;
+  storage?: {
+    status: 'healthy' | 'error';
+    provider: string;
+    error_message: string | null;
+  };
   vram_history: VramHistoryPoint[];
   collected_at: string;
 }
