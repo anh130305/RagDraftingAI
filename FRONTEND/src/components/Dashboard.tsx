@@ -199,111 +199,123 @@ export default function Dashboard() {
       <div className="grid grid-cols-12 gap-4">
 
         {/* ── VRAM / GPU Chart ────────────────────────────────────────────── */}
-        <div className="col-span-12 lg:col-span-8 glass-card p-6 rounded-xl flex flex-col h-[400px]">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h3 className="text-lg font-bold font-headline">Sử dụng VRAM &amp; GPU</h3>
-              <p className="text-xs text-on-surface-variant">
-                {isMock ? 'Không phát hiện NVIDIA GPU trên máy chủ này' : primaryGpu?.name}
-              </p>
-            </div>
-            <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">
-              {isMock ? 'N/A' : `Hiện tại: ${fmt(vramPct, '%')}`}
-            </span>
+        <div className="col-span-12 lg:col-span-8 glass-card p-6 rounded-xl flex flex-col h-[400px] relative overflow-hidden">
+          {/* Subtle background animation */}
+          <div className="absolute inset-0 pointer-events-none opacity-[0.15]">
+            <NeuralCanvas nodeCount={30} speed={0.3} />
           </div>
+          <div className="relative z-10 flex flex-col h-full">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="text-lg font-bold font-headline">Sử dụng VRAM &amp; GPU</h3>
+                <p className="text-xs text-on-surface-variant">
+                  {isMock ? 'Không phát hiện NVIDIA GPU trên máy chủ này' : primaryGpu?.name}
+                </p>
+              </div>
+              <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">
+                {isMock ? 'N/A' : `Hiện tại: ${fmt(vramPct, '%')}`}
+              </span>
+            </div>
 
-          {isMock ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-on-surface-variant/50">
-              <svg className="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                <rect x="2" y="6" width="20" height="12" rx="2" />
-                <path d="M6 10h12M6 14h8" strokeLinecap="round" />
-                <circle cx="19" cy="12" r="1" fill="currentColor" />
-              </svg>
-              <p className="text-sm font-medium">Không có dữ liệu GPU</p>
-              <p className="text-xs text-center max-w-xs">
-                Biểu đồ VRAM chỉ hiển thị khi backend chạy trên máy có NVIDIA GPU và driver CUDA.
-              </p>
-            </div>
-          ) : (
-            <div className="flex-1 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={history}>
-                  <defs>
-                    <linearGradient id="colorVram" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="time" axisLine={false} tickLine={false}
-                    tick={{ fill: 'var(--on-surface-variant)', fontSize: 10, fontWeight: 700 }}
-                    interval="preserveStartEnd"
-                  />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--outline-variant)', borderRadius: '12px', fontSize: '12px' }}
-                    itemStyle={{ color: 'var(--primary)' }}
-                    formatter={(v: number) => [`${v.toFixed(1)}%`, 'VRAM']}
-                  />
-                  <Area type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={3}
-                    fillOpacity={1} fill="url(#colorVram)" isAnimationActive={false} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+            {isMock ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 text-on-surface-variant/50">
+                <svg className="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                  <rect x="2" y="6" width="20" height="12" rx="2" />
+                  <path d="M6 10h12M6 14h8" strokeLinecap="round" />
+                  <circle cx="19" cy="12" r="1" fill="currentColor" />
+                </svg>
+                <p className="text-sm font-medium">Không có dữ liệu GPU</p>
+                <p className="text-xs text-center max-w-xs">
+                  Biểu đồ VRAM chỉ hiển thị khi backend chạy trên máy có NVIDIA GPU và driver CUDA.
+                </p>
+              </div>
+            ) : (
+              <div className="flex-1 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={history}>
+                    <defs>
+                      <linearGradient id="colorVram" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="time" axisLine={false} tickLine={false}
+                      tick={{ fill: 'var(--on-surface-variant)', fontSize: 10, fontWeight: 700 }}
+                      interval="preserveStartEnd"
+                    />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--outline-variant)', borderRadius: '12px', fontSize: '12px' }}
+                      itemStyle={{ color: 'var(--primary)' }}
+                      formatter={(v: number) => [`${v.toFixed(1)}%`, 'VRAM']}
+                    />
+                    <Area type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={3}
+                      fillOpacity={1} fill="url(#colorVram)" isAnimationActive={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ── GPU Detail Card ──────────────────────────────────────────────── */}
-        <div className="col-span-12 lg:col-span-4 glass-card p-6 rounded-xl flex flex-col h-[400px]">
-          <h3 className="text-lg font-bold font-headline mb-1">Chi tiết GPU</h3>
-          <p className="text-xs text-on-surface-variant mb-5">
-            {primaryGpu?.name ?? 'Không phát hiện NVIDIA GPU'}
-          </p>
-
-          <div className="mb-4">
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-on-surface-variant flex items-center gap-1"><MemoryStick className="w-3.5 h-3.5" /> VRAM</span>
-              <span className="font-bold">
-                {primaryGpu && primaryGpu.vram_total_mb > 0
-                  ? `${mbToGb(primaryGpu.vram_used_mb)} / ${mbToGb(primaryGpu.vram_total_mb)} GB`
-                  : 'N/A'}
-              </span>
-            </div>
-            <MiniGauge percent={vramPct} />
+        <div className="col-span-12 lg:col-span-4 glass-card p-6 rounded-xl flex flex-col h-[400px] relative overflow-hidden">
+          {/* Subtle background animation */}
+          <div className="absolute inset-0 pointer-events-none opacity-[0.15]">
+            <NeuralCanvas nodeCount={25} speed={0.25} />
           </div>
+          <div className="relative z-10 flex flex-col h-full">
+            <h3 className="text-lg font-bold font-headline mb-1">Chi tiết GPU</h3>
+            <p className="text-xs text-on-surface-variant mb-5">
+              {primaryGpu?.name ?? 'Không phát hiện NVIDIA GPU'}
+            </p>
 
-          <div className="mb-4">
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-on-surface-variant flex items-center gap-1"><Zap className="w-3.5 h-3.5" /> GPU Util</span>
-              <span className="font-bold">{isMock ? 'N/A' : fmt(gpuUtil, '%')}</span>
+            <div className="mb-4">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-on-surface-variant flex items-center gap-1"><MemoryStick className="w-3.5 h-3.5" /> VRAM</span>
+                <span className="font-bold">
+                  {primaryGpu && primaryGpu.vram_total_mb > 0
+                    ? `${mbToGb(primaryGpu.vram_used_mb)} / ${mbToGb(primaryGpu.vram_total_mb)} GB`
+                    : 'N/A'}
+                </span>
+              </div>
+              <MiniGauge percent={vramPct} />
             </div>
-            <MiniGauge percent={gpuUtil} color="var(--secondary)" />
-          </div>
 
-          <div className="divide-y divide-outline-variant/20 mb-auto">
-            <StatBadge label="Nhiệt độ"
-              value={primaryGpu?.temperature_c != null ? `${primaryGpu.temperature_c}°C` : '—'}
-              color={primaryGpu?.temperature_c != null && primaryGpu.temperature_c > 80 ? 'text-error' : 'text-on-surface'}
-            />
-            <StatBadge label="Công suất"
-              value={primaryGpu?.power_w != null && primaryGpu.power_limit_w != null
-                ? `${primaryGpu.power_w}W / ${primaryGpu.power_limit_w}W` : '—'}
-            />
-            <StatBadge label="VRAM trống"
-              value={primaryGpu && primaryGpu.vram_total_mb > 0 ? `${mbToGb(primaryGpu.vram_free_mb)} GB` : '—'}
-            />
-          </div>
+            <div className="mb-4">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-on-surface-variant flex items-center gap-1"><Zap className="w-3.5 h-3.5" /> GPU Util</span>
+                <span className="font-bold">{isMock ? 'N/A' : fmt(gpuUtil, '%')}</span>
+              </div>
+              <MiniGauge percent={gpuUtil} color="var(--secondary)" />
+            </div>
 
-          {/* CPU quick summary */}
-          <div className="pt-4 border-t border-outline-variant/20 space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="text-on-surface-variant flex items-center gap-1"><Cpu className="w-3.5 h-3.5" /> CPU</span>
-              <span className="font-bold">{sys ? fmt(sys.cpu_percent, '%') : '—'}</span>
+            <div className="divide-y divide-outline-variant/20 mb-auto">
+              <StatBadge label="Nhiệt độ"
+                value={primaryGpu?.temperature_c != null ? `${primaryGpu.temperature_c}°C` : '—'}
+                color={primaryGpu?.temperature_c != null && primaryGpu.temperature_c > 80 ? 'text-error' : 'text-on-surface'}
+              />
+              <StatBadge label="Công suất"
+                value={primaryGpu?.power_w != null && primaryGpu.power_limit_w != null
+                  ? `${primaryGpu.power_w}W / ${primaryGpu.power_limit_w}W` : '—'}
+              />
+              <StatBadge label="VRAM trống"
+                value={primaryGpu && primaryGpu.vram_total_mb > 0 ? `${mbToGb(primaryGpu.vram_free_mb)} GB` : '—'}
+              />
             </div>
-            <MiniGauge percent={sys?.cpu_percent ?? 0} color="var(--tertiary)" />
-            <div className="flex justify-between text-xs mt-1">
-              <span className="text-on-surface-variant flex items-center gap-1"><MemoryStick className="w-3.5 h-3.5" /> RAM</span>
-              <span className="font-bold">{sys ? `${mbToGb(sys.ram_used_mb)} / ${mbToGb(sys.ram_total_mb)} GB` : '—'}</span>
+
+            {/* CPU quick summary */}
+            <div className="pt-4 border-t border-outline-variant/20 space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-on-surface-variant flex items-center gap-1"><Cpu className="w-3.5 h-3.5" /> CPU</span>
+                <span className="font-bold">{sys ? fmt(sys.cpu_percent, '%') : '—'}</span>
+              </div>
+              <MiniGauge percent={sys?.cpu_percent ?? 0} color="var(--tertiary)" />
+              <div className="flex justify-between text-xs mt-1">
+                <span className="text-on-surface-variant flex items-center gap-1"><MemoryStick className="w-3.5 h-3.5" /> RAM</span>
+                <span className="font-bold">{sys ? `${mbToGb(sys.ram_used_mb)} / ${mbToGb(sys.ram_total_mb)} GB` : '—'}</span>
+              </div>
+              <MiniGauge percent={sys?.ram_percent ?? 0} color="var(--secondary)" />
             </div>
-            <MiniGauge percent={sys?.ram_percent ?? 0} color="var(--secondary)" />
           </div>
         </div>
 
@@ -314,167 +326,175 @@ export default function Dashboard() {
             <NeuralCanvas nodeCount={40} speed={0.4} />
           </div>
 
-          <div className="relative z-10 flex justify-between items-start mb-5">
-            <div>
-              <h3 className="text-lg font-bold font-headline">Phản hồi & Hiệu năng AI</h3>
-              <p className="text-xs text-on-surface-variant mt-0.5">
-                Đánh giá người dùng và chỉ số chất lượng dịch vụ (QoS)
-              </p>
-            </div>
-            <div className="px-3 py-1 bg-primary/10 border border-primary/20 rounded-lg text-[10px] font-bold text-primary uppercase tracking-wider">
-              HỆ THỐNG GIÁM SÁT
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
-            <div className="md:col-span-4 flex items-center gap-4">
-              {/* Enlarge Donut chart */}
-              <div className="relative w-36 h-36 shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={feedbackDonutData} cx="50%" cy="50%"
-                      innerRadius={48} outerRadius={66}
-                      dataKey="value" startAngle={90} endAngle={450} paddingAngle={2}
-                    >
-                      {feedbackDonutData.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} stroke="none" />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-extrabold font-headline leading-none">
-                    {fb ? `${fb.like_rate}%` : '—'}
-                  </span>
-                  <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wide mt-1">
-                    Hài lòng
-                  </span>
-                </div>
+          <div className="relative z-10 flex flex-col h-full">
+            <div className="flex justify-between items-start mb-5">
+              <div>
+                <h3 className="text-lg font-bold font-headline">Phản hồi & Hiệu năng AI</h3>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Đánh giá người dùng và chỉ số chất lượng dịch vụ (QoS)
+                </p>
               </div>
-
-              {/* Legend with Metrics (Tightened) */}
-              <div className="flex-1 space-y-2">
-                <div className="flex items-center gap-2 relative">
-                  <div className="w-1 absolute -left-3 h-full rounded-full bg-primary/20" />
-                  <div className="flex-1">
-                    <p className="text-[10px] text-on-surface-variant uppercase font-bold tracking-tight">Thích</p>
-                    <p className="text-lg font-extrabold">{fb?.likes ?? '—'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 relative">
-                  <div className="w-1 absolute -left-3 h-full rounded-full bg-error/20" />
-                  <div className="flex-1">
-                    <p className="text-[10px] text-on-surface-variant uppercase font-bold tracking-tight">K.Thích</p>
-                    <p className="text-lg font-extrabold">{fb?.dislikes ?? '—'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 relative opacity-60">
-                  <div className="w-1 absolute -left-3 h-full rounded-full bg-surface-highest/40" />
-                  <div className="flex-1">
-                    <p className="text-[10px] text-on-surface-variant uppercase font-bold tracking-tight">Chưa ĐG</p>
-                    <p className="text-base font-bold">{fb?.no_feedback ?? '—'}</p>
-                  </div>
-                </div>
+              <div className="px-3 py-1 bg-primary/10 border border-primary/20 rounded-lg text-[10px] font-bold text-primary uppercase tracking-wider">
+                HỆ THỐNG GIÁM SÁT
               </div>
             </div>
 
-            {/* Enlarge Latency Chart */}
-            <div className="md:col-span-8 flex flex-col bg-surface-highest/20 rounded-2xl p-4 border border-outline-variant/10">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
-                    <Activity className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Độ phản hồi</h4>
-                    <p className="text-xs text-on-surface-variant/60 font-medium">Trung bình 7 ngày</p>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4 flex-1">
+              <div className="md:col-span-4 flex items-center gap-4">
+                {/* Enlarge Donut chart */}
+                <div className="relative w-36 h-36 shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={feedbackDonutData} cx="50%" cy="50%"
+                        innerRadius={48} outerRadius={66}
+                        dataKey="value" startAngle={90} endAngle={450} paddingAngle={2}
+                      >
+                        {feedbackDonutData.map((entry, i) => (
+                          <Cell key={i} fill={entry.color} stroke="none" />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-3xl font-extrabold font-headline leading-none">
+                      {fb ? `${fb.like_rate}%` : '—'}
+                    </span>
+                    <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wide mt-1">
+                      Hài lòng
+                    </span>
                   </div>
                 </div>
-                <div className="text-xl font-extrabold text-on-surface pr-2">
-                  {monitoringStats?.summary.avg_latency_ms ? `${monitoringStats.summary.avg_latency_ms}ms` : '—'}
+
+                {/* Legend with Metrics (Tightened) */}
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2 relative">
+                    <div className="w-1 absolute -left-3 h-full rounded-full bg-primary/20" />
+                    <div className="flex-1">
+                      <p className="text-[10px] text-on-surface-variant uppercase font-bold tracking-tight">Thích</p>
+                      <p className="text-lg font-extrabold">{fb?.likes ?? '—'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 relative">
+                    <div className="w-1 absolute -left-3 h-full rounded-full bg-error/20" />
+                    <div className="flex-1">
+                      <p className="text-[10px] text-on-surface-variant uppercase font-bold tracking-tight">K.Thích</p>
+                      <p className="text-lg font-extrabold">{fb?.dislikes ?? '—'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 relative opacity-60">
+                    <div className="w-1 absolute -left-3 h-full rounded-full bg-surface-highest/40" />
+                    <div className="flex-1">
+                      <p className="text-[10px] text-on-surface-variant uppercase font-bold tracking-tight">Chưa ĐG</p>
+                      <p className="text-base font-bold">{fb?.no_feedback ?? '—'}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex-1 min-h-[140px] w-full mt-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={monitoringStats?.trends || []}>
-                    <defs>
-                      <linearGradient id="miniLatency" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <Tooltip
-                      contentStyle={{ backgroundColor: 'var(--surface)', border: 'none', borderRadius: '12px', fontSize: '11px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}
-                      labelStyle={{ fontWeight: 'bold', marginBottom: '4px' }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="avgLatency"
-                      name="Trễ (ms)"
-                      stroke="var(--primary)"
-                      strokeWidth={3}
-                      fill="url(#miniLatency)"
-                      dot={false}
-                      animationDuration={1500}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex justify-center items-center mt-3 gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                <span className="text-[10px] text-primary font-bold uppercase tracking-widest">Giám sát thời gian thực</span>
+              {/* Enlarge Latency Chart */}
+              <div className="md:col-span-8 flex flex-col bg-surface-highest/20 rounded-2xl p-4 border border-outline-variant/10">
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                      <Activity className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Độ phản hồi</h4>
+                      <p className="text-xs text-on-surface-variant/60 font-medium">Trung bình 7 ngày</p>
+                    </div>
+                  </div>
+                  <div className="text-xl font-extrabold text-on-surface pr-2">
+                    {monitoringStats?.summary.avg_latency_ms ? `${monitoringStats.summary.avg_latency_ms}ms` : '—'}
+                  </div>
+                </div>
+
+                <div className="flex-1 min-h-[140px] w-full mt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={monitoringStats?.trends || []}>
+                      <defs>
+                        <linearGradient id="miniLatency" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <Tooltip
+                        contentStyle={{ backgroundColor: 'var(--surface)', border: 'none', borderRadius: '12px', fontSize: '11px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}
+                        labelStyle={{ fontWeight: 'bold', marginBottom: '4px' }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="avgLatency"
+                        name="Trễ (ms)"
+                        stroke="var(--primary)"
+                        strokeWidth={3}
+                        fill="url(#miniLatency)"
+                        dot={false}
+                        animationDuration={1500}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex justify-center items-center mt-3 gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                  <span className="text-[10px] text-primary font-bold uppercase tracking-widest">Giám sát thời gian thực</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* ── User Stats Card (SHRUNK) ────────────────────────────────────────── */}
-        <div className="col-span-12 lg:col-span-4 glass-card p-6 rounded-xl flex flex-col">
-          <div className="mb-5">
-            <h3 className="text-lg font-bold font-headline">Người dùng</h3>
-            <p className="text-xs text-on-surface-variant mt-0.5">Tổng quan hoạt động</p>
+        <div className="col-span-12 lg:col-span-4 glass-card p-6 rounded-xl flex flex-col relative overflow-hidden">
+          {/* Subtle background animation */}
+          <div className="absolute inset-0 pointer-events-none opacity-[0.15]">
+            <NeuralCanvas nodeCount={20} speed={0.2} />
           </div>
-
-          <div className="grid grid-cols-1 gap-3 flex-1">
-            <StatCard
-              icon={<Users className="w-5 h-5" />}
-              label="Tổng số"
-              value={ub?.total ?? '—'}
-              color="text-primary"
-            />
-            <StatCard
-              icon={<UserCheck className="w-5 h-5" />}
-              label="Hoạt động"
-              value={ub?.active ?? '—'}
-              color="text-secondary"
-            />
-            <StatCard
-              icon={<UserPlus className="w-5 h-5" />}
-              label="Mới/Tháng"
-              value={ub?.new_this_month ?? '—'}
-              color="text-tertiary"
-            />
-          </div>
-
-          {/* Activity bar */}
-          {ub && ub.total > 0 && (
-            <div className="mt-5 pt-4 border-t border-outline-variant/20">
-              <div className="flex justify-between text-[10px] mb-2 font-bold uppercase tracking-wider text-on-surface-variant">
-                <span>Tỷ lệ hoạt động</span>
-                <span>{Math.round(ub.active / ub.total * 100)}%</span>
-              </div>
-              <div className="h-1.5 w-full bg-surface-highest rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.round(ub.active / ub.total * 100)}%` }}
-                  transition={{ duration: 0.8, ease: 'easeOut' }}
-                  style={{ background: 'linear-gradient(90deg, var(--primary), var(--secondary))' }}
-                />
-              </div>
+          <div className="relative z-10 flex flex-col h-full">
+            <div className="mb-5">
+              <h3 className="text-lg font-bold font-headline">Người dùng</h3>
+              <p className="text-xs text-on-surface-variant mt-0.5">Tổng quan hoạt động</p>
             </div>
-          )}
+
+            <div className="grid grid-cols-1 gap-3 flex-1">
+              <StatCard
+                icon={<Users className="w-5 h-5" />}
+                label="Tổng số"
+                value={ub?.total ?? '—'}
+                color="text-primary"
+              />
+              <StatCard
+                icon={<UserCheck className="w-5 h-5" />}
+                label="Hoạt động"
+                value={ub?.active ?? '—'}
+                color="text-secondary"
+              />
+              <StatCard
+                icon={<UserPlus className="w-5 h-5" />}
+                label="Mới/Tháng"
+                value={ub?.new_this_month ?? '—'}
+                color="text-tertiary"
+              />
+            </div>
+
+            {/* Activity bar */}
+            {ub && ub.total > 0 && (
+              <div className="mt-5 pt-4 border-t border-outline-variant/20">
+                <div className="flex justify-between text-[10px] mb-2 font-bold uppercase tracking-wider text-on-surface-variant">
+                  <span>Tỷ lệ hoạt động</span>
+                  <span>{Math.round(ub.active / ub.total * 100)}%</span>
+                </div>
+                <div className="h-1.5 w-full bg-surface-highest rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.round(ub.active / ub.total * 100)}%` }}
+                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                    style={{ background: 'linear-gradient(90deg, var(--primary), var(--secondary))' }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ── Bottom hardware stats ────────────────────────────────────────── */}
@@ -495,39 +515,54 @@ export default function Dashboard() {
             </motion.div>
           )}
 
-          <div className="glass-card px-8 py-6 rounded-xl flex-1 min-w-[180px]">
-            <p className="text-[10px] font-bold uppercase text-on-surface-variant tracking-widest mb-2">GPU Util</p>
-            <div className="flex items-baseline gap-2">
-              <p className="text-3xl font-extrabold font-headline">{isMock ? 'N/A' : fmt(gpuUtil, '%')}</p>
-              {!isMock && (
-                <span className={`text-sm font-bold flex items-center ${gpuUtil > 50 ? 'text-primary' : 'text-secondary'}`}>
-                  {gpuUtil > 50 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+          <div className="glass-card px-8 py-6 rounded-xl flex-1 min-w-[180px] relative overflow-hidden">
+            <div className="absolute inset-0 pointer-events-none opacity-[0.12]">
+              <NeuralCanvas nodeCount={12} speed={0.15} />
+            </div>
+            <div className="relative z-10">
+              <p className="text-[10px] font-bold uppercase text-on-surface-variant tracking-widest mb-2">GPU Util</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-3xl font-extrabold font-headline">{isMock ? 'N/A' : fmt(gpuUtil, '%')}</p>
+                {!isMock && (
+                  <span className={`text-sm font-bold flex items-center ${gpuUtil > 50 ? 'text-primary' : 'text-secondary'}`}>
+                    {gpuUtil > 50 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-card px-8 py-6 rounded-xl flex-1 min-w-[180px] relative overflow-hidden">
+            <div className="absolute inset-0 pointer-events-none opacity-[0.12]">
+              <NeuralCanvas nodeCount={12} speed={0.15} />
+            </div>
+            <div className="relative z-10">
+              <p className="text-[10px] font-bold uppercase text-on-surface-variant tracking-widest mb-2">RAM</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-3xl font-extrabold font-headline">
+                  {sys ? `${sys.ram_percent.toFixed(0)}%` : '—'}
+                </p>
+                <span className="text-sm font-bold text-secondary">
+                  {sys ? `${mbToGb(sys.ram_used_mb)} GB` : ''}
                 </span>
-              )}
+              </div>
             </div>
           </div>
 
-          <div className="glass-card px-8 py-6 rounded-xl flex-1 min-w-[180px]">
-            <p className="text-[10px] font-bold uppercase text-on-surface-variant tracking-widest mb-2">RAM</p>
-            <div className="flex items-baseline gap-2">
-              <p className="text-3xl font-extrabold font-headline">
-                {sys ? `${sys.ram_percent.toFixed(0)}%` : '—'}
-              </p>
-              <span className="text-sm font-bold text-secondary">
-                {sys ? `${mbToGb(sys.ram_used_mb)} GB` : ''}
-              </span>
+          <div className="glass-card px-8 py-6 rounded-xl flex-1 min-w-[180px] relative overflow-hidden">
+            <div className="absolute inset-0 pointer-events-none opacity-[0.12]">
+              <NeuralCanvas nodeCount={12} speed={0.15} />
             </div>
-          </div>
-
-          <div className="glass-card px-8 py-6 rounded-xl flex-1 min-w-[180px]">
-            <p className="text-[10px] font-bold uppercase text-on-surface-variant tracking-widest mb-2">Disk</p>
-            <div className="flex items-baseline gap-2">
-              <p className="text-3xl font-extrabold font-headline">
-                {sys ? fmt(sys.disk_percent, '%') : '—'}
-              </p>
-              <span className="text-sm font-bold text-on-surface-variant">
-                {sys ? `${sys.disk_used_gb}/${sys.disk_total_gb} GB` : ''}
-              </span>
+            <div className="relative z-10">
+              <p className="text-[10px] font-bold uppercase text-on-surface-variant tracking-widest mb-2">Disk</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-3xl font-extrabold font-headline">
+                  {sys ? fmt(sys.disk_percent, '%') : '—'}
+                </p>
+                <span className="text-sm font-bold text-on-surface-variant">
+                  {sys ? `${sys.disk_used_gb}/${sys.disk_total_gb} GB` : ''}
+                </span>
+              </div>
             </div>
           </div>
         </div>
