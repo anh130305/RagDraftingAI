@@ -9,7 +9,8 @@ CREATE TYPE message_role AS ENUM ('user', 'assistant', 'system');
 CREATE TYPE doc_status   AS ENUM ('pending', 'processing', 'ready', 'failed');
 CREATE TYPE audit_action AS ENUM (
     'login', 'logout', 'upload_document', 'delete_document',
-    'query', 'create_session', 'delete_session', 'update_user'
+    'query', 'create_session', 'delete_session', 'update_user',
+    'download_document', 'storage_error'
 );
 
 
@@ -28,15 +29,21 @@ $$ LANGUAGE plpgsql;
 -- ============================================================
 
 CREATE TABLE users (
-    id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    username      VARCHAR(50) UNIQUE NOT NULL,
-    password_hash TEXT        NOT NULL,
-    role          user_role   NOT NULL DEFAULT 'user',
+    id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    username      VARCHAR(50)  UNIQUE NOT NULL,
+    email         VARCHAR(255) UNIQUE,
+    google_id     VARCHAR(255) UNIQUE,
+    password_hash TEXT,
+    role          user_role    NOT NULL DEFAULT 'user',
     department    VARCHAR(100),
-    is_active     BOOLEAN     NOT NULL DEFAULT TRUE,
-    created_at    TIMESTAMP   NOT NULL DEFAULT NOW(),
-    updated_at    TIMESTAMP   NOT NULL DEFAULT NOW()
+    is_active     BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at    TIMESTAMP    NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMP    NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX idx_users_username   ON users(username);
+CREATE INDEX idx_users_email      ON users(email);
+CREATE INDEX idx_users_google_id  ON users(google_id);
 
 CREATE INDEX idx_users_role       ON users(role);
 CREATE INDEX idx_users_department ON users(department);
@@ -56,7 +63,7 @@ CREATE TABLE audit_logs (
     action        audit_action NOT NULL,
     resource_type VARCHAR(50),
     resource_id   UUID,
-    ip_address    INET,
+    ip_address    VARCHAR(45),
     detail        JSONB,
     created_at    TIMESTAMP    NOT NULL DEFAULT NOW()
     -- Không có updated_at — bảng này chỉ INSERT, không bao giờ UPDATE
@@ -77,6 +84,7 @@ CREATE TABLE chat_sessions (
     user_id     UUID      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title       TEXT,
     is_archived BOOLEAN   NOT NULL DEFAULT FALSE,
+    is_pinned   BOOLEAN   NOT NULL DEFAULT FALSE,
     created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -98,6 +106,7 @@ CREATE TABLE chat_messages (
     session_id  UUID         NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
     role        message_role NOT NULL,
     content     TEXT         NOT NULL,
+    feedback    TEXT,
     token_count INTEGER,
     created_at  TIMESTAMP    NOT NULL DEFAULT NOW()
 );
@@ -111,20 +120,23 @@ CREATE INDEX idx_messages_session_time ON chat_messages(session_id, created_at A
 -- ============================================================
 
 CREATE TABLE documents (
-    id            UUID       PRIMARY KEY DEFAULT gen_random_uuid(),
-    title         TEXT       NOT NULL,
-    file_path     TEXT       NOT NULL,
-    file_type     VARCHAR(20),
-    file_size     BIGINT,
-    status        doc_status NOT NULL DEFAULT 'pending',
-    uploaded_by   UUID       REFERENCES users(id) ON DELETE SET NULL,
-    chunk_count   INTEGER    NOT NULL DEFAULT 0,
-    error_message TEXT,
-    created_at    TIMESTAMP  NOT NULL DEFAULT NOW(),
-    updated_at    TIMESTAMP  NOT NULL DEFAULT NOW()
+    id                   UUID       PRIMARY KEY DEFAULT gen_random_uuid(),
+    title                TEXT       NOT NULL,
+    file_path            TEXT       NOT NULL,
+    cloudinary_public_id TEXT,
+    session_id           UUID       REFERENCES chat_sessions(id) ON DELETE SET NULL,
+    file_type            VARCHAR(20),
+    file_size            BIGINT,
+    status               doc_status NOT NULL DEFAULT 'pending',
+    uploaded_by          UUID       REFERENCES users(id) ON DELETE SET NULL,
+    chunk_count          INTEGER    NOT NULL DEFAULT 0,
+    error_message        TEXT,
+    created_at           TIMESTAMP  NOT NULL DEFAULT NOW(),
+    updated_at           TIMESTAMP  NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_documents_uploaded_by ON documents(uploaded_by);
+CREATE INDEX idx_documents_session_id ON documents(session_id);
 CREATE INDEX idx_documents_status      ON documents(status);
 CREATE INDEX idx_documents_created_at  ON documents(created_at DESC);
 
