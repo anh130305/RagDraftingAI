@@ -60,3 +60,10 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != UserRole.admin:
         raise ForbiddenError("Admin privileges required")
     return current_user
+
+
+def require_chat_user(current_user: User = Depends(get_current_user)) -> User:
+    """Dependency that denies admin accounts from chat/user-only endpoints."""
+    if current_user.role == UserRole.admin:
+        raise ForbiddenError("Admin accounts cannot access chat endpoints")
+    return current_user

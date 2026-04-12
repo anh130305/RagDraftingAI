@@ -8,7 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, UploadFile, File, Form, Query, Request, BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, require_chat_user
 from app.models.user import User
 from app.schemas.document import DocumentResponse, DocumentWithChunks, DocumentListResponse
 from app.services import document_service, audit_service
@@ -31,7 +31,7 @@ def upload_document(
     title: Optional[str] = Form(None),
     chat_session_id: Optional[str] = Form("general"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_chat_user),
 ):
     """Upload a document."""
     try:
@@ -85,7 +85,7 @@ def upload_document(
 @router.post("/extract-text")
 def extract_text_from_file(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_chat_user),
 ):
     """Run extraction on uploaded image, pdf, or docx and return extracted text."""
     try:
@@ -119,7 +119,7 @@ def list_documents(
     limit: int = Query(50, ge=1, le=200),
     session_id: Optional[UUID] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_chat_user),
 ):
     return document_service.list_documents(
         db,
@@ -134,7 +134,7 @@ def list_documents(
 def get_document(
     document_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_chat_user),
 ):
     return document_service.get_document(db, document_id)
 
@@ -143,7 +143,7 @@ def get_document(
 def get_document_chunks(
     document_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_chat_user),
 ):
     return document_service.get_document_with_chunks(db, document_id)
 
@@ -154,7 +154,7 @@ def delete_document(
     document_id: UUID,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_chat_user),
 ):
     document_service.delete_document(db, document_id)
     background_tasks.add_task(

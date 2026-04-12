@@ -26,6 +26,12 @@ class AuditAction(str, enum.Enum):
     download_document = "download_document"
     storage_error = "storage_error"
 
+    # Prompt Templates
+    create_template = "create_template"
+    update_template = "update_template"
+    delete_template = "delete_template"
+    use_template = "use_template"
+
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"

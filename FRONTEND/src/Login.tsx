@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Lock, Monitor, Moon, Sparkles, Sun, User, Eye, EyeOff } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
-import { useAuth } from './lib/AuthContext';
+import { getHomePathByRole, useAuth } from './lib/AuthContext';
 import { useToast } from './lib/ToastContext';
 import NeuralCanvas from './components/NeuralCanvas';
 import './styles/chat-auth.css';
@@ -61,11 +61,7 @@ export default function Login() {
     try {
       const user = await login(username.trim(), password);
       showToast('Đăng nhập thành công!', 'success');
-      if (user.role === 'admin') {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate('/chat', { replace: true });
-      }
+      navigate(getHomePathByRole(user.role), { replace: true });
     } catch (err: any) {
       showToast(err.message || 'Đăng nhập thất bại', 'error');
     } finally {
@@ -77,9 +73,11 @@ export default function Login() {
     setIsSubmitting(true);
     setErrors({});
     try {
-      const { needs_onboarding } = await googleLogin(response.credential);
+      const { needs_onboarding, user } = await googleLogin(response.credential);
       showToast('Đăng nhập thành công!', 'success');
-      if (needs_onboarding) {
+      if (user.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else if (needs_onboarding) {
         navigate('/settings', { replace: true, state: { onboarding: true } });
       } else {
         navigate('/chat', { replace: true });

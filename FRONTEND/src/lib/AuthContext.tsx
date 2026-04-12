@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import * as api from './api';
 import type { UserResponse } from './api';
 import FullScreenLoader from '../components/FullScreenLoader';
@@ -20,6 +20,10 @@ interface AuthContextValue extends AuthState {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function getHomePathByRole(role?: UserResponse['role'] | null): string {
+  return role === 'admin' ? '/admin' : '/chat';
+}
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
@@ -139,39 +143,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 /* ── Protected Route wrapper ────────────────────────────── */
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      navigate('/login', { replace: true });
-    }
-  }, [isLoading, isAuthenticated, navigate]);
 
   if (isLoading) {
     return <FullScreenLoader text="Đang xác thực..." />;
   }
 
-  return isAuthenticated ? <>{children}</> : null;
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+}
+
+/* ── Protected Route: Admin only ───────────────────────── */
+export function RequireAdmin({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  if (isLoading) {
+    return <FullScreenLoader text="Đang xác thực..." />;
+  }
+
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role !== 'admin') {
+    return <Navigate to={getHomePathByRole(user.role)} replace />;
+  }
+
+  return <>{children}</>;
+}
+
+/* ── Protected Route: Chat users only (non-admin) ───────── */
+export function RequireChatUser({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  if (isLoading) {
+    return <FullScreenLoader text="Đang xác thực..." />;
+  }
+
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role === 'admin') {
+    return <Navigate to="/admin" replace />;
+  }
+
+  return <>{children}</>;
 }
 
 /* ── Redirect if already logged in ──────────────────────── */
 export function RedirectIfAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!isLoading && isAuthenticated && user) {
-      if (user.role === 'admin') {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate('/chat', { replace: true });
-      }
-    }
-  }, [isLoading, isAuthenticated, user, navigate]);
 
   if (isLoading) {
     return <FullScreenLoader text="Đang tải..." />;
   }
 
-  return !isAuthenticated ? <>{children}</> : null;
+  if (isAuthenticated && user) {
+    return <Navigate to={getHomePathByRole(user.role)} replace />;
+  }
+
+  return <>{children}</>;
 }

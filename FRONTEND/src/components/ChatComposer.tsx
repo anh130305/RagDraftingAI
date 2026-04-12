@@ -796,6 +796,10 @@ export default function ChatComposer({
                       onValueChange?.(tpl.content);
                       setShowPromptPicker(false);
                       showToast(`Đã chèn mẫu "${tpl.name}"`, 'success');
+                      // Log usage to backend
+                      api.recordPromptTemplateUse(tpl.id).catch((err) => {
+                        console.warn('Failed to log template usage:', err);
+                      });
                     }}
                   >
                     <div className="flex-1 min-w-0">

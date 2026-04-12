@@ -17,22 +17,12 @@ from app.api.v1.router import api_router
 from app.db.base import Base  # noqa: F401 – ensure all models are registered
 from app.db.session import get_engine
 from app.core.rate_limit import init_rate_limiting
+from app.db.init_db import initialize_system
 
 # ── Config Logging ──────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-def ensure_runtime_schema() -> None:
-    """Apply safe, idempotent schema fixes for existing deployments."""
-    engine = get_engine()
-    with engine.begin() as conn:
-        conn.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS ix_documents_session_id "
-                "ON documents (session_id)"
-            )
-        )
 
 # ── Create tables with retry logic ───────────────────────────
 max_retries = 10
@@ -42,8 +32,8 @@ for attempt in range(max_retries):
     try:
         logger.info(f"Connecting to database (Attempt {attempt + 1}/{max_retries})...")
         Base.metadata.create_all(bind=get_engine())
-        ensure_runtime_schema()
-        logger.info("Database connection successful. Tables verified.")
+        initialize_system()
+        logger.info("Database connection successful. System initialized.")
         break
     except OperationalError as e:
         if attempt < max_retries - 1:
