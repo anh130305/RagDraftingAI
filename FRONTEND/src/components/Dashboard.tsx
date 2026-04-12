@@ -11,7 +11,13 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as api from '../lib/api';
-import type { SystemStatsResponse, DashboardStatsResponse, VramHistoryPoint } from '../lib/api';
+import NeuralCanvas from './NeuralCanvas';
+import type {
+  SystemStatsResponse,
+  DashboardStatsResponse,
+  VramHistoryPoint,
+  AIMonitoringResponse
+} from '../lib/api';
 
 // ── constants ─────────────────────────────────────────────────────────────────
 const POLL_SYSTEM_MS = 5_000;    // system stats: 5s when real GPU
@@ -71,6 +77,7 @@ function StatCard({ icon, label, value, sub, color = 'text-primary' }: {
 export default function Dashboard() {
   const [stats, setStats] = useState<SystemStatsResponse | null>(null);
   const [dashStats, setDashStats] = useState<DashboardStatsResponse | null>(null);
+  const [monitoringStats, setMonitoringStats] = useState<AIMonitoringResponse | null>(null);
   const [history, setHistory] = useState<VramHistoryPoint[]>([]);
   const [lastSync, setLastSync] = useState<string>('—');
   const [connected, setConnected] = useState<boolean | null>(null);
@@ -100,8 +107,12 @@ export default function Dashboard() {
   // ── dashboard stats polling ────────────────────────────────────────────────
   const fetchDashboard = useCallback(async () => {
     try {
-      const data = await api.getDashboardStats();
-      setDashStats(data);
+      const [ds, ms] = await Promise.all([
+        api.getDashboardStats(),
+        api.getAIMonitoringStats()
+      ]);
+      setDashStats(ds);
+      setMonitoringStats(ms);
     } catch { /* silently ignore, show stale data */ }
   }, []);
 
@@ -156,8 +167,8 @@ export default function Dashboard() {
         </div>
         <div className="flex gap-2 flex-wrap">
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-medium transition-colors ${connected === null ? 'bg-surface border-outline-variant text-on-surface-variant'
-              : connected ? 'bg-surface border-outline-variant'
-                : 'bg-error/10 border-error/30 text-error'
+            : connected ? 'bg-surface border-outline-variant'
+              : 'bg-error/10 border-error/30 text-error'
             }`}>
             {connected === null ? <span className="w-1.5 h-1.5 bg-on-surface-variant rounded-full animate-pulse" />
               : connected ? <Wifi className="w-3 h-3 text-primary" />
@@ -296,129 +307,164 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── AI Feedback Card ─────────────────────────────────────────────── */}
-        <div className="col-span-12 lg:col-span-5 glass-card p-6 rounded-xl flex flex-col">
-          <div className="mb-5">
-            <h3 className="text-lg font-bold font-headline">Phản hồi AI</h3>
-            <p className="text-xs text-on-surface-variant mt-0.5">
-              Đánh giá của người dùng trên toàn bộ phản hồi AI
-            </p>
+        {/* ── AI Feedback Card (EXPANDED) ─────────────────────────────────────── */}
+        <div className="col-span-12 lg:col-span-8 glass-card p-6 rounded-xl flex flex-col relative overflow-hidden">
+          {/* Subtle background animation */}
+          <div className="absolute inset-0 pointer-events-none opacity-20">
+            <NeuralCanvas nodeCount={40} speed={0.4} />
           </div>
 
-          <div className="flex items-center gap-6 mb-6">
-            {/* Donut chart */}
-            <div className="relative w-28 h-28 shrink-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={feedbackDonutData} cx="50%" cy="50%"
-                    innerRadius={36} outerRadius={52}
-                    dataKey="value" startAngle={90} endAngle={450} paddingAngle={2}
-                  >
-                    {feedbackDonutData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} stroke="none" />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xl font-extrabold font-headline leading-none">
-                  {fb ? `${fb.like_rate}%` : '—'}
-                </span>
-                <span className="text-[9px] text-on-surface-variant font-bold uppercase tracking-wide mt-0.5">
-                  Thích
-                </span>
-              </div>
+          <div className="relative z-10 flex justify-between items-start mb-5">
+            <div>
+              <h3 className="text-lg font-bold font-headline">Phản hồi & Hiệu năng AI</h3>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                Đánh giá người dùng và chỉ số chất lượng dịch vụ (QoS)
+              </p>
             </div>
-
-            {/* Legend */}
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" />
-                <span className="text-xs text-on-surface-variant flex-1">Thích</span>
-                <span className="text-sm font-bold">{fb?.likes ?? '—'}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-error shrink-0" />
-                <span className="text-xs text-on-surface-variant flex-1">Không thích</span>
-                <span className="text-sm font-bold">{fb?.dislikes ?? '—'}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-surface-highest shrink-0 border border-outline-variant" />
-                <span className="text-xs text-on-surface-variant flex-1">Chưa đánh giá</span>
-                <span className="text-sm font-bold">{fb?.no_feedback ?? '—'}</span>
-              </div>
+            <div className="px-3 py-1 bg-primary/10 border border-primary/20 rounded-lg text-[10px] font-bold text-primary uppercase tracking-wider">
+              HỆ THỐNG GIÁM SÁT
             </div>
           </div>
 
-          {/* Metric row */}
-          <div className="grid grid-cols-3 gap-3 pt-4 border-t border-outline-variant/20">
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 text-primary mb-1">
-                <ThumbsUp className="w-4 h-4" />
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
+            <div className="md:col-span-4 flex items-center gap-4">
+              {/* Enlarge Donut chart */}
+              <div className="relative w-36 h-36 shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={feedbackDonutData} cx="50%" cy="50%"
+                      innerRadius={48} outerRadius={66}
+                      dataKey="value" startAngle={90} endAngle={450} paddingAngle={2}
+                    >
+                      {feedbackDonutData.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} stroke="none" />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-3xl font-extrabold font-headline leading-none">
+                    {fb ? `${fb.like_rate}%` : '—'}
+                  </span>
+                  <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wide mt-1">
+                    Hài lòng
+                  </span>
+                </div>
               </div>
-              <p className="text-lg font-extrabold font-headline">{fb ? `${fb.like_rate}%` : '—'}</p>
-              <p className="text-[10px] text-on-surface-variant uppercase tracking-wide font-bold">Tỷ lệ thích</p>
+
+              {/* Legend with Metrics (Tightened) */}
+              <div className="flex-1 space-y-2">
+                <div className="flex items-center gap-2 relative">
+                  <div className="w-1 absolute -left-3 h-full rounded-full bg-primary/20" />
+                  <div className="flex-1">
+                    <p className="text-[10px] text-on-surface-variant uppercase font-bold tracking-tight">Thích</p>
+                    <p className="text-lg font-extrabold">{fb?.likes ?? '—'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 relative">
+                  <div className="w-1 absolute -left-3 h-full rounded-full bg-error/20" />
+                  <div className="flex-1">
+                    <p className="text-[10px] text-on-surface-variant uppercase font-bold tracking-tight">K.Thích</p>
+                    <p className="text-lg font-extrabold">{fb?.dislikes ?? '—'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 relative opacity-60">
+                  <div className="w-1 absolute -left-3 h-full rounded-full bg-surface-highest/40" />
+                  <div className="flex-1">
+                    <p className="text-[10px] text-on-surface-variant uppercase font-bold tracking-tight">Chưa ĐG</p>
+                    <p className="text-base font-bold">{fb?.no_feedback ?? '—'}</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 text-error mb-1">
-                <ThumbsDown className="w-4 h-4" />
+
+            {/* Enlarge Latency Chart */}
+            <div className="md:col-span-8 flex flex-col bg-surface-highest/20 rounded-2xl p-4 border border-outline-variant/10">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                    <Activity className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Độ phản hồi</h4>
+                    <p className="text-xs text-on-surface-variant/60 font-medium">Trung bình 7 ngày</p>
+                  </div>
+                </div>
+                <div className="text-xl font-extrabold text-on-surface pr-2">
+                  {monitoringStats?.summary.avg_latency_ms ? `${monitoringStats.summary.avg_latency_ms}ms` : '—'}
+                </div>
               </div>
-              <p className="text-lg font-extrabold font-headline">{fb ? `${fb.dislike_rate}%` : '—'}</p>
-              <p className="text-[10px] text-on-surface-variant uppercase tracking-wide font-bold">Tỷ lệ dislike</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 text-on-surface-variant mb-1">
-                <MessageSquare className="w-4 h-4" />
+
+              <div className="flex-1 min-h-[140px] w-full mt-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={monitoringStats?.trends || []}>
+                    <defs>
+                      <linearGradient id="miniLatency" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'var(--surface)', border: 'none', borderRadius: '12px', fontSize: '11px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}
+                      labelStyle={{ fontWeight: 'bold', marginBottom: '4px' }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="avgLatency"
+                      name="Trễ (ms)"
+                      stroke="var(--primary)"
+                      strokeWidth={3}
+                      fill="url(#miniLatency)"
+                      dot={false}
+                      animationDuration={1500}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
-              <p className="text-lg font-extrabold font-headline">{fb?.total_responses ?? '—'}</p>
-              <p className="text-[10px] text-on-surface-variant uppercase tracking-wide font-bold">Tổng phản hồi</p>
+              <div className="flex justify-center items-center mt-3 gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                <span className="text-[10px] text-primary font-bold uppercase tracking-widest">Giám sát thời gian thực</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* ── User Stats Card ──────────────────────────────────────────────── */}
-        <div className="col-span-12 lg:col-span-7 glass-card p-6 rounded-xl flex flex-col">
+        {/* ── User Stats Card (SHRUNK) ────────────────────────────────────────── */}
+        <div className="col-span-12 lg:col-span-4 glass-card p-6 rounded-xl flex flex-col">
           <div className="mb-5">
             <h3 className="text-lg font-bold font-headline">Người dùng</h3>
-            <p className="text-xs text-on-surface-variant mt-0.5">Tổng quan hoạt động tài khoản</p>
+            <p className="text-xs text-on-surface-variant mt-0.5">Tổng quan hoạt động</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 flex-1">
+          <div className="grid grid-cols-1 gap-3 flex-1">
             <StatCard
               icon={<Users className="w-5 h-5" />}
-              label="Tổng người dùng"
+              label="Tổng số"
               value={ub?.total ?? '—'}
               color="text-primary"
             />
             <StatCard
               icon={<UserCheck className="w-5 h-5" />}
-              label="Đang hoạt động"
+              label="Hoạt động"
               value={ub?.active ?? '—'}
-              sub={ub ? `${Math.round(ub.active / (ub.total || 1) * 100)}% tổng số` : undefined}
               color="text-secondary"
             />
             <StatCard
               icon={<UserPlus className="w-5 h-5" />}
-              label="Mới tháng này"
+              label="Mới/Tháng"
               value={ub?.new_this_month ?? '—'}
               color="text-tertiary"
-            />
-            <StatCard
-              icon={<UserX className="w-5 h-5" />}
-              label="Bị vô hiệu hóa"
-              value={ub?.inactive ?? '—'}
-              color="text-error"
             />
           </div>
 
           {/* Activity bar */}
           {ub && ub.total > 0 && (
             <div className="mt-5 pt-4 border-t border-outline-variant/20">
-              <div className="flex justify-between text-xs mb-2">
-                <span className="text-on-surface-variant font-medium">Tỷ lệ hoạt động</span>
-                <span className="font-bold">{Math.round(ub.active / ub.total * 100)}%</span>
+              <div className="flex justify-between text-[10px] mb-2 font-bold uppercase tracking-wider text-on-surface-variant">
+                <span>Tỷ lệ hoạt động</span>
+                <span>{Math.round(ub.active / ub.total * 100)}%</span>
               </div>
-              <div className="h-2 w-full bg-surface-highest rounded-full overflow-hidden">
+              <div className="h-1.5 w-full bg-surface-highest rounded-full overflow-hidden">
                 <motion.div
                   className="h-full rounded-full"
                   initial={{ width: 0 }}

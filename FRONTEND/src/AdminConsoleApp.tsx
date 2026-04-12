@@ -9,6 +9,7 @@ import './styles/admin.css';
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const UserManagement = lazy(() => import('./components/UserManagement'));
 const KnowledgeBase = lazy(() => import('./components/KnowledgeBase'));
+const AIMonitoring = lazy(() => import('./components/AIMonitoring'));
 // Prompt setting feature 
 const PromptTemplateConfig = lazy(() => import('./components/PromptTemplateConfig'));
 const SystemHealth = lazy(() => import('./components/SystemHealth'));
@@ -20,6 +21,7 @@ const adminViewMap: Record<ViewType, React.LazyExoticComponent<React.ComponentTy
   dashboard: Dashboard,
   users: UserManagement,
   knowledge: KnowledgeBase,
+  monitoring: AIMonitoring,
   prompt: PromptTemplateConfig,
   health: SystemHealth,
   help: HelpCenter,
@@ -32,6 +34,7 @@ const preloadAllAdminViews = () => {
   import('./components/Dashboard');
   import('./components/UserManagement');
   import('./components/KnowledgeBase');
+  import('./components/AIMonitoring');
   import('./components/PromptTemplateConfig');
   import('./components/SystemHealth');
   import('./components/HelpCenter');

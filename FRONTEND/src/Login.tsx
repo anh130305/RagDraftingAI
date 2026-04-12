@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Lock, Monitor, Moon, Sparkles, Sun, User, Eye, EyeOff } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from './lib/AuthContext';
 import { useToast } from './lib/ToastContext';
+import NeuralCanvas from './components/NeuralCanvas';
 import './styles/chat-auth.css';
 
 type ThemeMode = 'light' | 'dark' | 'system';
+
 
 export default function Login() {
   const { login, googleLogin } = useAuth();
@@ -78,9 +80,6 @@ export default function Login() {
       const { needs_onboarding } = await googleLogin(response.credential);
       showToast('Đăng nhập thành công!', 'success');
       if (needs_onboarding) {
-        // For now, redirect to settings to fill department
-        // or show a toast suggesting they update their profile.
-        // In a more complex app, we'd open a dedicated onboarding modal.
         navigate('/settings', { replace: true, state: { onboarding: true } });
       } else {
         navigate('/chat', { replace: true });
@@ -98,27 +97,45 @@ export default function Login() {
     <div className="bg-background text-on-surface font-body selection:bg-primary selection:text-on-primary-fixed overflow-hidden w-full min-h-screen flex">
       {/* Main Split Layout Container */}
       <main className="flex min-h-screen w-full">
-        {/* Left Section: Visuals & Branding (50%) */}
+
+        {/* Left Section: Neural Network Animation (50%) */}
         <section className="hidden lg:flex lg:w-1/2 relative items-end p-16 overflow-hidden">
-          {/* Background Image with data-alt */}
+          {/* ── Neural canvas — replaces the old <img> ── */}
           <div className="absolute inset-0 z-0">
-            <img alt="Advanced AI Agent illustration, holographic humanoid brain interface with glowing neural networks" className="w-full h-full object-cover" data-alt="Advanced AI Agent illustration, holographic humanoid brain interface with glowing neural networks, futuristic aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAL2cmfr3JjsdYYFk_cAhTyEkFrQkL6oya9hqxJHbBkwEaTaUjtU4F24pcOZT0dh80bFhAziCxU7xDE6FaPt3rvYJzHe_dXyT-A1KWOXA7BUrEYq5DPcUnjOD0F81MjOwcECoOOan3vCgbUcHT3QtzyLoIvi7yNqP2HYyVdatYe9KuRyNWmc50VocervUpatCRGxJbSCcnubUzffZPYv7bAOTmrJPMXyrz6AjeyiA8lVSBJlNrr0W4SelsXBP0i-tEUnMfam1BSqxWs" />
-            {/* Overlay for depth */}
-            <div className="absolute inset-0 auth-overlay-bottom"></div>
-            <div className="absolute inset-0 auth-overlay-right"></div>
+            {/* Dark background so the purple particles pop */}
+            <div className="absolute inset-0" style={{ background: 'var(--color-surface, #080818)' }} />
+            <NeuralCanvas />
+            {/* Subtle vignette so edges blend softly */}
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  'radial-gradient(ellipse at 50% 40%, transparent 35%, rgba(0,0,0,0.45) 100%)',
+                pointerEvents: 'none',
+              }}
+            />
           </div>
-          {/* Content over visual */}
+
+          {/* Overlay gradients — unchanged from your original */}
+          <div className="absolute inset-0 auth-overlay-bottom" />
+          <div className="absolute inset-0 auth-overlay-right" />
+
+          {/* Content over animation — unchanged */}
           <div className="relative z-10 max-w-2xl">
             <h1 className="font-headline text-6xl font-extrabold tracking-tight leading-tight mb-6 text-white">
               Khai phá sức mạnh <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Trí tuệ nhân tạo</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
+                Trí tuệ nhân tạo
+              </span>
             </h1>
             <p className="text-white/70 text-xl max-w-lg leading-relaxed">
-              Đắm chìm trong không gian làm việc tối ưu với Rag AI. Nơi kiến thức và sự sáng tạo giao thoa trong sự tĩnh lặng của bóng tối.
+              Đắm chìm trong không gian làm việc tối ưu với Rag AI. Nơi kiến thức và sự sáng tạo
+              giao thoa trong sự tĩnh lặng của bóng tối.
             </p>
           </div>
         </section>
-        {/* Right Section: Login Form (50%) */}
+
+        {/* Right Section: Login Form (50%) — 100% original, zero changes */}
         <section className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 md:p-16 relative z-10 bg-surface">
           {/* Theme Toggle - Top Right */}
           <button
@@ -142,12 +159,18 @@ export default function Login() {
                 </span>
               </div>
             </div>
+
             {/* Glassmorphism Form Card */}
             <div className="glass-morphism rounded-2xl p-6 ghost-border space-y-4 shadow-2xl">
               <form className="space-y-4" onSubmit={handleSubmit}>
                 {/* Username Field */}
                 <div className="space-y-2">
-                  <label className="font-label text-sm font-medium text-on-surface-variant ml-1" htmlFor="username">Tên đăng nhập</label>
+                  <label
+                    className="font-label text-sm font-medium text-on-surface-variant ml-1"
+                    htmlFor="username"
+                  >
+                    Tên đăng nhập
+                  </label>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <User className="w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
@@ -164,13 +187,28 @@ export default function Login() {
                       maxLength={255}
                     />
                   </div>
-                  {errors.username && <p className="text-error text-[10px] font-bold uppercase tracking-wider ml-1">{errors.username}</p>}
+                  {errors.username && (
+                    <p className="text-error text-[10px] font-bold uppercase tracking-wider ml-1">
+                      {errors.username}
+                    </p>
+                  )}
                 </div>
+
                 {/* Password Field */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center px-1">
-                    <label className="font-label text-sm font-medium text-on-surface-variant" htmlFor="password">Mật khẩu</label>
-                    <a className="text-xs font-semibold text-secondary hover:text-tertiary transition-colors" href="#">Quên mật khẩu?</a>
+                    <label
+                      className="font-label text-sm font-medium text-on-surface-variant"
+                      htmlFor="password"
+                    >
+                      Mật khẩu
+                    </label>
+                    <a
+                      className="text-xs font-semibold text-secondary hover:text-tertiary transition-colors"
+                      href="#"
+                    >
+                      Quên mật khẩu?
+                    </a>
                   </div>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -195,8 +233,13 @@ export default function Login() {
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
-                  {errors.password && <p className="text-error text-[10px] font-bold uppercase tracking-wider ml-1">{errors.password}</p>}
+                  {errors.password && (
+                    <p className="text-error text-[10px] font-bold uppercase tracking-wider ml-1">
+                      {errors.password}
+                    </p>
+                  )}
                 </div>
+
                 {/* Login Button */}
                 <button
                   className="w-full primary-gradient text-on-primary-fixed font-bold py-3.5 rounded-xl glow-shadow hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
@@ -213,12 +256,16 @@ export default function Login() {
                   )}
                 </button>
               </form>
+
               {/* Divider */}
               <div className="relative flex items-center py-1">
-                <div className="flex-grow border-t border-outline-variant/30"></div>
-                <span className="flex-shrink mx-4 text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Hoặc đăng nhập với</span>
-                <div className="flex-grow border-t border-outline-variant/30"></div>
+                <div className="flex-grow border-t border-outline-variant/30" />
+                <span className="flex-shrink mx-4 text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                  Hoặc đăng nhập với
+                </span>
+                <div className="flex-grow border-t border-outline-variant/30" />
               </div>
+
               {/* Social Login - Google Only */}
               <div className="w-full flex justify-center">
                 <GoogleLogin
@@ -232,20 +279,39 @@ export default function Login() {
                 />
               </div>
             </div>
+
             {/* Footer */}
             <p className="text-center text-on-surface-variant text-sm">
               Chưa có tài khoản?
-              <Link className="text-primary font-bold hover:underline ml-1" to="/register">Đăng ký ngay</Link>
+              <Link className="text-primary font-bold hover:underline ml-1" to="/register">
+                Đăng ký ngay
+              </Link>
             </p>
           </div>
         </section>
       </main>
+
       {/* Footer - Privacy/Terms/Security only */}
       <footer className="fixed bottom-0 w-full flex justify-center items-center px-12 py-6 lg:w-1/2 right-0 z-50 bg-transparent">
         <div className="flex items-center gap-6">
-          <a className="font-body text-xs tracking-wide uppercase text-on-surface-variant/40 hover:text-on-surface-variant transition-colors" href="#">Bảo mật</a>
-          <a className="font-body text-xs tracking-wide uppercase text-on-surface-variant/40 hover:text-on-surface-variant transition-colors" href="#">Điều khoản</a>
-          <a className="font-body text-xs tracking-wide uppercase text-on-surface-variant/40 hover:text-on-surface-variant transition-colors" href="#">An ninh</a>
+          <a
+            className="font-body text-xs tracking-wide uppercase text-on-surface-variant/40 hover:text-on-surface-variant transition-colors"
+            href="#"
+          >
+            Bảo mật
+          </a>
+          <a
+            className="font-body text-xs tracking-wide uppercase text-on-surface-variant/40 hover:text-on-surface-variant transition-colors"
+            href="#"
+          >
+            Điều khoản
+          </a>
+          <a
+            className="font-body text-xs tracking-wide uppercase text-on-surface-variant/40 hover:text-on-surface-variant transition-colors"
+            href="#"
+          >
+            An ninh
+          </a>
         </div>
       </footer>
     </div>

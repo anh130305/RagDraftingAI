@@ -656,3 +656,33 @@ export interface DashboardStatsResponse {
 export function getDashboardStats() {
   return request<DashboardStatsResponse>('/api/v1/admin/dashboard-stats');
 }
+
+/* ─── Admin AI Monitoring ────────────────────────────────── */
+
+export interface AIMonitoringTrend {
+  name: string;
+  queries: number;
+  errors: number;
+  avgLatency: number;
+}
+
+export interface AIMonitoringResponse {
+  summary: {
+    total_queries: number;
+    success_rate: number;
+    error_rate: number;
+    avg_latency_ms: number;
+    user_satisfaction: number;
+    interaction_stats: {
+      likes: number;
+      dislikes: number;
+      total_feedback: number;
+    };
+  };
+  trends: AIMonitoringTrend[];
+  collected_at: string;
+}
+
+export function getAIMonitoringStats(days: number = 7) {
+  return request<AIMonitoringResponse>(`/api/v1/admin/ai-monitoring?days=${days}`);
+}

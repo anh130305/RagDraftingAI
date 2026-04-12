@@ -6,6 +6,7 @@ from typing import List
 from uuid import UUID
 import asyncio
 import random
+import time
 from sqlalchemy.sql import func
 
 
@@ -17,6 +18,7 @@ from app.services import cloudinary_service
 from app.models.document import Document
 from app.models.chat_message import MessageRole
 from app.models.chat_message import ChatMessage
+from app.models.query_log import QueryLog
 from app.schemas.chat import (
     ChatSessionCreate,
     ChatSessionUpdate,
@@ -25,6 +27,7 @@ from app.schemas.chat import (
     ChatMessageResponse,
     ChatSessionWithMessages,
 )
+from app.db.session import get_session_local
 
 
 # ── Sessions ─────────────────────────────────────────────────
@@ -155,25 +158,54 @@ async def generate_assistant_response_task(
 ):
     """
     Background task to simulate RAG/LLM processing and save assistant response.
-    Currently used to satisfy the 'persistent response' requirement.
+    Includes performance tracking for monitoring.
     """
-    from app.db.session import get_session_local
-    
-    # Simulate processing time (5-8 seconds)
-    await asyncio.sleep(random.uniform(5, 8))
-    
-    # Get a fresh DB session for the background thread
+    start_time = time.perf_counter()
     db = get_session_local()()
+    
+    assistant_msg = None
+    is_error = False
+    error_message = None
+    chunk_found = False
+
     try:
+        # Simulate processing time (5-8 seconds)
+        await asyncio.sleep(random.uniform(5, 8))
+        
         # Here we would normally call the RAG process
+        # Logic to determine if "chunks were found" (simplified mock)
+        chunk_found = "không tìm thấy" not in user_query.lower()
+
         # For now, we use a mock response logic
         content = f"OKE! Tôi đã nhận được yêu cầu: '{user_query[:50]}...'. Đây là phản hồi giả lập được xử lý ngầm (Background Task). Dù bạn có reload trang thì tôi vẫn sẽ trả lời!"
         
-        create_assistant_response(db, session_id, content)
-        print(f"Background task completed for session {session_id}")
+        # ── Create the assistant message ──
+        assistant_msg = create_assistant_response(db, session_id, content)
+        
     except Exception as e:
+        is_error = True
+        error_message = str(e)
         print(f"Error in background task: {e}")
     finally:
+        end_time = time.perf_counter()
+        response_time_ms = int((end_time - start_time) * 1000)
+
+        # ── Log query metrics ──
+        try:
+            query_log = QueryLog(
+                session_id=session_id,
+                message_id=assistant_msg.id if assistant_msg else None,
+                response_time_ms=response_time_ms,
+                chunk_found=chunk_found,
+                is_error=is_error,
+                error_message=error_message
+            )
+            db.add(query_log)
+            db.commit()
+        except Exception as log_err:
+            print(f"Failed to save query log: {log_err}")
+            db.rollback()
+        
         db.close()
 
 def get_messages(
