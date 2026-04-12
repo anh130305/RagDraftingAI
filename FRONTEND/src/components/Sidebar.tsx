@@ -4,6 +4,7 @@ import {
   Database,
   Settings2,
   BrainCircuit,
+  Bot,
   Activity,
   Settings,
   Plus,
@@ -17,7 +18,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../lib/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-export type ViewType = 'dashboard' | 'knowledge' | 'prompt' | 'users' | 'health' | 'settings' | 'help' | 'docs';
+export type ViewType = 'dashboard' | 'knowledge' | 'prompt' | 'monitoring' | 'users' | 'health' | 'settings' | 'help' | 'docs';
 
 interface SidebarProps {
   activeView: ViewType;
@@ -33,6 +34,7 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
     { id: 'dashboard', label: 'Bảng điều khiển', icon: LayoutDashboard },
     { id: 'knowledge', label: 'Cơ sở tri thức', icon: Database },
     { id: 'prompt', label: 'Cấu Hình Lệnh Mẫu', icon: BrainCircuit },
+    { id: 'monitoring', label: 'Theo dõi AI', icon: Bot },
     { id: 'users', label: 'Quản lý người dùng', icon: Settings2 },
     { id: 'health', label: 'Tình trạng hệ thống', icon: Activity },
     { id: 'settings', label: 'Cài đặt', icon: Settings },

@@ -23,9 +23,24 @@ from app.schemas.prompt_template import (
     PromptTemplateListResponse,
 )
 from app.services import user_service, audit_service, prompt_template_service
-from app.services import system_stats_service
+from app.services import system_stats_service, ai_monitoring_service
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
+
+
+# ── AI Monitoring ──────────────────────────────────────────
+
+@router.get("/ai-monitoring")
+def get_ai_monitoring(
+    days: int = Query(7, ge=1, le=365),
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """
+    Returns RAG AI performance metrics including success rate, 
+    latency trends, and detailed feedback correlation.
+    """
+    return ai_monitoring_service.get_ai_monitoring_stats(db, days=days)
 
 
 # ── User management ──────────────────────────────────────────

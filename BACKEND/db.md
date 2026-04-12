@@ -175,6 +175,8 @@ CREATE TABLE query_logs (
     message_id       UUID      REFERENCES chat_messages(id) ON DELETE SET NULL,
     response_time_ms INTEGER,
     chunk_found      BOOLEAN   NOT NULL DEFAULT FALSE,
+    is_error         BOOLEAN   NOT NULL DEFAULT FALSE,
+    error_message    TEXT,
     created_at       TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
