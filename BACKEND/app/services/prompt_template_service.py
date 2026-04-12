@@ -17,10 +17,22 @@ from app.schemas.prompt_template import (
 )
 
 
-def list_templates(db: Session) -> PromptTemplateListResponse:
-    """List all active prompt templates."""
+def list_active_templates(db: Session) -> PromptTemplateListResponse:
+    """List only active prompt templates (for users)."""
     items = prompt_template_repo.get_active(db)
     total = prompt_template_repo.count_active(db)
+    return PromptTemplateListResponse(
+        items=[PromptTemplateResponse.model_validate(t) for t in items],
+        total=total,
+    )
+
+
+def list_all_templates(
+    db: Session, skip: int = 0, limit: int = 100
+) -> PromptTemplateListResponse:
+    """List all prompt templates (for admins)."""
+    items = prompt_template_repo.get_all(db, skip=skip, limit=limit)
+    total = prompt_template_repo.count_all(db)
     return PromptTemplateListResponse(
         items=[PromptTemplateResponse.model_validate(t) for t in items],
         total=total,

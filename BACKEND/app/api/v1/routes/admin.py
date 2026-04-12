@@ -171,7 +171,7 @@ def list_prompt_templates(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    return prompt_template_service.list_templates(db)
+    return prompt_template_service.list_all_templates(db)
 
 
 @router.post("/prompt-templates", response_model=PromptTemplateResponse, status_code=201)
