@@ -451,6 +451,10 @@ export function setDefaultPromptTemplate(id: string) {
   return request<PromptTemplateResponse>(`/api/v1/admin/prompt-templates/${id}/default`, { method: 'PUT' });
 }
 
+export function recordPromptTemplateUse(id: string) {
+  return request<void>(`/api/v1/chat/prompt-templates/${id}/use`, { method: 'POST' });
+}
+
 
 /* ─── Chat ──────────────────────────────────────────────── */
 
@@ -587,7 +591,16 @@ export function deleteDocument(id: string) {
   return request<void>(`/api/v1/documents/${id}`, { method: 'DELETE' });
 }
 
-/* ─── Admin System Stats ─────────────────────────────────── */
+/* ─── Admin System Stats & Management ─────────────────────── */
+
+export function getAdminKnowledgeBase(skip = 0, limit = 50) {
+  const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+  return request<{ items: DocumentResponse[]; total: number }>(`/api/v1/admin/knowledge-base?${params}`);
+}
+
+export function deleteAdminKnowledgeBase(id: string) {
+  return request<void>(`/api/v1/admin/knowledge-base/${id}`, { method: 'DELETE' });
+}
 
 export interface GpuInfo {
   index: number;

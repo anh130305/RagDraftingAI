@@ -39,11 +39,9 @@ def get_session_local():
 
 
 # Backward-compatible aliases
-@property
 def engine():
     return get_engine()
 
 
-@property
 def SessionLocal():
     return get_session_local()

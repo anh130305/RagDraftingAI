@@ -136,6 +136,11 @@ def normal_user(db) -> User:
 
 
 @pytest.fixture()
+def normal_user_2(db) -> User:
+    return create_test_user(db, username="normaluser2", password="normal456")
+
+
+@pytest.fixture()
 def admin_user(db) -> User:
     return create_test_user(
         db, username="adminuser", password="admin123", role=UserRole.admin
@@ -145,6 +150,11 @@ def admin_user(db) -> User:
 @pytest.fixture()
 def normal_auth(client, normal_user) -> dict:
     return get_auth_header(client, "normaluser", "normal123")
+
+
+@pytest.fixture()
+def normal_auth_2(client, normal_user_2) -> dict:
+    return get_auth_header(client, "normaluser2", "normal456")
 
 
 @pytest.fixture()

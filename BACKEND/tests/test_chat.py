@@ -43,6 +43,14 @@ class TestCreateSession:
         resp = client.post("/api/v1/chat/sessions", json={"title": "test"})
         assert resp.status_code == 401
 
+    def test_create_session_admin_forbidden(self, client, admin_auth):
+        resp = client.post(
+            "/api/v1/chat/sessions",
+            headers=admin_auth,
+            json={"title": "Admin should not chat"},
+        )
+        assert resp.status_code == 403
+
 
 class TestListSessions:
     """GET /api/v1/chat/sessions"""
@@ -85,10 +93,10 @@ class TestGetSession:
         resp = client.get(f"/api/v1/chat/sessions/{fake_id}", headers=normal_auth)
         assert resp.status_code == 404
 
-    def test_get_other_users_session(self, client, normal_auth, admin_auth):
-        # Admin creates a session
+    def test_get_other_users_session(self, client, normal_auth, normal_auth_2):
+        # Another user creates a session
         create_resp = client.post(
-            "/api/v1/chat/sessions", headers=admin_auth, json={"title": "Admin session"}
+            "/api/v1/chat/sessions", headers=normal_auth_2, json={"title": "Another user session"}
         )
         session_id = create_resp.json()["id"]
 
@@ -145,9 +153,9 @@ class TestDeleteSession:
         resp = client.get(f"/api/v1/chat/sessions/{session_id}", headers=normal_auth)
         assert resp.status_code == 404
 
-    def test_delete_other_users_session(self, client, normal_auth, admin_auth):
+    def test_delete_other_users_session(self, client, normal_auth, normal_auth_2):
         create_resp = client.post(
-            "/api/v1/chat/sessions", headers=admin_auth, json={"title": "Admin's"}
+            "/api/v1/chat/sessions", headers=normal_auth_2, json={"title": "Other user's"}
         )
         session_id = create_resp.json()["id"]
 
@@ -197,9 +205,10 @@ class TestMessages:
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert len(data) == 2
-        assert data[0]["content"] == "First message"
-        assert data[1]["content"] == "Second message"
+        user_messages = [m for m in data if m["role"] == "user"]
+        assert len(user_messages) == 2
+        assert user_messages[0]["content"] == "First message"
+        assert user_messages[1]["content"] == "Second message"
 
     def test_send_message_empty_content(self, client, normal_auth):
         session_id = self._create_session(client, normal_auth)
@@ -210,8 +219,8 @@ class TestMessages:
         )
         assert resp.status_code == 422
 
-    def test_messages_other_users_session(self, client, normal_auth, admin_auth):
-        session_id = self._create_session(client, admin_auth)
+    def test_messages_other_users_session(self, client, normal_auth, normal_auth_2):
+        session_id = self._create_session(client, normal_auth_2)
 
         resp = client.get(
             f"/api/v1/chat/sessions/{session_id}/messages",

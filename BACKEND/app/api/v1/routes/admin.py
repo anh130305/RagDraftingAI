@@ -16,13 +16,14 @@ from app.models.audit_log import AuditAction
 from app.models.chat_message import ChatMessage, MessageRole
 from app.schemas.user import UserResponse, AdminUserUpdate
 from app.schemas.audit import AuditLogFilter, AuditLogListResponse
+from app.schemas.document import DocumentListResponse
 from app.schemas.prompt_template import (
     PromptTemplateCreate,
     PromptTemplateUpdate,
     PromptTemplateResponse,
     PromptTemplateListResponse,
 )
-from app.services import user_service, audit_service, prompt_template_service
+from app.services import user_service, audit_service, prompt_template_service, document_service
 from app.services import system_stats_service, ai_monitoring_service
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -174,38 +175,109 @@ def list_prompt_templates(
     return prompt_template_service.list_all_templates(db)
 
 
-@router.post("/prompt-templates", response_model=PromptTemplateResponse, status_code=201)
-def create_prompt_template(
-    payload: PromptTemplateCreate,
+@router.get("/knowledge-base", response_model=DocumentListResponse)
+def list_knowledge_base(
+    db: Session = Depends(get_db),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    admin: User = Depends(require_admin),
+):
+    """List all common knowledge-base documents (session_id=None)."""
+    return document_service.list_global_documents(db, skip=skip, limit=limit)
+
+
+@router.delete("/knowledge-base/{document_id}", status_code=204)
+def delete_knowledge_base_document(
+    document_id: UUID,
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    return prompt_template_service.create_template(db, admin.id, payload)
+    """Admin-only deletion of a global knowledge base document."""
+    return document_service.delete_document(db, document_id)
+
+
+@router.post("/prompt-templates", response_model=PromptTemplateResponse, status_code=201)
+def create_prompt_template(
+    request: Request,
+    payload: PromptTemplateCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    template = prompt_template_service.create_template(db, admin.id, payload)
+    
+    background_tasks.add_task(
+        audit_service.log_action,
+        user_id=admin.id,
+        action=AuditAction.create_template,
+        resource_type="prompt_template",
+        resource_id=template.id,
+        ip_address=request.client.host if request.client else None,
+        detail={"name": template.name}
+    )
+    return template
 
 
 @router.put("/prompt-templates/{template_id}", response_model=PromptTemplateResponse)
 def update_prompt_template(
+    request: Request,
     template_id: UUID,
     payload: PromptTemplateUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    return prompt_template_service.update_template(db, template_id, payload)
+    template = prompt_template_service.update_template(db, template_id, payload)
+    
+    background_tasks.add_task(
+        audit_service.log_action,
+        user_id=admin.id,
+        action=AuditAction.update_template,
+        resource_type="prompt_template",
+        resource_id=template_id,
+        ip_address=request.client.host if request.client else None,
+        detail=payload.model_dump(exclude_unset=True)
+    )
+    return template
 
 
 @router.delete("/prompt-templates/{template_id}", status_code=204)
 def delete_prompt_template(
+    request: Request,
     template_id: UUID,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
     prompt_template_service.delete_template(db, template_id)
+    
+    background_tasks.add_task(
+        audit_service.log_action,
+        user_id=admin.id,
+        action=AuditAction.delete_template,
+        resource_type="prompt_template",
+        resource_id=template_id,
+        ip_address=request.client.host if request.client else None
+    )
 
 
 @router.put("/prompt-templates/{template_id}/default", response_model=PromptTemplateResponse)
 def set_default_prompt_template(
+    request: Request,
     template_id: UUID,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    return prompt_template_service.set_default_template(db, template_id)
+    template = prompt_template_service.set_default_template(db, template_id)
+    
+    background_tasks.add_task(
+        audit_service.log_action,
+        user_id=admin.id,
+        action=AuditAction.update_template,
+        resource_type="prompt_template",
+        resource_id=template_id,
+        ip_address=request.client.host if request.client else None,
+        detail={"set_as_default": True}
+    )
+    return template

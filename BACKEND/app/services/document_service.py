@@ -5,11 +5,12 @@ services.document_service – Document upload, listing, and RAG callback handlin
 from typing import List, Optional
 from uuid import UUID
 
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError
 from app.repositories.document_repo import document_repo, chunk_repo
-from app.models.document import DocStatus
+from app.models.document import DocStatus, Document
 from app.schemas.document import (
     DocumentResponse,
     DocumentWithChunks,
@@ -87,6 +88,25 @@ def list_documents(
     )
     _ensure_docs_public_delivery(docs)
     total = document_repo.count_by_uploader(db, user_id, session_id=session_id)
+    return DocumentListResponse(
+        items=[DocumentResponse.model_validate(d) for d in docs],
+        total=total,
+    )
+
+
+def list_global_documents(
+    db: Session,
+    *,
+    skip: int = 0,
+    limit: int = 100,
+) -> DocumentListResponse:
+    """List all common knowledge-base documents (session_id is None)."""
+    # Use general query filtering for session_id=None
+    query = db.query(Document).filter(Document.session_id == None)
+    total = query.count()
+    docs = query.order_by(desc(Document.created_at)).offset(skip).limit(limit).all()
+    
+    _ensure_docs_public_delivery(docs)
     return DocumentListResponse(
         items=[DocumentResponse.model_validate(d) for d in docs],
         total=total,

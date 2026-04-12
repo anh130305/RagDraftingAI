@@ -24,10 +24,10 @@ export default function KnowledgeBase() {
 
   const fetchDocuments = useCallback(async () => {
     try {
-      const data = await api.listDocuments(0, 100);
+      const data = await api.getAdminKnowledgeBase(0, 100);
       setDocuments(data.items);
     } catch (err: any) {
-      console.error("Lỗi khi tải danh sách tài liệu", err);
+      console.error("Lỗi khi tải danh sách tri thức", err);
     }
   }, []);
 
@@ -79,18 +79,18 @@ export default function KnowledgeBase() {
 
   const handleDelete = async (id: string) => {
     const isConfirmed = await confirm({
-      title: 'Xóa tài liệu',
-      message: 'Bạn có chắc muốn xóa tài liệu này không? Việc này sẽ xóa toàn bộ file liên quan.',
-      confirmLabel: 'Xóa tài liệu',
+      title: 'Xóa tài liệu khỏi Cơ sở tri thức',
+      message: 'Bạn có chắc muốn xóa tài liệu này không? Hành động này sẽ loại bỏ tri thức này khỏi hệ thống RAG.',
+      confirmLabel: 'Xóa tri thức',
       variant: 'danger'
     });
 
     if (!isConfirmed) return;
 
     try {
-      await api.deleteDocument(id);
+      await api.deleteAdminKnowledgeBase(id);
       await fetchDocuments();
-      showToast('Đã xóa tài liệu thành công', 'success');
+      showToast('Đã xóa tài liệu khỏi tri thức thành công', 'success');
     } catch (err: any) {
       showToast(err.message || 'Lỗi khi xóa tài liệu', 'error');
     }
@@ -122,10 +122,15 @@ export default function KnowledgeBase() {
     >
       <header className="flex justify-between items-end flex-wrap gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold font-headline tracking-tight text-on-surface mb-1">Cơ sở tri thức (RAG)</h2>
+          <h2 className="text-3xl font-extrabold font-headline tracking-tight text-on-surface mb-1">
+            Cơ sở tri thức (RAG)
+          </h2>
           <p className="text-xs text-on-surface-variant max-w-2xl font-medium">
-            Quản lý tài liệu tri thức nội bộ. Các tài liệu tải lên sẽ được tự động trích xuất, phân mảnh và mã hóa vector để phục vụ cho hệ thống AI phản hồi.
+            Quản lý tài liệu tri thức nội bộ. Mọi tài liệu tại đây sẽ được hệ thống AI sử dụng chung để trả lời câu hỏi cho tất cả người dùng.
           </p>
+        </div>
+        <div className="px-3 py-1 bg-tertiary/10 border border-tertiary/20 rounded-lg text-[10px] font-bold text-tertiary uppercase tracking-wider">
+          CHẾ ĐỘ QUẢN TRỊ VIÊN
         </div>
       </header>
 
@@ -145,7 +150,7 @@ export default function KnowledgeBase() {
             <Layers className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Tổng số Vector (Chunks)</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Tổng số Vector</p>
             <p className="text-xl font-extrabold font-headline">{stats.chunks.toLocaleString()}</p>
           </div>
         </div>
@@ -154,7 +159,7 @@ export default function KnowledgeBase() {
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Đã sẵn sàng</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Sẵn sàng</p>
             <p className="text-xl font-extrabold font-headline">{stats.ready}</p>
           </div>
         </div>
@@ -193,19 +198,19 @@ export default function KnowledgeBase() {
               {isUploading ? (
                 <motion.div key="uploading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center w-full">
                   <div className="w-16 h-16 rounded-full border-4 border-surface-highest border-t-primary animate-spin mb-4" />
-                  <h3 className="text-lg font-bold text-primary mb-2">Đang tải lên...</h3>
+                  <h3 className="text-lg font-bold text-primary mb-2">Đang nạp tri thức...</h3>
                   <div className="w-full max-w-[200px] h-2 bg-surface-highest rounded-full overflow-hidden">
                     <div className="h-full bg-primary transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
                   </div>
                 </motion.div>
               ) : (
                 <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center">
-                  <div className="w-16 h-16 bg-surface-highest rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-xl">
+                  <div className="w-16 h-16 bg-surface-highest rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-xl border border-outline-variant/30">
                     <Upload className="w-8 h-8 text-primary" />
                   </div>
-                  <h3 className="text-lg font-bold text-on-surface mb-2">Kéo thả Tài liệu</h3>
+                  <h3 className="text-lg font-bold text-on-surface mb-2">Thêm tri thức mới</h3>
                   <p className="text-xs text-on-surface-variant mb-6 max-w-[200px] leading-relaxed">
-                    Hỗ trợ PDF, DOCX, TXT. Hệ thống sẽ tự động trích xuất và lưu trữ.
+                    Tài liệu cho RAG (PDF, DOCX, TXT). Nạp vào cơ sở dữ liệu chung.
                   </p>
                   <button className="px-6 py-2.5 bg-surface-highest hover:bg-primary hover:text-on-primary border border-outline-variant hover:border-primary text-on-surface rounded-full text-xs font-bold transition-all shadow-sm">
                     Chọn Tệp
@@ -215,23 +220,14 @@ export default function KnowledgeBase() {
             </AnimatePresence>
           </div>
 
-          <AnimatePresence>
-            {error && (
-              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="p-4 bg-error/10 border border-error/20 rounded-xl flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-error shrink-0 mt-0.5" />
-                <p className="text-xs text-error font-medium">{error}</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           <div className="glass-card p-5 rounded-xl border border-outline-variant/30 text-xs text-on-surface-variant leading-relaxed">
             <h4 className="font-bold text-on-surface mb-2 flex items-center gap-2">
-              <HardDrive className="w-4 h-4 text-secondary" /> Hướng dẫn
+              <HardDrive className="w-4 h-4 text-secondary" /> Hướng dẫn RAG
             </h4>
             <ul className="list-disc pl-4 space-y-1">
               <li>Mỗi tệp không nên vượt quá 50MB.</li>
               <li>Tài liệu sẽ được chunking (phân đoạn) tự động.</li>
-              <li>Chỉ các tài liệu ở trạng thái <strong>Sẵn sàng</strong> mới được AI sử dụng để trả lời câu hỏi.</li>
+              <li>Hệ thống AI sẽ ưu tiên sử dụng tri thức từ các tệp <strong>Sẵn sàng</strong>.</li>
             </ul>
           </div>
         </div>
@@ -240,13 +236,13 @@ export default function KnowledgeBase() {
         <div className="lg:col-span-8 flex flex-col h-[800px] bg-surface rounded-xl border border-outline-variant overflow-hidden">
           <div className="p-4 border-b border-outline-variant/50 flex flex-wrap items-center justify-between gap-4 bg-surface-low">
             <h3 className="font-bold text-on-surface flex items-center gap-2">
-              Danh sách tài liệu
+              Kho lưu trữ Tri thức chung
             </h3>
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
               <input
                 type="text"
-                placeholder="Tìm kiếm tài liệu..."
+                placeholder="Tìm kiếm tri thức..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className="pl-9 pr-4 py-1.5 rounded-lg border border-outline-variant bg-surface text-xs w-64 focus:ring-1 focus:ring-primary focus:border-primary transition-all outline-none"
@@ -258,25 +254,25 @@ export default function KnowledgeBase() {
             {filteredDocs.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-on-surface-variant/50 p-6 text-center">
                 <FileText className="w-12 h-12 mb-3 opacity-20" />
-                <p className="text-sm font-medium">Chưa có tài liệu nào</p>
-                <p className="text-xs">Tải lên tài liệu ở ô bên trái để bắt đầu xây dựng Cơ sở tri thức.</p>
+                <p className="text-sm font-medium">Chưa có tri thức nào</p>
+                <p className="text-xs">Bắt đầu nạp tri thức chung cho hệ thống AI từ khung bên trái.</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {filteredDocs.map(doc => (
                   <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-surface-high border border-transparent hover:border-outline-variant/30 transition-all group">
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <div className="w-10 h-10 rounded-lg bg-surface-highest flex items-center justify-center shrink-0">
+                      <div className="w-10 h-10 rounded-lg bg-surface-highest flex items-center justify-center shrink-0 border border-outline-variant/30">
                         <FileText className={cn("w-5 h-5", doc.title.endsWith('.pdf') ? "text-red-400" : "text-blue-400")} />
                       </div>
                       <div className="min-w-0">
                         <h4 className="text-sm font-semibold text-on-surface truncate" title={doc.title}>{doc.title}</h4>
                         <div className="flex items-center gap-3 text-[10px] text-on-surface-variant mt-0.5">
-                          <span>{formatSize(doc.file_size)}</span>
+                          <span className="font-bold">{formatSize(doc.file_size)}</span>
                           <span>•</span>
                           <span>{new Date(doc.created_at).toLocaleDateString('vi-VN')}</span>
                           <span>•</span>
-                          <span>{doc.chunk_count} chunks</span>
+                          <span className="px-1.5 py-0.5 bg-secondary/10 text-secondary rounded border border-secondary/20">{doc.chunk_count} chunks</span>
                         </div>
                       </div>
                     </div>
@@ -287,20 +283,20 @@ export default function KnowledgeBase() {
                         "px-2 py-1 rounded border text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5",
                         doc.status === 'ready' ? "bg-green-500/10 text-green-500 border-green-500/20" :
                           doc.status === 'failed' ? "bg-error/10 text-error border-error/20" :
-                            "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                            "bg-yellow-500/10 text-yellow-500 border-yellow-500/20 shadow-sm"
                       )}>
                         {doc.status === 'ready' ? <CheckCircle2 className="w-3 h-3" /> :
                           doc.status === 'failed' ? <AlertCircle className="w-3 h-3" /> :
                             <Clock className="w-3 h-3 animate-pulse" />}
                         {doc.status === 'ready' ? 'Sẵn sàng' :
-                          doc.status === 'failed' ? 'Lỗi' :
+                          doc.status === 'failed' ? 'Lỗi RAG' :
                             'Đang xử lý'}
                       </span>
 
                       <button
                         onClick={() => handleDelete(doc.id)}
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                        title="Xóa tài liệu"
+                        title="Xóa tri thức"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

@@ -50,6 +50,16 @@ class TestUploadDocument:
         )
         assert resp.status_code == 401
 
+    def test_upload_admin_forbidden(self, client, admin_auth):
+        file_content = b"Admin upload should be blocked"
+        resp = client.post(
+            "/api/v1/documents/upload",
+            headers=admin_auth,
+            files={"file": ("admin.pdf", io.BytesIO(file_content), "application/pdf")},
+            data={"title": "Admin Doc"},
+        )
+        assert resp.status_code == 403
+
 
 class TestListDocuments:
     """GET /api/v1/documents"""
@@ -61,6 +71,10 @@ class TestListDocuments:
         assert "items" in data
         assert "total" in data
         assert isinstance(data["items"], list)
+
+    def test_list_documents_admin_forbidden(self, client, admin_auth):
+        resp = client.get("/api/v1/documents", headers=admin_auth)
+        assert resp.status_code == 403
 
     def test_list_with_pagination(self, client, normal_auth):
         resp = client.get(
