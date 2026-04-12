@@ -343,8 +343,8 @@ export default function PromptTemplateConfig() {
                           onClick={(e) => { e.stopPropagation(); handleToggleActive(tpl); }}
                           className={cn(
                             "flex items-center gap-1 px-2 py-1 text-[10px] font-bold rounded-lg transition-colors",
-                            tpl.is_active 
-                              ? "text-on-surface-variant bg-surface hover:bg-surface-highest" 
+                            tpl.is_active
+                              ? "text-on-surface-variant bg-surface hover:bg-surface-highest"
                               : "text-green-600 bg-green-500/5 hover:bg-green-500/10"
                           )}
                         >
