@@ -186,4 +186,4 @@ def list_user_prompt_templates(
     current_user: User = Depends(get_current_user),
 ):
     """List active prompt templates for chat users."""
-    return prompt_template_service.list_templates(db)
+    return prompt_template_service.list_active_templates(db)

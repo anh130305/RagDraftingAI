@@ -16,6 +16,21 @@ class PromptTemplateRepository(BaseRepository[PromptTemplate]):
     def __init__(self):
         super().__init__(PromptTemplate)
 
+    def get_all(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[PromptTemplate]:
+        """Return all templates including inactive ones, newest first."""
+        return (
+            db.query(PromptTemplate)
+            .order_by(desc(PromptTemplate.created_at))
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def count_all(self, db: Session) -> int:
+        return db.query(PromptTemplate).count()
+
     def get_active(
         self, db: Session, *, skip: int = 0, limit: int = 100
     ) -> List[PromptTemplate]:

@@ -115,12 +115,24 @@ export default function PromptTemplateConfig() {
     }
   };
 
-  // ── Delete (soft) template ────────────────────────────────
+  // ── Toggle Active/Inactive status ──────────────────────────
+  const handleToggleActive = async (tpl: PromptTemplate) => {
+    try {
+      await api.updatePromptTemplate(tpl.id, { is_active: !tpl.is_active });
+      showToast(`${tpl.is_active ? 'Đã tạm ẩn' : 'Đã kích hoạt'} mẫu "${tpl.name}"`, 'success');
+      await fetchTemplates();
+    } catch (err: any) {
+      showToast('Cập nhật trạng thái thất bại: ' + (err.message || ''), 'error');
+    }
+  };
+
+  // ── Delete template (soft or hard depending on intent) ─────
+  // Currently service handles delete as soft-delete (is_active=False).
   const handleDelete = async (tpl: PromptTemplate) => {
+    if (!window.confirm(`Bạn có chắc muốn xóa mẫu "${tpl.name}"?`)) return;
     try {
       await api.deletePromptTemplate(tpl.id);
       showToast(`Đã xóa mẫu "${tpl.name}"`, 'success');
-      // If deleted the selected one, clear editor
       if (tpl.id === selectedId) {
         setSelectedId(null);
         setPromptContent('');
@@ -263,8 +275,8 @@ export default function PromptTemplateConfig() {
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
-              <p className="text-xs text-on-surface-variant mb-4 font-medium leading-relaxed shrink-0">
-                Lựa chọn hoặc chèn nhanh cấu trúc RAG có sẵn vào Editor:
+              <p className="text-xs text-on-surface-variant mb-4 font-medium leading-relaxed shrink-0 italic">
+                Lưu ý: Chỉ những mẫu ở trạng thái <strong>"Đang hoạt động"</strong> mới hiển thị cho người dùng.
               </p>
 
               {templates.length === 0 ? (
@@ -304,6 +316,11 @@ export default function PromptTemplateConfig() {
                               Mặc định
                             </span>
                           )}
+                          {!tpl.is_active && (
+                            <span className="px-1.5 py-0.5 bg-surface-highest text-on-surface-variant text-[9px] font-bold uppercase rounded border border-outline-variant shrink-0">
+                              Bản nháp
+                            </span>
+                          )}
                         </div>
                         <p className="text-[10px] text-on-surface-variant leading-relaxed">
                           {tpl.description || 'Không có mô tả'}
@@ -312,7 +329,7 @@ export default function PromptTemplateConfig() {
 
                       {/* Actions (visible on hover) */}
                       <div className="flex gap-1 mt-2 pt-2 border-t border-outline-variant/20">
-                        {!tpl.is_default && (
+                        {tpl.is_active && !tpl.is_default && (
                           <button
                             onClick={(e) => { e.stopPropagation(); handleSetDefault(tpl); }}
                             className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-amber-600 bg-amber-500/5 hover:bg-amber-500/10 rounded-lg transition-colors"
@@ -323,12 +340,22 @@ export default function PromptTemplateConfig() {
                           </button>
                         )}
                         <button
+                          onClick={(e) => { e.stopPropagation(); handleToggleActive(tpl); }}
+                          className={cn(
+                            "flex items-center gap-1 px-2 py-1 text-[10px] font-bold rounded-lg transition-colors",
+                            tpl.is_active 
+                              ? "text-on-surface-variant bg-surface hover:bg-surface-highest" 
+                              : "text-green-600 bg-green-500/5 hover:bg-green-500/10"
+                          )}
+                        >
+                          {tpl.is_active ? 'Tạm ẩn' : 'Kích hoạt lại'}
+                        </button>
+                        <button
                           onClick={(e) => { e.stopPropagation(); handleDelete(tpl); }}
                           className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-error bg-error/5 hover:bg-error/10 rounded-lg transition-colors ml-auto"
                           title="Xóa mẫu"
                         >
                           <Trash2 className="w-3 h-3" />
-                          Xóa
                         </button>
                       </div>
                     </div>
