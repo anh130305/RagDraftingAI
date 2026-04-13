@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Lock, Monitor, Moon, Sparkles, Sun, User, Eye, EyeOff } from 'lucide-react';
+import { Lock, Monitor, Moon, Hexagon, Sun, User, Eye, EyeOff } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { getHomePathByRole, useAuth } from './lib/AuthContext';
 import { useToast } from './lib/ToastContext';
@@ -149,8 +149,8 @@ export default function Login() {
             {/* Header & Logo */}
             <div className="text-center lg:text-left space-y-4">
               <div className="flex items-center justify-center lg:justify-start gap-3">
-                <div className="w-10 h-10 rounded-lg primary-gradient flex items-center justify-center glow-shadow">
-                  <Sparkles className="w-5 h-5 text-on-primary-fixed" />
+                <div className="w-10 h-10 rounded-full bg-[#4B91F7] flex items-center justify-center glow-shadow">
+                  <Hexagon className="w-6 h-6 text-black" strokeWidth={2.5} />
                 </div>
                 <span className="font-headline font-black text-2xl tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-container">
                   RAG AI
