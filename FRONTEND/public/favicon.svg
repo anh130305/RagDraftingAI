@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Blue circle background -->
+  <circle cx="64" cy="64" r="60" fill="#4B91F7" />
+  <!-- Black hexagon outline -->
+  <path 
+    d="M64 34 L90 49 L90 79 L64 94 L38 79 L38 49 Z" 
+    fill="none" 
+    stroke="black" 
+    stroke-width="8" 
+    stroke-linejoin="round"
+  />
+</svg>

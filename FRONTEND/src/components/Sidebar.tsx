@@ -58,8 +58,8 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
       <aside className="flex flex-col h-screen w-64 bg-surface-low py-5 px-4 fixed left-0 top-0 z-40 border-r-0">
         {/* Logo */}
         <div className="mb-6 flex items-center gap-3 px-2">
-          <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center shadow-lg shadow-primary/20">
-            <Hexagon className="text-surface w-5 h-5 fill-current" />
+          <div className="w-9 h-9 rounded-full bg-[#4B91F7] flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <Hexagon className="text-black w-5 h-5" strokeWidth={2.5} />
           </div>
           <div>
             <h1 className="text-lg font-bold tracking-tight text-on-surface leading-none font-headline">RAG AI ADMIN</h1>
