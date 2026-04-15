@@ -4,6 +4,7 @@ data/thuvienphapluat_full.parquet
 .agent
 .github
 .env
+/VN_Law_Advisor-main
 
 
 __pycache__/

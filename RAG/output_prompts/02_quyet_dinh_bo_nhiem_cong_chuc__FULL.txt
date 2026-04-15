@@ -1,0 +1,269 @@
+# RAG CLI — 02_quyet_dinh_bo_nhiem_cong_chuc
+# Run     : 20260415_194821
+# Thời điểm: 2026-04-15 19:50:41
+# Form    : Form_03 (Quyết định)
+# Reranker: BẬT
+# Query   : Soạn quyết định bổ nhiệm ông Nguyễn Văn Hùng giữ chức vụ Trưởng phòng Hành chính - Tổng hợp thuộc Sở Nội vụ tỉnh Bình Dư...
+======================================================================
+
+## [SYSTEM]
+
+Bạn là một Chuyên viên Hành chính Cao cấp tại Việt Nam, có chuyên môn sâu về soạn thảo và ban hành văn bản hành chính theo đúng quy định của Nghị định số 30/2020/NĐ-CP ngày 05/3/2020 của Chính phủ về Công tác văn thư.
+
+## VAI TRÒ & PHẠM VI
+- Bạn soạn thảo văn bản hành chính chuẩn mực cho các cơ quan Nhà nước Việt Nam.
+- Bạn am hiểu thể thức, kỹ thuật trình bày văn bản theo Nghị định 30/2020/NĐ-CP (Phụ lục I, II, III) và các quy định pháp luật liên quan.
+- Bạn nắm vững hệ thống văn bản quy phạm pháp luật Việt Nam: Hiến pháp > Luật/Bộ luật > Pháp lệnh > Nghị định > Nghị quyết > Thông tư.
+
+## NGUYÊN TẮC SOẠN THẢO BẮT BUỘC
+1. **Ưu tiên pháp lý**: Khi có sự chồng chéo giữa các văn bản pháp luật, luôn ưu tiên theo thứ bậc hiệu lực pháp lý: Luật > Pháp lệnh > Nghị định > Nghị quyết.
+2. **Kiểm tra hiệu lực**: Trước khi trích dẫn bất kỳ văn bản pháp luật nào từ LEGAL_CONTEXT, bạn PHẢI tự đánh giá xem văn bản đó có còn hiệu lực tại thời điểm soạn thảo không (dựa trên ngày ban hành, thông tin hết hiệu lực nếu có). Nếu một văn bản đã hết hiệu lực hoặc bị thay thế bởi văn bản mới hơn trong LEGAL_CONTEXT, chỉ trích dẫn văn bản đang có hiệu lực.
+3. **Điền đầy đủ**: Mỗi FIELD_NAME trong danh sách placeholder phải có giá trị. Nếu thiếu thông tin, điền giá trị mẫu hợp lý (ví dụ: "[Tên cơ quan]").
+4. **Văn phong hành chính**: Ngôn ngữ trang trọng, chính xác, khách quan; câu ngắn gọn, rõ ràng; đúng thuật ngữ pháp lý.
+5. **Trích dẫn pháp lý**: Viện dẫn căn cứ bằng đúng số hiệu và tên điều khoản từ LEGAL_CONTEXT. Ưu tiên văn bản có thứ bậc cao hơn khi chồng chéo. Chỉ trích dẫn nếu thực sự cần thiết và liên quan trực tiếp đến nội dung soạn thảo.Nếu LEGAL_CONTEXT không cung cấp điều khoản phù hợp, không nên thêm căn cứ pháp lý ngoài ý muốn.
+6. **Tính nhất quán**: Số liệu, ngày tháng, chức danh, tên cơ quan phải nhất quán xuyên suốt toàn bộ văn bản.
+
+## ĐỊNH DẠNG ĐẦU RA — BẮT BUỘC
+- Trả về DUY NHẤT một JSON object hợp lệ, không kèm bất kỳ text nào khác.
+- Không bọc trong code block markdown (``` ```).
+- Không thêm lời giải thích, tiêu đề, hay chú thích trước/sau JSON.
+- JSON có đúng 1 key ở cấp cao nhất:
+    1. "fields": object chứa TẤT CẢ placeholder đã điền, BAO GỒM cả các field NOI_DUNG_* (thân văn bản tự do viết trực tiếp vào value của field tương ứng).
+
+══════════════════════════════════════════════════════════════════════
+## [USER]
+
+## YÊU CẦU SOẠN THẢO
+Soạn quyết định bổ nhiệm ông Nguyễn Văn Hùng giữ chức vụ Trưởng phòng Hành chính - Tổng hợp thuộc Sở Nội vụ tỉnh Bình Dương. Trong phần căn cứ pháp lý, yêu cầu viện dẫn Luật Cán bộ, công chức và Nghị định của Chính phủ quy định về tuyển dụng, sử dụng và quản lý công chức.
+
+## YÊU CẦU BỔ SUNG
+Ngày ký quyết định: 20/01/2025
+Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai
+Số quyết định: 45/QĐ-SNV
+
+================================================================
+## LEGAL_CONTEXT — Điều khoản pháp luật liên quan
+(Thứ bậc hiệu lực: Luật > Pháp lệnh > Nghị định > Nghị quyết)
+⚠️ BƯỚC BẮT BUỘC TRƯỚC KHI SOẠN THẢO: Với mỗi văn bản trong danh sách dưới đây,
+hãy tự đánh giá hiệu lực pháp lý (còn hiệu lực / hết hiệu lực / không rõ).
+Chỉ trích dẫn những văn bản được đánh giá là CÒN HIỆU LỰC.
+Nếu không xác định được, ghi chú '(cần xác minh hiệu lực)' khi trích dẫn.
+
+
+[1] 📋 [NGHỊ ĐỊNH]
+    Số hiệu : 138/2020/NĐ-CP
+    Tên VB  : QUY ĐỊNH VỀ TUYỂN DỤNG, SỬ DỤNG VÀ QUẢN LÝ CÔNG CHỨC
+    Điều    : Điều 78. Hiệu lực thi hành
+    Độ liên quan: 0.408
+
+Điều 78. Hiệu lực thi hành
+1. Nghị định này có hiệu lực thi hành kể từ ngày 01 tháng 12 năm 2020. 2. Đối với cơ quan, tổ chức đã được cấp có thẩm quyền phê duyệt đề án, kế hoạch tuyển dụng công chức (thi tuyển, xét tuyển, tiếp nhận vào công chức), thi nâng ngạch công chức trước ngày ban hành Nghị định này thì tiếp tục thực hiện theo đề án, kế hoạch đã được phê duyệt trong thời hạn 06 tháng kể từ ngày Nghị định này có hiệu lực thi hành. Sau thời hạn này nếu không hoàn thành thì thực hiện theo quy định tại Nghị định này. 3. Bãi bỏ toàn bộ các văn bản quy phạm pháp luật sau: a) Nghị định số 24/2010/NĐ-CP ngày 15 tháng 3 năm 2010 của Chính phủ quy định về tuyển dụng, sử dụng và quản lý công chức; b) Nghị định số 93/2010/NĐ-CP ngày 31 tháng 8 năm 2010 của Chính phủ sửa đổi một số điều của Nghị định số 24/2010/NĐ-CP ngày 15 tháng 3 năm 2010 của Chính phủ quy định về tuyển dụng, sử dụng và quản lý công chức; c) Quyết định số 27/2003/QĐ-TTg ngày 19 tháng 02 năm 2003 của Thủ tướng Chính phủ về việc ban hành quy chế bổ nhiệm, bổ nhiệm lại, luân chuyển, từ chức, miễn nhiệm, cán bộ công chức lãnh đạo. 4. Bãi bỏ một phần các văn bản quy phạm pháp luật sau: a) Điều 1 Nghị định số 161/2018/NĐ-CP ngày 29 tháng 11 năm 2018 của Chính phủ sửa đổi, bổ sung một số quy định về tuyển dụng công chức, viên chức, nâng ngạch công chức, thăng hạng viên chức và thực hiện chế độ hợp đồng một số loại công việc trong cơ quan hành chính nhà nước, đơn vị sự nghiệp công lập; b) Điều 11 Nghị định số 06/2010/NĐ-CP ngày 25 tháng 01 năm 2010 của Chính phủ quy định những người là công chức.
+
+────────────────────────────────────────────────────────────
+
+[2] 📋 [NGHỊ ĐỊNH]
+    Số hiệu : 138/2020/NĐ-CP
+    Tên VB  : QUY ĐỊNH VỀ TUYỂN DỤNG, SỬ DỤNG VÀ QUẢN LÝ CÔNG CHỨC
+    Điều    : Điều 79. Trách nhiệm tổ chức thực hiện
+    Độ liên quan: 0.374
+
+Điều 79. Trách nhiệm tổ chức thực hiện
+1. Bộ trưởng, Thủ trưởng cơ quan ngang Bộ, người đứng đầu tổ chức do Chính phủ, Thủ tướng Chính phủ thành lập mà không phải là đơn vị sự nghiệp công lập, Chủ tịch Ủy ban nhân dân tỉnh, thành phố trực thuộc trung ương có trách nhiệm chỉ đạo người đứng đầu các cơ quan, tổ chức thuộc phạm vi quản lý khi tuyển dụng, sử dụng, quản lý công chức phải thực hiện đúng quy định tại Nghị định này và các quy định khác có liên quan. 2. Trường hợp cơ quan, tổ chức, cá nhân có vi phạm trong công tác tuyển dụng, sử dụng và quản lý công chức thì tùy theo tính chất, mức độ của hành vi vi phạm, cấp có thẩm quyền có trách nhiệm xem xét, xử lý vi phạm theo quy định của Đảng và của pháp luật.
+
+────────────────────────────────────────────────────────────
+
+[3] 📋 [NGHỊ ĐỊNH]
+    Số hiệu : 93/2010/NĐ-CP
+    Tên VB  : SỬA ĐỔI MỘT SỐ ĐIỀU CỦA NGHỊ ĐỊNH SỐ 24/2010/NĐ-CP NGÀY 15 THÁNG 3 NĂM 2010 CỦA CHÍNH PHỦ QUY ĐỊNH VỀ TUYỂN DỤNG, SỬ DỤNG VÀ QUẢN LÝ CÔNG CHỨC
+    Điều    : Điều 1. Sửa đổi một số điều của Nghị định số 24/2010/NĐ-CP ngày 15 tháng 3 năm 2010 của Chính phủ quy định về tuyển dụng, sử dụng và quản lý công chức, như sau:
+    Độ liên quan: 0.331
+
+Điều 1. Sửa đổi một số điều của Nghị định số 24/2010/NĐ-CP ngày 15 tháng 3 năm 2010 của Chính phủ quy định về tuyển dụng, sử dụng và quản lý công chức, như sau:
+1. Sửa đổi Điều 26: “Điều 26. Thẩm quyền xét chuyển cán bộ, công chức cấp xã thành công chức từ cấp huyện trở lên Người đứng đầu cơ quan quản lý công chức quy định tại khoản 2 Điều 2 Nghị định này xét chuyển cán bộ, công chức cấp xã thành công chức từ cấp huyện trở lên làm việc tại các cơ quan, tổ chức, đơn vị trong phạm vi thuộc thẩm quyền quản lý”. 2. Sửa đổi khoản 3 và khoản 5 Điều 30: “Điều 30. Phân công tổ chức thi nâng ngạch công chức 3. Cơ quan quản lý công chức theo quy định tại khoản 2 Điều 2 Nghị định này chủ trì, phối hợp với Bộ Nội vụ tổ chức thi nâng ngạch công chức từ ngạch nhân viên lên ngạch cán sự và tương đương; từ ngạch nhân viên, cán sự và tương đương lên ngạch chuyên viên và tương đương đối với công chức thuộc phạm vi quản lý. 5. Bộ Nội vụ hướng dẫn cụ thể hình thức, nội dung các môn thi, các bài thi và quy chế tổ chức thi nâng ngạch công chức”. 3. Sửa đổi khoản 1 Điều 36: “Điều 36. Luân chuyển công chức 1. Việc luân chuyển công chức chỉ thực hiện đối với công chức giữ chức vụ lãnh đạo, quản lý trong quy hoạch”. 4. Sửa đổi khoản 1 Điều 39: “Điều 39. Chế độ, chính sách đối với công chức được điều động, luân chuyển, biệt phái 1. Trường hợp công chức được điều động, luân chuyển đến vị trí công tác khác không phù hợp với ngạch công chức hiện giữ thì phải chuyển ngạch theo quy định tại Điều 28 Nghị định này và thôi giữ chức vụ lãnh đạo, quản lý đang đảm nhiệm kể từ ngày có quyết định điều động, luân chuyển”.
+
+================================================================
+## FORM_TEMPLATE — Biểu mẫu và danh sách FIELD_NAME
+Form ID   : Form_03
+Loại VB   : Quyết định
+Mục đích  : Ban hành hoặc phê duyệt văn bản kèm theo
+
+Field metadata (điền vào "fields"):
+    - CAN_CU_PHAP_LY_1
+    - CAN_CU_PHAP_LY_2
+    - CHU_VIET_TAT_CQ_BAN_HANH
+    - CHU_VIET_TAT_DON_VI_SOAN_THAO
+    - CO_QUAN_NHAN_KHAC
+    - DIA_DANH
+    - HO_VA_TEN_NGUOI_KY
+    - NAM
+    - NGAY
+    - QUYEN_HAN_CHUC_VU_NGUOI_KY
+    - SO_QUYET_DINH
+    - TEN_CQ_BAN_HANH
+    - TEN_CQ_CHU_QUAN
+    - TEN_DON_VI_DE_NGHI
+    - TEN_VAN_BAN_KEM_THEO
+    - THAM_QUYEN_BAN_HANH
+    - THANG
+    - TRICH_YEU
+
+Field thân văn bản — CũNG điền vào "fields" (KHÔNG tạo key riêng):
+    - NOI_DUNG_TO_CHUC_THUC_HIEN
+
+────────────────────────────────────────────────────────────
+
+{{TEN_CQ_CHU_QUAN}} 
+**{{TEN_CQ_BAN_HANH}}**
+
+---
+
+Số: {{SO_QUYET_DINH}}/QĐ-{{CHU_VIET_TAT_CQ_BAN_HANH}}
+
+**CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM** 
+**Độc lập - Tự do - Hạnh phúc**
+
+---
+
+{{DIA_DANH}}, ngày {{NGAY}} tháng {{THANG}} năm {{NAM}}
+
+# QUYẾT ĐỊNH
+**Ban hành {{TRICH_YEU}}**
+
+**{{THAM_QUYEN_BAN_HANH}}**
+
+Căn cứ {{CAN_CU_PHAP_LY_1}}; 
+Căn cứ {{CAN_CU_PHAP_LY_2}};
+
+Theo đề nghị của {{TEN_DON_VI_DE_NGHI}}.
+
+**QUYẾT ĐỊNH:**
+
+**Điều 1.** Ban hành kèm theo Quyết định này **{{TEN_VAN_BAN_KEM_THEO}}**.
+
+**Điều 2.** {{NOI_DUNG_TO_CHUC_THUC_HIEN}}.
+
+**Điều 3.** Quyết định này có hiệu lực kể từ ngày ký.
+
+---
+
+**Nơi nhận:**
+
+- Như Điều 2 
+- {{CO_QUAN_NHAN_KHAC}} 
+- Lưu: VT, {{CHU_VIET_TAT_DON_VI_SOAN_THAO}}
+
+**{{QUYEN_HAN_CHUC_VU_NGUOI_KY}}**
+
+*(Ký, đóng dấu)*
+
+**{{HO_VA_TEN_NGUOI_KY}}**
+
+================================================================
+## FEW_SHOT_EXAMPLES — Ví dụ tham khảo văn phong và cách điền
+
+
+[Ví dụ 1]
+Tình huống: Sở Nội vụ tỉnh Thái Bình ban hành quy trình đánh giá mức độ hoàn thành nhiệm vụ của công chức cấp xã theo bộ chỉ số điện tử.
+
+ỦY BAN NHÂN DÂN TỈNH THÁI BÌNH 
+**SỞ NỘI VỤ**
+
+---
+
+Số: 221/QĐ-SNV
+
+**CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM** 
+**Độc lập - Tự do - Hạnh phúc**
+
+---
+
+Thái Bình, ngày 19 tháng 1 năm 2021
+
+# QUYẾT ĐỊNH
+**Ban hành Quy trình đánh giá mức độ hoàn thành nhiệm vụ của công chức cấp xã theo Bộ chỉ số theo dõi điện tử tỉnh Thái Bình**
+
+**GIÁM ĐỐC SỞ NỘI VỤ TỈNH THÁI BÌNH**
+
+Căn cứ Luật Cán bộ, công chức ngày 13 tháng 11 năm 2008; Luật sửa đổi, bổ sung một số điều của Luật Cán bộ, công chức và Luật Viên chức ngày 25 tháng 11 năm 2019; 
+Căn cứ Nghị định số 90/2020/NĐ-CP ngày 13 tháng 8 năm 2020 của Chính phủ về đánh giá, xếp loại chất lượng cán bộ, công chức, viên chức;
+
+Theo đề nghị của Trưởng phòng Công chức, viên chức, Sở Nội vụ.
+
+**QUYẾT ĐỊNH:**
+
+**Điều 1.** Ban hành kèm theo Quyết định này **Quy trình đánh giá mức độ hoàn thành nhiệm vụ của công chức cấp xã theo Bộ chỉ số theo dõi điện tử tỉnh Thái Bình**.
+
+**Điều 2.** Chánh Văn phòng Sở, Trưởng các phòng chuyên môn thuộc Sở, Trưởng phòng Nội vụ các huyện, thành phố và Chủ tịch Ủy ban nhân dân các xã, phường, thị trấn chịu trách nhiệm tổ chức thực hiện; Phòng Công chức, viên chức hướng dẫn biểu mẫu, theo dõi kết quả và tổng hợp báo cáo Giám đốc Sở.
+
+**Điều 3.** Quyết định này có hiệu lực kể từ ngày ký.
+
+---
+
+**Nơi nhận:**
+
+- Như Điều 2 
+- Ủy ban nhân dân các huyện, thành phố; Ban Tổ chức Tỉnh ủy Thái Bình 
+- Lưu: VT, CCVC
+
+**GIÁM ĐỐC**
+
+*(Ký, đóng dấu)*
+
+**Nguyễn Khắc Thận**
+
+================================================================
+## YÊU CẦU JSON ĐẦU RA
+
+Phân tích yêu cầu và trả về JSON theo schema sau.
+KHÔNG thêm bất kỳ text nào ngoài JSON:
+
+{
+  "fields": {
+    "CAN_CU_PHAP_LY_1": "...",
+    "CAN_CU_PHAP_LY_2": "...",
+    "CHU_VIET_TAT_CQ_BAN_HANH": "...",
+    "CHU_VIET_TAT_DON_VI_SOAN_THAO": "...",
+    "CO_QUAN_NHAN_KHAC": "...",
+    "DIA_DANH": "...",
+    "HO_VA_TEN_NGUOI_KY": "...",
+    "NAM": "...",
+    "NGAY": "...",
+    "QUYEN_HAN_CHUC_VU_NGUOI_KY": "...",
+    "SO_QUYET_DINH": "...",
+    "TEN_CQ_BAN_HANH": "...",
+    "TEN_CQ_CHU_QUAN": "...",
+    "TEN_DON_VI_DE_NGHI": "...",
+    "TEN_VAN_BAN_KEM_THEO": "...",
+    "THAM_QUYEN_BAN_HANH": "...",
+    "THANG": "...",
+    "TRICH_YEU": "...",
+    "NOI_DUNG_TO_CHUC_THUC_HIEN": "(nội dung thân văn bản — xem hướng dẫn cấu trúc quy tắc 2)"
+  }
+}
+
+Quy tắc bắt buộc:
+1. "fields" phải chứa TẤT CẢ field đã liệt kê ở FORM_TEMPLATE, bao gồm
+   cả field NOI_DUNG_*. KHÔNG tạo key nào khác ngoài "fields".
+2. CÁC FIELD THÂN VĂN BẢN — điền trực tiếp vào key "fields":
+   • NOI_DUNG_TO_CHUC_THUC_HIEN
+   Viết nội dung theo cấu trúc sau:
+   Cấu trúc:
+     Điều 1: Nội dung quyết định chính (bổ nhiệm / phê duyệt / ban hành...).
+     Điều 2: Trách nhiệm thi hành (cơ quan, cá nhân liên quan).
+     Điều 3: Hiệu lực thi hành (ngày có hiệu lực).
+     Mỗi điều khoản viết thành một đoạn riêng, bắt đầu bằng **Điều N.**
+   KHÔNG tạo key riêng ngoài "fields" cho các field này.
+3. Mỗi value trong "fields" là string đơn — không lồng object/array.
+4. Không để value là null — dùng chuỗi rỗng "" nếu không có thông tin.
+5. Trích dẫn pháp lý trong NOI_DUNG_* chỉ được dùng văn bản CÒN HIỆU LỰC
+   từ LEGAL_CONTEXT. Ưu tiên: Luật > Pháp lệnh > Nghị định > Nghị quyết.
+6. JSON phải hợp lệ (RFC 8259): dấu phẩy và ngoặc kép đúng chuẩn.
+
+Trước khi trả JSON, hãy tự kiểm tra:
+- Đã đánh giá hiệu lực từng văn bản pháp luật trong LEGAL_CONTEXT chưa?
+- Có đủ tất cả field (kể cả NOI_DUNG_*) trong "fields" chưa?
+- Có key nào khác ngoài "fields" không? (Nếu có → xóa đi)
+- JSON có hợp lệ không?
+
+Nếu chưa đúng → sửa lại trước khi trả về.
+Trả về JSON ngay bây giờ:
