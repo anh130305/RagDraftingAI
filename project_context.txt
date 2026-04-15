@@ -6,7 +6,8 @@ Cập nhật lần cuối: 2025-04 (sau khi hoàn thiện hybridRetrieval v3 —
 ## TRẠNG THÁI TỔNG THỂ
   ✅ checkData.ipynb          — Khám phá & kiểm tra 3 dataset gốc
   ✅ preprocessData.ipynb     — Làm sạch, chuẩn hoá, tạo doc_id
-  ✅ filterData.ipynb         — Lọc legal dataset xuống ~110k hàng (mới)
+  ✅ obsoleteFilter.ipynb     — Loại văn bản hết hiệu lực (bước 1.6, mới thêm)
+  ✅ filterData.ipynb         — Lọc legal dataset theo loại & whitelist (đã cập nhật input)
   ✅ chunkData.ipynb          — Chunking ~165k chunks (đã cập nhật input path)
   ✅ embedAndIndex.ipynb      — Build ChromaDB trên Kaggle GPU T4
   ✅ hybridRetrieval_v3.ipynb — BM25 bigram + Dense + RRF + Reranker + Chunk Expand (v3, final)
@@ -104,15 +105,55 @@ Kết quả: 0 missing, 0 placeholder chưa điền, 0 duplicate doc_id
 
 
 ================================================================
-2.5. FILTER DATA — filterData.ipynb  ✅ HOÀN THÀNH (mới thêm)
+2.5. OBSOLETE FILTER — obsoleteFilter.ipynb  ✅ HOÀN THÀNH (mới thêm, bước 1.6)
+================================================================
+
+Mục tiêu: Loại bỏ các điều khoản thuộc văn bản đã hết hiệu lực / bị thay thế
+          để tránh RAG truy xuất ra pháp luật cũ, sai.
+          Chạy SAU preprocessData, TRƯỚC filterData.
+
+Input : dataset/processed/legal_dataset_processed.parquet (392,079 hàng)
+Output: dataset/processed/legal_dataset_active.parquet    (~?k hàng — cần cập nhật sau khi chạy)
+Review: dataset/processed/obsolete_review.csv             ← human review trước khi tiếp tục
+Report: dataset/processed/obsolete_report.txt
+
+Hai lớp phát hiện:
+  Lớp 1 — Hardcode BLACKLIST (46 văn bản, confidence HIGH):
+    Match theo cột `id`, ưu tiên lĩnh vực hành chính chung.
+    Các nhóm chính:
+      - Công tác văn thư / lưu trữ (NĐ 110/2004, 09/2010, TT-BNV cũ...)
+      - Tổ chức bộ máy / Chính phủ (NĐ 36/2012, 178/2007, 15/2008...)
+      - Cán bộ, công chức, viên chức (NĐ 117/2003, 24/2010, 29/2012...)
+      - Ban hành VBQPPL cũ (Luật 17/1997, 17/2008, NĐ 161/2005...)
+      - Lao động, tiền lương (BLLĐ 2012, BHXH 2006...)
+      - Khiếu nại, tố cáo cũ; PCTN cũ; Hành chính công cũ
+
+  Lớp 2 — Auto-detect từ content (NLP pattern):
+    Quét EFFECTIVITY_PATTERNS trong content:
+      "thay thế ... số X", "bãi bỏ ... số X", "hết hiệu lực ... số X",
+      "không còn hiệu lực", "hủy bỏ", "đình chỉ thi hành", v.v.
+    Ngưỡng: chỉ loại nếu ≥ 2 nguồn phát hiện (giảm false positive)
+    Confidence: HIGH nếu ≥ 5 nguồn, MEDIUM nếu 2–4 nguồn
+
+NEVER_REMOVE whitelist (18 văn bản luôn được bảo vệ):
+  30/2020/NĐ-CP, 80/2015/QH13, 15/2020/QH14, 45/2019/QH14,
+  22/2008/QH12, 58/2010/QH12, 01/2011/QH13, 76/2015/QH13,
+  77/2015/QH13, 36/2018/QH14, 02/2011/QH13, 34/2016/NĐ-CP,
+  138/2020/NĐ-CP, 115/2020/NĐ-CP, 61/2018/NĐ-CP, 34/2019/NĐ-CP, v.v.
+
+⚠️  Kết quả thực tế chưa có — cần chạy notebook và cập nhật context.
+⚠️  Luôn review obsolete_review.csv trước khi chạy filterData.
+
+================================================================
+2.6. FILTER DATA — filterData.ipynb  ✅ HOÀN THÀNH (đã cập nhật input)
 ================================================================
 
 Mục tiêu: Giảm dataset legal từ ~392k xuống ~169k hàng để giảm tải
           cho máy local (16GB RAM, CPU-only). Tổng hệ thống từ ~11.5GB
           xuống ~5.4GB.
 
-Input : dataset/processed/legal_dataset_processed.parquet (392,079 hàng)
-Output: dataset/processed/legal_dataset_filtered.parquet  (168,946 hàng)
+Input : dataset/processed/legal_dataset_active.parquet    ← ĐÃ ĐỔI (output của obsoleteFilter)
+Output: dataset/processed/legal_dataset_filtered.parquet  (168,946 hàng — số liệu trước khi thêm obsoleteFilter, cần re-run)
 
 Chiến lược filter:
   GIỮ LẠI theo type_normalized:
@@ -128,9 +169,9 @@ Chiến lược filter:
     - QUYẾT ĐỊNH  (21.9%) — quyết định hành chính cụ thể từng vụ việc
     - KHÁC, VĂN BẢN KHÁC, KHÔNG RÕ
 
-Kết quả thực tế (đã chạy):
-  - Số hàng  : 168,946 (43.1% so với processed, giảm 56.9%)
-  - Dung lượng file: 109.8 MB
+Kết quả thực tế (cần re-run sau khi thêm obsoleteFilter):
+  - Số hàng trước (chưa có obsoleteFilter): 168,946
+  - Số hàng sau re-run: cần cập nhật
   - Coverage : 8/8 văn bản cốt lõi vẫn đầy đủ (đã verify)
 
 ⚠️  Lưu ý: NGHỊ QUYẾT (59,827 hàng) không có trong ước tính ban đầu
@@ -355,7 +396,10 @@ project/
 │   │   └── forms_examples_dataset.parquet
 │   ├── processed/
 │   │   ├── legal_dataset_processed.parquet    (392,079 hàng — output preprocessData)
-│   │   ├── legal_dataset_filtered.parquet     (~110,000 hàng — output filterData) ← mới
+│   │   ├── legal_dataset_active.parquet       (~?k hàng — output obsoleteFilter) ← mới
+│   │   ├── legal_dataset_filtered.parquet     (~?k hàng — output filterData, cần re-run) ← cập nhật
+│   │   ├── obsolete_review.csv                ← human review file
+│   │   ├── obsolete_report.txt
 │   │   ├── forms_dataset_processed.parquet    (10 hàng)
 │   │   └── forms_examples_dataset_processed.parquet  (150 hàng)
 │   ├── chunks/
@@ -379,7 +423,8 @@ project/
 │   └── reranker/    ← cache BAAI/bge-reranker-v2-m3 (~1.1 GB)
 ├── checkData.ipynb
 ├── preprocessData.ipynb
-├── filterData.ipynb               ← mới thêm vào pipeline
+├── obsoleteFilter.ipynb           ← mới thêm vào pipeline (bước 1.6)
+├── filterData.ipynb               ← đã cập nhật input path → legal_dataset_active.parquet
 ├── chunkData.ipynb                ← đã cập nhật input path
 ├── embedAndIndex.ipynb            ← Kaggle: build ChromaDB (cần re-run)
 ├── hybridRetrieval_v3.ipynb        ← Local: BM25 bigram + Dense + Expand (final)
@@ -407,7 +452,7 @@ Lưu ý: models không đổi. Nếu xóa legal_chunks.jsonl thì xuống ~6.2 G
 9. HƯỚNG DẪN RE-EMBED TRÊN KAGGLE
 ================================================================
 
-Sau khi chạy filterData.ipynb và chunkData.ipynb local:
+Sau khi chạy obsoleteFilter.ipynb, filterData.ipynb và chunkData.ipynb local:
 
 1. Upload file mới lên Kaggle dataset "rag-chunks":
    - legal_chunks.parquet  (phiên bản mới ~130 MB)
