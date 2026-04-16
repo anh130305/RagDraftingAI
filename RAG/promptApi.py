@@ -12,8 +12,20 @@ Khởi tạo một lần duy nhất khi start:
     api = PromptAPI()          # load retriever, model (~20-40s lần đầu)
 
 Sau đó gọi từ bất kỳ module nào:
-    result = api.draft("Soạn công văn gửi Bộ Tài chính về ngân sách 2025")
-    result = api.legal_qa("Thẩm quyền ký công văn theo Nghị định 30/2020 là gì?")
+    result = api.draft(
+        query  = "Soạn công văn gửi Bộ Tài chính về ngân sách 2025",
+        extras = "Ngày ký: 15/01/2025\nNgười ký: Giám đốc Nguyễn Văn A\nSố hiệu: 01/CV-BTC",
+    )
+    result = api.legal_qa(
+        query  = "Thẩm quyền ký công văn theo Nghị định 30/2020 là gì?",
+        extras = "Chỉ trích dẫn Nghị định 30/2020, không cần nêu các văn bản khác.",
+    )
+
+Tách biệt query vs extras (nhất quán với generatePrompt.py):
+  - query  : Yêu cầu chính, mô tả nội dung cần soạn / câu hỏi cần trả lời.
+  - extras : Thông tin bổ sung / ràng buộc / metadata (ngày ký, người ký, số hiệu...).
+             Được truyền vào build_messages() / build_legal_qa_messages() và lưu vào
+             meta["extras"] để debug.
 
 Output:
   - draft()    → {"status": "ok", "fields": {...}, "meta": {...}}  (JSON-ready)
@@ -123,8 +135,11 @@ def _call_llm(messages: List[Dict[str, str]]) -> Optional[str]:
 
 
 # ═══════════════════════════════════════════════════════════════
-# PUBLIC API CLASS
+# HELPERS NỘI BỘ
 # ═══════════════════════════════════════════════════════════════
+def _clean_extras(extras: Optional[str]) -> Optional[str]:
+    """Trả về extras đã strip, hoặc None nếu rỗng."""
+    return extras.strip() if extras and extras.strip() else None
 class PromptAPI:
     """
     API layer chính. Khởi tạo một lần, dùng nhiều lần.
@@ -162,10 +177,10 @@ class PromptAPI:
     # ───────────────────────────────────────────────────────────
     def draft(
         self,
-        query              : str,
-        extra_instructions : Optional[str] = None,
-        legal_type_filter  : Optional[str] = None,
-        call_llm           : bool = True,
+        query             : str,
+        extras            : Optional[str] = None,
+        legal_type_filter : Optional[str] = None,
+        call_llm          : bool = True,
     ) -> Dict[str, Any]:
         """
         Soạn thảo văn bản hành chính.
@@ -173,10 +188,11 @@ class PromptAPI:
         Parameters
         ----------
         query : str
-            Yêu cầu soạn thảo bằng tiếng Việt.
+            Yêu cầu soạn thảo chính bằng tiếng Việt.
             VD: "Soạn công văn của Cục Văn thư gửi các Bộ về hướng dẫn lưu trữ điện tử"
-        extra_instructions : str, optional
-            Hướng dẫn bổ sung (ngày ký, tên người ký, số văn bản...).
+        extras : str, optional
+            Thông tin bổ sung / ràng buộc tách biệt với query chính.
+            VD: "Ngày ký: 05/01/2025\nNgười ký: Cục trưởng Đặng Thanh Tùng\nSố CV: 12/VTLT-NV"
         legal_type_filter : str, optional
             Lọc loại văn bản pháp luật: "LUẬT" | "NGHỊ ĐỊNH" | "NGHỊ QUYẾT" | "PHÁP LỆNH"
         call_llm : bool
@@ -193,6 +209,7 @@ class PromptAPI:
                 "fields"  : { "FIELD_1": "...", "NOI_DUNG_CHINH": "...", ... },
                 "meta"    : {
                     "query"         : str,
+                    "extras"        : str | None,   ← thông tin bổ sung đã dùng
                     "elapsed_s"     : float,
                     "context_stats" : {"legal": int, "form": int, "examples": int},
                     "form_id"       : str,
@@ -212,10 +229,11 @@ class PromptAPI:
                 "status"  : "error",
                 "mode"    : "draft",
                 "error"   : str,
-                "meta"    : { "query": str, "elapsed_s": float }
+                "meta"    : { "query": str, "extras": str | None, "elapsed_s": float }
             }
         """
         t0 = time.time()
+        resolved_extras = _clean_extras(extras)
         try:
             # 1. Retrieve
             retrieved = retrieve_all(
@@ -226,11 +244,11 @@ class PromptAPI:
                 expand_legal      = True,
             )
 
-            # 2. Build messages
+            # 2. Build messages (truyền extras đã resolve)
             messages = build_messages(
                 query,
                 retrieved,
-                extra_instructions=extra_instructions,
+                extra_instructions=resolved_extras,
             )
 
             # 3. Meta cơ bản
@@ -241,6 +259,7 @@ class PromptAPI:
             ]
             meta = {
                 "query"         : query,
+                "extras"        : resolved_extras,
                 "elapsed_s"     : round(time.time() - t0, 2),
                 "context_stats" : get_context_stats(retrieved),
                 "form_id"       : form_meta.get("form_id", ""),
@@ -276,7 +295,7 @@ class PromptAPI:
                 "status": "error",
                 "mode"  : "draft",
                 "error" : str(e),
-                "meta"  : {"query": query, "elapsed_s": round(time.time() - t0, 2)},
+                "meta"  : {"query": query, "extras": resolved_extras, "elapsed_s": round(time.time() - t0, 2)},
             }
 
     # ───────────────────────────────────────────────────────────
@@ -284,11 +303,11 @@ class PromptAPI:
     # ───────────────────────────────────────────────────────────
     def legal_qa(
         self,
-        query              : str,
-        extra_instructions : Optional[str] = None,
-        legal_top_k        : Optional[int] = None,
-        legal_type_filter  : Optional[str] = None,
-        call_llm           : bool = True,
+        query             : str,
+        extras            : Optional[str] = None,
+        legal_top_k       : Optional[int] = None,
+        legal_type_filter : Optional[str] = None,
+        call_llm          : bool = True,
     ) -> Dict[str, Any]:
         """
         Hỏi đáp pháp luật hành chính Việt Nam.
@@ -296,10 +315,11 @@ class PromptAPI:
         Parameters
         ----------
         query : str
-            Câu hỏi pháp luật bằng tiếng Việt.
+            Câu hỏi pháp luật chính bằng tiếng Việt.
             VD: "Thẩm quyền ký công văn hành chính theo Nghị định 30/2020 là gì?"
-        extra_instructions : str, optional
-            Ghi chú bổ sung cho LLM (phạm vi trả lời, ngữ cảnh...).
+        extras : str, optional
+            Ghi chú bổ sung / ràng buộc tách biệt với câu hỏi chính.
+            VD: "Chỉ trích dẫn Nghị định 30/2020, không cần nêu các văn bản khác."
         legal_top_k : int, optional
             Ghi đè số điều luật retrieve (mặc định dùng self.legal_top_k).
         legal_type_filter : str, optional
@@ -318,6 +338,7 @@ class PromptAPI:
                 "answer" : str,   ← Markdown string
                 "meta"   : {
                     "query"         : str,
+                    "extras"        : str | None,   ← ghi chú bổ sung đã dùng
                     "elapsed_s"     : float,
                     "legal_sources" : [str, ...],
                     "n_legal_chunks": int,
@@ -335,11 +356,12 @@ class PromptAPI:
                 "status" : "error",
                 "mode"   : "legal_qa",
                 "error"  : str,
-                "meta"   : { "query": str, "elapsed_s": float }
+                "meta"   : { "query": str, "extras": str | None, "elapsed_s": float }
             }
         """
         t0      = time.time()
         top_k   = legal_top_k if legal_top_k is not None else 5
+        resolved_extras = _clean_extras(extras)
         try:
             # 1. Retrieve pháp luật
             legal_chunks = retrieve_legal(
@@ -350,11 +372,11 @@ class PromptAPI:
                 expand      = True,
             )
 
-            # 2. Build messages
+            # 2. Build messages (truyền extras đã resolve)
             messages = build_legal_qa_messages(
                 query,
                 legal_chunks,
-                extra_instructions=extra_instructions,
+                extra_instructions=resolved_extras,
             )
 
             # 3. Meta
@@ -364,6 +386,7 @@ class PromptAPI:
             ]
             meta = {
                 "query"          : query,
+                "extras"         : resolved_extras,
                 "elapsed_s"      : round(time.time() - t0, 2),
                 "n_legal_chunks" : len(legal_chunks),
                 "legal_sources"  : legal_sources,
@@ -393,7 +416,7 @@ class PromptAPI:
                 "status": "error",
                 "mode"  : "legal_qa",
                 "error" : str(e),
-                "meta"  : {"query": query, "elapsed_s": round(time.time() - t0, 2)},
+                "meta"  : {"query": query, "extras": resolved_extras, "elapsed_s": round(time.time() - t0, 2)},
             }
 
     # ───────────────────────────────────────────────────────────
@@ -484,8 +507,10 @@ if __name__ == "__main__":
     import argparse, sys
 
     parser = argparse.ArgumentParser(description="promptAPI smoke test")
-    parser.add_argument("--mode",  choices=["draft", "legal_qa"], default="draft")
-    parser.add_argument("--query", type=str, default="")
+    parser.add_argument("--mode",   choices=["draft", "legal_qa"], default="draft")
+    parser.add_argument("--query",  type=str, default="")
+    parser.add_argument("--extras", type=str, default="",
+                        help="Thông tin bổ sung tách biệt với query chính")
     parser.add_argument("--no-reranker", action="store_true")
     parser.add_argument("--no-llm",      action="store_true",
                         help="Chỉ build prompt, không gọi LLM")
@@ -495,11 +520,18 @@ if __name__ == "__main__":
         "draft"   : "Soạn công văn của Cục Văn thư và Lưu trữ Nhà nước gửi các Bộ về hướng dẫn thi hành Luật Lưu trữ",
         "legal_qa": "Trình bày điều kiện cấp giấy phép kinh doanh?",
     }
-    query = args.query or DEFAULT_QUERIES[args.mode]
+    DEFAULT_EXTRAS = {
+        "draft"   : "Ngày ký: 05/01/2025\nNgười ký: Cục trưởng Đặng Thanh Tùng\nSố CV: 12/VTLT-NV",
+        "legal_qa": "",
+    }
+    query  = args.query  or DEFAULT_QUERIES[args.mode]
+    extras = args.extras or DEFAULT_EXTRAS[args.mode] or None
 
     print(f"\n{'='*64}")
     print(f"Mode  : {args.mode}")
     print(f"Query : {query}")
+    if extras:
+        print(f"Extras: {extras}")
     print(f"{'='*64}\n")
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
@@ -507,7 +539,7 @@ if __name__ == "__main__":
     api = PromptAPI(use_reranker=not args.no_reranker)
 
     if args.mode == "draft":
-        result = api.draft(query, call_llm=not args.no_llm)
+        result = api.draft(query, extras=extras, call_llm=not args.no_llm)
         if result["status"] == "ok":
             print("[OK] Fields trả về:")
             for k, v in result["fields"].items():
@@ -523,7 +555,7 @@ if __name__ == "__main__":
         print(f"\nMeta: {json.dumps({k: v for k, v in result['meta'].items() if k != 'messages' and k != 'llm_raw'}, ensure_ascii=False, indent=2)}")
 
     else:  # legal_qa
-        result = api.legal_qa(query, call_llm=not args.no_llm)
+        result = api.legal_qa(query, extras=extras, call_llm=not args.no_llm)
         if result["status"] == "ok":
             print("[OK] Câu trả lời:\n")
             print(result["answer"])
