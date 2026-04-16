@@ -11,97 +11,59 @@ from app.models.prompt_template import PromptTemplate
 
 logger = logging.getLogger(__name__)
 
-def ensure_runtime_schema() -> None:
-    """Apply safe, idempotent schema fixes for existing deployments."""
-    engine = get_engine()
-    dialect_name = engine.dialect.name
-
-    with engine.begin() as conn:
-        # Fix missing documents index
-        conn.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS ix_documents_session_id "
-                "ON documents (session_id)"
-            )
-        )
-        # Fix missing query_logs columns (is_error, error_message)
-        if dialect_name == "sqlite":
-            existing_columns = {
-                row[1]
-                for row in conn.execute(text("PRAGMA table_info('query_logs')")).fetchall()
-            }
-            if "is_error" not in existing_columns:
-                conn.execute(
-                    text("ALTER TABLE query_logs ADD COLUMN is_error BOOLEAN DEFAULT 0")
-                )
-            if "error_message" not in existing_columns:
-                conn.execute(
-                    text("ALTER TABLE query_logs ADD COLUMN error_message TEXT")
-                )
-        else:
-            conn.execute(
-                text(
-                    "ALTER TABLE query_logs "
-                    "ADD COLUMN IF NOT EXISTS is_error BOOLEAN DEFAULT FALSE"
-                )
-            )
-            conn.execute(
-                text(
-                    "ALTER TABLE query_logs "
-                    "ADD COLUMN IF NOT EXISTS error_message TEXT"
-                )
-            )
-
-    # ALTER TYPE ... ADD VALUE cannot be executed in a transaction block.
-    # We use a separate connection with AUTOCOMMIT for these specific changes.
-    if dialect_name != "postgresql":
-        return
-
-    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-        for action in ["create_template", "update_template", "delete_template", "use_template"]:
-            try:
-                # Postgres 9.6+ supports IF NOT EXISTS for ADD VALUE
-                conn.execute(text(f"ALTER TYPE audit_action ADD VALUE IF NOT EXISTS '{action}'"))
-            except Exception as e:
-                # Fallback for older PG or other issues
-                logger.warning(f"Could not add {action} to audit_action enum (might already exist): {e}")
 
 def ensure_default_prompt(db: Session) -> None:
-    """Create a high-quality default system prompt if the table is empty."""
+    """Đảm bảo có ít nhất một Prompt hệ thống mặc định chất lượng cao."""
+    master_name = "Trợ lý Chuyên gia RAG (Mặc định)"
+    master_query = (
+        "BẠN LÀ MỘT TRỢ LÝ CHUYÊN GIA TRÍ TUỆ NHÂN TẠO CAO CẤP.\n"
+        "Nhiệm vụ của bạn là giải quyết yêu cầu của người dùng dựa TRỰC TIẾP và DUY NHẤT trên Ngữ cảnh (Context) được cung cấp dưới đây.\n\n"
+        "--- QUY TẮC PHẢN HỒI ---\n"
+        "1. TRỰC QUAN: Sử dụng Markdown (bullet points, bold, tables) để thông tin dễ đọc.\n"
+        "2. CHÍNH XÁC: Chỉ trả lời dựa trên thông tin trong Context. Nếu Context không đủ thông tin, hãy trả lời: 'Xin lỗi, tôi không tìm thấy thông tin này trong cơ sở tri thức hiện tại.'\n"
+        "3. KHÔNG BỊA ĐẶT: Tuyệt đối không tự ý thêm các dữ kiện bên ngoài Context.\n"
+        "4. NGÔN NGỮ: Phản hồi bằng ngôn ngữ của người dùng (mặc định là Tiếng Việt).\n\n"
+        "--- NGỮ CẢNH (CONTEXT) ---\n"
+        "{context}\n\n"
+        "--- CÂU HỎI NGƯỜI DÙNG ---\n"
+        "{query}\n\n"
+        "TRẢ LỜI:"
+    )
+
     try:
-        exists = db.query(PromptTemplate).filter(PromptTemplate.is_default == True).first()
-        if not exists:
-            logger.info("Seeding Master Expert RAG prompt...")
-            default_tpl = PromptTemplate(
-                name="Trợ lý Chuyên gia RAG (Mặc định)",
+        logger.info("Checking for Master Expert RAG prompt...")
+        # Tìm kiếm theo tên thay vì chỉ is_default để tránh xung đột
+        master_tpl = db.query(PromptTemplate).filter(PromptTemplate.name == master_name).first()
+        
+        if not master_tpl:
+            logger.info(f"Seeding '{master_name}'...")
+            new_tpl = PromptTemplate(
+                name=master_name,
                 description="Prompt cao cấp tối ưu cho việc phân tích và trích xuất tri thức chính xác.",
-                content=(
-                    "BẠN LÀ MỘT TRỢ LÝ CHUYÊN GIA TRÍ TUỆ NHÂN TẠO CAO CẤP.\n"
-                    "Nhiệm vụ của bạn là giải quyết yêu cầu của người dùng dựa TRỰC TIẾP và DUY NHẤT trên Ngữ cảnh (Context) được cung cấp dưới đây.\n\n"
-                    "--- QUY TẮC PHẢN HỒI ---\n"
-                    "1. TRỰC QUAN: Sử dụng Markdown (bullet points, bold, tables) để thông tin dễ đọc.\n"
-                    "2. CHÍNH XÁC: Chỉ trả lời dựa trên thông tin trong Context. Nếu Context không đủ thông tin, hãy trả lời: 'Xin lỗi, tôi không tìm thấy thông tin này trong cơ sở tri thức hiện tại.'\n"
-                    "3. KHÔNG BỊA ĐẶT: Tuyệt đối không tự ý thêm các dữ kiện bên ngoài Context.\n"
-                    "4. NGÔN NGỮ: Phản hồi bằng ngôn ngữ của người dùng (mặc định là Tiếng Việt).\n\n"
-                    "--- NGỮ CẢNH (CONTEXT) ---\n"
-                    "{context}\n\n"
-                    "--- CÂU HỎI NGƯỜI DÙNG ---\n"
-                    "{query}\n\n"
-                    "TRẢ LỜI:"
-                ),
-                is_default=True,
+                query=master_query,
+                extra_instructions=None,
                 is_active=True
             )
-            db.add(default_tpl)
-            db.commit()
+            db.add(new_tpl)
+            ok_msg = f"Successfully seeded '{master_name}'."
+        else:
+            logger.info(f"'{master_name}' already exists. Ensuring it is active.")
+            master_tpl.is_active = True
+            # Nếu query bị trống (do migration lỗi), cập nhật lại nội dung master
+            if not master_tpl.query or master_tpl.query.strip() == "":
+                logger.info("Updating existing prompt with Master query content.")
+                master_tpl.query = master_query
+            ok_msg = f"Successfully verified/updated '{master_name}'."
+        
+        db.commit()
+        logger.info(ok_msg)
     except Exception as e:
-        logger.error(f"Error seeding default prompt: {e}")
+        logger.error(f"Error syncing default prompt: {e}")
         db.rollback()
 
 def initialize_system() -> None:
-    """Entry point for all startup database maintenance and seeding."""
-    logger.info("Initializing system database schema and data...")
-    ensure_runtime_schema()
+    """Entry point for initial data seeding. Schema is managed by Alembic."""
+    logger.info(">>> [SYSTEM INIT] Starting initial data seeding...")
     
     db = SessionLocal()()
     try:
@@ -109,4 +71,4 @@ def initialize_system() -> None:
     finally:
         db.close()
     
-    logger.info("System initialization complete.")
+    logger.info(">>> [SYSTEM INIT] Seeding complete and verified.")

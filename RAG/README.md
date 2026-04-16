@@ -1,7 +1,3 @@
-Đây là bản viết lại file `README.md` của bạn theo phong cách chuyên nghiệp, cấu trúc rõ ràng và tối ưu cho việc trình bày dự án (Portfolio-ready).
-
----
-
 # 📝 Vietnamese Administrative RAG System
 
 Hệ thống hỗ trợ **soạn thảo văn bản hành chính** và **tra cứu pháp luật Việt Nam** ứng dụng kỹ thuật RAG (Retrieval-Augmented Generation). Dự án sử dụng mô hình **Hybrid Retrieval** để đảm bảo tính chính xác tối đa về mặt pháp lý và tuân thủ nghiêm ngặt thể thức văn bản.
@@ -28,8 +24,9 @@ Truy cập các liên kết trong file `linkData.txt` để tải các thành ph
 | 1 | `check` | Kiểm tra tính toàn vẹn của dữ liệu thô. |
 | 2 | `preprocess` | Làm sạch dữ liệu và chuyển đổi sang định dạng `.parquet` để tối ưu tốc độ. |
 | 3 | `obsoleteFilter` | **Quan trọng**: Lọc bỏ các văn bản đã hết hiệu lực pháp luật. |
-| 4 | `chunking` | Chia nhỏ văn bản thành các đoạn (chunks) phù hợp với Context Window. |
-| 5 | `hybrid_retrieval` | Khởi tạo chỉ mục BM25 và kết nối Vector DB. |
+| 4 | `Filter` | **Quan trọng**: Lọc bỏ các văn bản đã hết hiệu lực pháp luật. |
+| 5 | `chunking` | Chia nhỏ văn bản thành các đoạn (chunks) phù hợp với Context Window. |
+| 6 | `hybrid_retrieval` | Khởi tạo chỉ mục BM25 và kết nối Vector DB. |
 
 ---
 

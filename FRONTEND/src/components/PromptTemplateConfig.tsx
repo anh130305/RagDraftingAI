@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   TerminalSquare, Save, RotateCcw, Variable,
   MessageSquare, Plus, X, Star, Trash2, Loader2,
-  Sparkles, ShieldCheck, Eye, EyeOff
+  Sparkles, ShieldCheck, Eye, EyeOff,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import * as api from '../lib/api';
@@ -13,13 +14,15 @@ interface PromptTemplate {
   id: string;
   name: string;
   description: string | null;
-  content: string;
-  is_default: boolean;
+  query: string;
+  extra_instructions: string | null;
   is_active: boolean;
   created_by: string | null;
   created_at: string;
   updated_at: string;
 }
+
+
 
 export default function PromptTemplateConfig() {
   const { showToast } = useToast();
@@ -33,6 +36,20 @@ export default function PromptTemplateConfig() {
   // States for new template modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Custom Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { }
+  });
+
   const [newTpl, setNewTpl] = useState({ label: '', desc: '', content: '' });
 
   // ── Fetch templates from API ──────────────────────────────
@@ -42,11 +59,14 @@ export default function PromptTemplateConfig() {
       const res = await api.getPromptTemplates();
       setTemplates(res.items);
 
-      // Auto-select the default one, or the first one
-      const defaultTpl = res.items.find(t => t.is_default) || res.items[0];
-      if (defaultTpl) {
-        setSelectedId(defaultTpl.id);
-        setPromptContent(defaultTpl.content);
+      // Tự động chọn mẫu đầu tiên nếu có
+      const firstTpl = res.items[0];
+      if (firstTpl) {
+        setSelectedId(firstTpl.id);
+        const combined = firstTpl.extra_instructions
+          ? `${firstTpl.query}\n\n${firstTpl.extra_instructions}`
+          : firstTpl.query;
+        setPromptContent(combined);
       }
     } catch (err: any) {
       showToast('Không thể tải danh sách mẫu', 'error');
@@ -61,14 +81,21 @@ export default function PromptTemplateConfig() {
 
   const handleSelectTemplate = (tpl: PromptTemplate) => {
     setSelectedId(tpl.id);
-    setPromptContent(tpl.content);
+    const combined = tpl.extra_instructions
+      ? `${tpl.query}\n\n${tpl.extra_instructions}`
+      : tpl.query;
+    setPromptContent(combined);
   };
 
   const handleSave = async () => {
     if (!selectedId) return;
     try {
       setIsSaving(true);
-      await api.updatePromptTemplate(selectedId, { content: promptContent });
+
+      // Gửi toàn bộ nội dung, Backend sẽ tự động phân tách thông minh
+      await api.updatePromptTemplate(selectedId, {
+        content: promptContent
+      });
       showToast('Đã lưu cấu hình thành công!', 'success');
       fetchTemplates();
     } catch (err: any) {
@@ -81,7 +108,10 @@ export default function PromptTemplateConfig() {
   const handleReset = () => {
     const current = templates.find(t => t.id === selectedId);
     if (current) {
-      setPromptContent(current.content);
+      const combined = current.extra_instructions
+        ? `${current.query}\n\n${current.extra_instructions}`
+        : current.query;
+      setPromptContent(combined);
       showToast('Đã khôi phục nội dung gốc', 'info');
     }
   };
@@ -103,7 +133,11 @@ export default function PromptTemplateConfig() {
       setNewTpl({ label: '', desc: '', content: '' });
       await fetchTemplates();
       setSelectedId(created.id);
-      setPromptContent(created.content);
+
+      const combined = created.extra_instructions
+        ? `${created.query}\n\n${created.extra_instructions}`
+        : created.query;
+      setPromptContent(combined);
     } catch (err: any) {
       showToast('Thêm mẫu thất bại: ' + (err.message || ''), 'error');
     } finally {
@@ -122,29 +156,28 @@ export default function PromptTemplateConfig() {
   };
 
   const handleDelete = async (tpl: PromptTemplate) => {
-    if (!window.confirm(`Bạn có chắc muốn xóa mẫu "${tpl.name}"?`)) return;
-    try {
-      await api.deletePromptTemplate(tpl.id);
-      showToast(`Đã xóa mẫu "${tpl.name}"`, 'success');
-      if (tpl.id === selectedId) {
-        setSelectedId(null);
-        setPromptContent('');
+    setConfirmModal({
+      isOpen: true,
+      title: 'Xác nhận xóa',
+      message: `Bạn có chắc chắn muốn xóa mẫu kịch bản "${tpl.name}"? Hành động này không thể hoàn tác.`,
+      onConfirm: async () => {
+        try {
+          await api.deletePromptTemplate(tpl.id);
+          showToast(`Đã xóa mẫu "${tpl.name}"`, 'success');
+          if (selectedId === tpl.id) {
+            setSelectedId(null);
+            setPromptContent('');
+          }
+          await fetchTemplates();
+        } catch (err: any) {
+          showToast('Xóa thất bại: ' + (err.message || ''), 'error');
+        } finally {
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }
       }
-      await fetchTemplates();
-    } catch (err: any) {
-      showToast('Xóa thất bại: ' + (err.message || ''), 'error');
-    }
+    });
   };
 
-  const handleSetDefault = async (tpl: PromptTemplate) => {
-    try {
-      await api.setDefaultPromptTemplate(tpl.id);
-      showToast(`"${tpl.name}" đã được đặt làm mặc định`, 'success');
-      await fetchTemplates();
-    } catch (err: any) {
-      showToast('Đặt mặc định thất bại: ' + (err.message || ''), 'error');
-    }
-  };
 
   const variables = [
     { name: '{context}', desc: 'Dữ liệu tri thức RAG.' },
@@ -337,9 +370,6 @@ export default function PromptTemplateConfig() {
                           </h5>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0 mt-1">
-                          {tpl.is_default && (
-                            <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                          )}
                           <span className={cn(
                             "px-1.5 py-0.5 text-[8px] font-black uppercase rounded-md border tracking-tighter",
                             tpl.is_active
@@ -360,16 +390,7 @@ export default function PromptTemplateConfig() {
 
                       {/* Action buttons (always visible but subtle, highlight on hover) */}
                       <div className="flex items-center justify-between pt-2 border-t border-outline-variant/10 mt-auto">
-                        <div className="flex gap-2">
-                          {tpl.is_active && !tpl.is_default && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleSetDefault(tpl); }}
-                              className="text-[9px] font-bold text-amber-600 hover:text-amber-700 transition-colors"
-                            >
-                              Mặc định
-                            </button>
-                          )}
-                        </div>
+                        <div className="flex gap-2" />
                         <div className="flex items-center gap-1">
                           <button
                             onClick={(e) => { e.stopPropagation(); handleToggleActive(tpl); }}
@@ -394,7 +415,7 @@ export default function PromptTemplateConfig() {
 
               <div className="mt-8 pt-6 border-t border-outline-variant/20 relative z-10 italic">
                 <p className="text-[10px] text-on-surface-variant leading-relaxed opacity-70">
-                  * Hệ thống sẽ luôn ưu tiên kịch bản <strong>Mặc định</strong> nếu người dùng không chọn kịch bản cụ thể.
+                  * Kịch bản sẽ được áp dụng trực tiếp khi bạn thực hiện truy vấn RAG.
                 </p>
               </div>
             </div>
@@ -464,7 +485,7 @@ export default function PromptTemplateConfig() {
                     <span className="text-[10px] font-bold text-tertiary bg-tertiary/10 px-2 rounded-full border border-tertiary/10">SỬ DỤNG {`{context}`} & {`{query}`}</span>
                   </div>
                   <textarea
-                    placeholder="Bạn là một chuyên gia về..."
+                    placeholder="Nhập nội dung lệnh và hướng dẫn bổ sung (nếu có)..."
                     value={newTpl.content}
                     onChange={(e) => setNewTpl(prev => ({ ...prev, content: e.target.value }))}
                     className="w-full h-48 bg-surface-low border border-outline-variant/40 rounded-2xl px-5 py-4 text-sm font-mono focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all shadow-inner custom-scrollbar"
@@ -492,6 +513,58 @@ export default function PromptTemplateConfig() {
                     </>
                   )}
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Confirmation Modal */}
+      <AnimatePresence>
+        {confirmModal.isOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-sm bg-surface rounded-[2rem] border border-outline-variant/30 shadow-2xl p-6 overflow-hidden"
+            >
+              {/* Background Glow */}
+              <div className="absolute -top-24 -right-24 w-48 h-48 bg-error/10 blur-[64px] rounded-full pointer-events-none" />
+
+              <div className="relative space-y-4">
+                <div className="flex items-center gap-3 text-error">
+                  <div className="w-10 h-10 rounded-2xl bg-error/10 flex items-center justify-center">
+                    <AlertCircle className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-lg font-bold tracking-tight">{confirmModal.title}</h3>
+                </div>
+
+                <p className="text-sm text-on-surface-variant leading-relaxed">
+                  {confirmModal.message}
+                </p>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                    className="flex-1 py-3 text-xs font-bold bg-surface-highest text-on-surface rounded-2xl hover:brightness-110 transition-all"
+                  >
+                    Hủy bỏ
+                  </button>
+                  <button
+                    onClick={confirmModal.onConfirm}
+                    className="flex-1 py-3 text-xs font-bold bg-error text-surface rounded-2xl shadow-lg shadow-error/20 hover:brightness-110 active:scale-95 transition-all"
+                  >
+                    Xác nhận xóa
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>

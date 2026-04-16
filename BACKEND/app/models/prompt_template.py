@@ -18,8 +18,8 @@ class PromptTemplate(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), nullable=False)
     description = Column(Text, nullable=True)
-    content = Column(Text, nullable=False)
-    is_default = Column(Boolean, nullable=False, default=False)
+    query = Column(Text, nullable=False)
+    extra_instructions = Column(Text, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True, index=True)
     created_by = Column(
         UUID(as_uuid=True),

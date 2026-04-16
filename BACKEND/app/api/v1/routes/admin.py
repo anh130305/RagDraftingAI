@@ -261,23 +261,3 @@ def delete_prompt_template(
     )
 
 
-@router.put("/prompt-templates/{template_id}/default", response_model=PromptTemplateResponse)
-def set_default_prompt_template(
-    request: Request,
-    template_id: UUID,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
-):
-    template = prompt_template_service.set_default_template(db, template_id)
-    
-    background_tasks.add_task(
-        audit_service.log_action,
-        user_id=admin.id,
-        action=AuditAction.update_template,
-        resource_type="prompt_template",
-        resource_id=template_id,
-        ip_address=request.client.host if request.client else None,
-        detail={"set_as_default": True}
-    )
-    return template

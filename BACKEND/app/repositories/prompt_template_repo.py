@@ -51,30 +51,6 @@ class PromptTemplateRepository(BaseRepository[PromptTemplate]):
             .count()
         )
 
-    def get_default(self, db: Session) -> Optional[PromptTemplate]:
-        """Return the template currently marked as default."""
-        return (
-            db.query(PromptTemplate)
-            .filter(
-                PromptTemplate.is_default == True,
-                PromptTemplate.is_active == True,
-            )
-            .first()
-        )
-
-    def set_default(self, db: Session, template_id: UUID) -> PromptTemplate:
-        """Unset any existing default template and set the new one."""
-        # Unset all defaults
-        db.query(PromptTemplate).filter(
-            PromptTemplate.is_default == True
-        ).update({"is_default": False})
-
-        # Set the new default
-        tpl = self.get_by_id(db, template_id)
-        if tpl:
-            tpl.is_default = True
-            db.commit()
-            db.refresh(tpl)
         return tpl
 
 
