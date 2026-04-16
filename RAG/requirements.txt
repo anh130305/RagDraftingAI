@@ -1,0 +1,16 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+# RAG Service Dependencies
+fastapi
+uvicorn[standard]
+python-dotenv
+rank-bm25
+sentence-transformers
+chromadb
+unicodedata2
+pandas
+pyarrow
+torch
+huggingface_hub
+groq
+openai
+httpx
