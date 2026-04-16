@@ -51,10 +51,6 @@ class Document(Base):
 
     # ── Relationships ───────────────────────────────────────────
     uploaded_by_user = relationship("User", back_populates="documents")
-    chunks = relationship(
-        "DocumentChunk", back_populates="document", cascade="all, delete-orphan",
-        passive_deletes=True, order_by="DocumentChunk.chunk_index.asc()",
-    )
 
     def __repr__(self) -> str:
         return f"<Document {self.title!r}  status={self.status.value}>"

@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 from sqlalchemy.orm import Session
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -25,7 +26,7 @@ def verify_google_token(token: str) -> dict:
             detail=f"Invalid Google token: {str(e)}",
         )
 
-def authenticate_google_user(db: Session, idinfo: dict, department: str | None = None) -> User:
+def authenticate_google_user(db: Session, idinfo: dict, department: Optional[str] = None) -> User:
     """
     Authenticate or register a user via Google.
     Handles existing user linking by email or google_id.

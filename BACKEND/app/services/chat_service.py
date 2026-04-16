@@ -2,7 +2,7 @@
 services.chat_service – Chat session and message orchestration.
 """
 
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 import asyncio
 import random
@@ -220,7 +220,7 @@ def get_messages(
     return [ChatMessageResponse.model_validate(m) for m in msgs]
 
 def update_message_feedback(
-    db: Session, message_id: UUID, user_id: UUID, feedback_data: str | None
+    db: Session, message_id: UUID, user_id: UUID, feedback_data: Optional[str]
 ) -> ChatMessageResponse:
     msg = db.query(ChatMessage).filter(ChatMessage.id == message_id).first()
     if not msg:

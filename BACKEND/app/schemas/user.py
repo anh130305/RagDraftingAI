@@ -82,9 +82,9 @@ class UserResponse(BaseModel):
     id: UUID
     username: str
     role: str
-    department: str | None = None
-    email: str | None = None
-    google_id: str | None = None
+    department: Optional[str] = None
+    email: Optional[str] = None
+    google_id: Optional[str] = None
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -101,7 +101,7 @@ class Token(BaseModel):
 
 class GoogleLoginRequest(BaseModel):
     id_token: str
-    department: str | None = None
+    department: Optional[str] = None
 
 
 class TokenPayload(BaseModel):

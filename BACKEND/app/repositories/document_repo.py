@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from app.models.document import Document, DocStatus
-from app.models.document_chunk import DocumentChunk
 from app.repositories.base_repo import BaseRepository
 
 
@@ -76,34 +75,5 @@ class DocumentRepository(BaseRepository[Document]):
         return doc
 
 
-# ── Chunk Repository ─────────────────────────────────────────
-
-class DocumentChunkRepository(BaseRepository[DocumentChunk]):
-    def __init__(self):
-        super().__init__(DocumentChunk)
-
-    def get_by_document(
-        self, db: Session, document_id: UUID
-    ) -> List[DocumentChunk]:
-        return (
-            db.query(DocumentChunk)
-            .filter(DocumentChunk.document_id == document_id)
-            .order_by(DocumentChunk.chunk_index.asc())
-            .all()
-        )
-
-    def bulk_create(
-        self, db: Session, chunks: List[dict]
-    ) -> List[DocumentChunk]:
-        """Insert multiple chunks in a single transaction."""
-        db_chunks = [DocumentChunk(**c) for c in chunks]
-        db.add_all(db_chunks)
-        db.commit()
-        for c in db_chunks:
-            db.refresh(c)
-        return db_chunks
-
-
 # Singleton instances
 document_repo = DocumentRepository()
-chunk_repo = DocumentChunkRepository()
