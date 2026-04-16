@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy import ForeignKey
 
+from typing import Optional
 from app.db.session import Base
 
 
@@ -57,7 +58,7 @@ class AuditLog(Base):
     user = relationship("User", back_populates="audit_logs")
 
     @property
-    def user_name(self) -> str | None:
+    def user_name(self) -> Optional[str]:
         if not self.user:
             return None
         return self.user.username or self.user.email

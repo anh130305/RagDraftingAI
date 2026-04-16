@@ -9,13 +9,12 @@ from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError
-from app.repositories.document_repo import document_repo, chunk_repo
+from app.repositories.document_repo import document_repo
 from app.models.document import DocStatus, Document
 from app.schemas.document import (
     DocumentResponse,
     DocumentWithChunks,
     DocumentListResponse,
-    DocumentChunkResponse,
 )
 from app.schemas.internal import RAGCallbackPayload
 from app.services import cloudinary_service
@@ -121,13 +120,14 @@ def get_document(db: Session, doc_id: UUID) -> DocumentResponse:
 
 
 def get_document_with_chunks(db: Session, doc_id: UUID) -> DocumentWithChunks:
+    """Returns document info with an empty chunk list (legacy support)."""
     doc = document_repo.get_by_id(db, doc_id)
     if not doc:
         raise NotFoundError("Document")
-    chunks = chunk_repo.get_by_document(db, doc_id)
+    
     return DocumentWithChunks(
         **DocumentResponse.model_validate(doc).model_dump(),
-        chunks=[DocumentChunkResponse.model_validate(c) for c in chunks],
+        chunks=[],  # We no longer store individual chunks in Postgres
     )
 
 
@@ -149,23 +149,11 @@ def handle_rag_callback(
     db: Session, doc_id: UUID, payload: RAGCallbackPayload
 ) -> DocumentResponse:
     """Called by the RAG service after chunking completes.
-    Updates document status and bulk-inserts chunk pointer records.
+    Updates document status.
     """
     doc = document_repo.get_by_id(db, doc_id)
     if not doc:
         raise NotFoundError("Document")
-
-    if payload.status == DocStatus.ready and payload.chunks:
-        chunk_dicts = [
-            {
-                "document_id": doc_id,
-                "vectordb_point_id": c.vectordb_point_id,
-                "chunk_index": c.chunk_index,
-                "page_number": c.page_number,
-            }
-            for c in payload.chunks
-        ]
-        chunk_repo.bulk_create(db, chunk_dicts)
 
     document_repo.update_status(
         db,

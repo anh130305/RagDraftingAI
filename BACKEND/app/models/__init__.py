@@ -9,7 +9,6 @@ from app.models.audit_log import AuditLog, AuditAction
 from app.models.chat_session import ChatSession
 from app.models.chat_message import ChatMessage, MessageRole
 from app.models.document import Document, DocStatus
-from app.models.document_chunk import DocumentChunk
 from app.models.query_log import QueryLog
 from app.models.prompt_template import PromptTemplate
 
@@ -20,7 +19,6 @@ __all__ = [
     "ChatSession",
     "ChatMessage",
     "Document",
-    "DocumentChunk",
     "QueryLog",
     "PromptTemplate",
     # Enums
