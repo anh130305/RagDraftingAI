@@ -28,8 +28,9 @@ Truy cập các liên kết trong file `linkData.txt` để tải các thành ph
 | 1 | `check` | Kiểm tra tính toàn vẹn của dữ liệu thô. |
 | 2 | `preprocess` | Làm sạch dữ liệu và chuyển đổi sang định dạng `.parquet` để tối ưu tốc độ. |
 | 3 | `obsoleteFilter` | **Quan trọng**: Lọc bỏ các văn bản đã hết hiệu lực pháp luật. |
-| 4 | `chunking` | Chia nhỏ văn bản thành các đoạn (chunks) phù hợp với Context Window. |
-| 5 | `hybrid_retrieval` | Khởi tạo chỉ mục BM25 và kết nối Vector DB. |
+| 4 | `Filter` | **Quan trọng**: Lọc bỏ các văn bản không cần thiết cho mục tiêu soạn thảo văn bản hành chính nói chung. |
+| 5 | `chunking` | Chia nhỏ văn bản thành các đoạn (chunks) phù hợp với Context Window. |
+| 6 | `hybrid_retrieval` | Khởi tạo chỉ mục BM25 và kết nối Vector DB. |
 
 ---
 
