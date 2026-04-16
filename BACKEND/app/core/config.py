@@ -39,6 +39,14 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: Optional[str] = None
     CLOUDINARY_API_SECRET: Optional[str] = None
 
+    # ── RAG Integration ──────────────────────────────────────
+    RAG_ROOT_PATH: str = "../RAG"
+    
+    # ── LLM Providers ────────────────────────────────────────
+    GROQ_API_KEY: Optional[str] = None
+    OPENAI_API_KEY: Optional[str] = None
+    LLM_MODEL: Optional[str] = None
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",

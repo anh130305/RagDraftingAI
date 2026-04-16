@@ -121,6 +121,61 @@ def upload_to_cloudinary(file: UploadFile, user_id: str, session_id: str = "gene
         "type": delivery_type,
     }
 
+def upload_local_file_to_cloudinary(
+    file_path: str, 
+    user_id: str, 
+    session_id: str = "generated", 
+    filename: Optional[str] = None
+) -> dict:
+    """
+    Uploads a local file (by path) to Cloudinary.
+    Useful for AI-generated documents.
+    """
+    if not settings.CLOUDINARY_CLOUD_NAME or settings.CLOUDINARY_CLOUD_NAME == "YOUR_CLOUD_NAME":
+        raise ValueError("Cloudinary is not configured.")
+
+    if not filename:
+        import os
+        filename = os.path.basename(file_path)
+
+    folder_path = f"RagDraftingAI/{user_id}/{session_id}"
+    
+    # We treat documents as 'raw' for proper rendering/downloading
+    upload_params = {
+        "folder": folder_path,
+        "public_id": filename,
+        "resource_type": "raw",
+        "use_filename": True,
+        "unique_filename": True,
+        "type": "upload",
+        "access_mode": "public",
+    }
+
+    with open(file_path, "rb") as f:
+        file_bytes = f.read()
+
+    response = cloudinary.uploader.upload(file_bytes, **upload_params)
+    
+    # Ensure public access
+    public_id = response.get("public_id")
+    if public_id:
+        try:
+            cloudinary.api.update(
+                public_id,
+                resource_type="raw",
+                access_mode="public",
+            )
+        except Exception:
+            pass
+
+    return {
+        "url": response.get("secure_url") or response.get("url"),
+        "public_id": public_id,
+        "resource_type": "raw",
+        "filename": filename,
+        "bytes": response.get("bytes", 0),
+    }
+
 
 def delete_from_cloudinary(public_id: str) -> bool:
     """

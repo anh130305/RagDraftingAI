@@ -169,23 +169,33 @@ async def generate_assistant_response_task(
     chunk_found = False
 
     try:
-        # Simulate processing time (5-8 seconds)
-        await asyncio.sleep(random.uniform(5, 8))
+        # Use the actual RAG service for legal QA
+        from app.services.rag_service import rag_service
         
-        # Here we would normally call the RAG process
-        # Logic to determine if "chunks were found" (simplified mock)
-        chunk_found = "không tìm thấy" not in user_query.lower()
+        # We can pass extras if we want to add constraints, for now just the query
+        result = rag_service.answer_legal_question(query=user_query)
+        
+        if result["status"] == "ok":
+            content = result["answer"]
+            chunk_found = result["meta"].get("n_legal_chunks", 0) > 0
+        elif result["status"] == "prompt_only":
+            content = "Hệ thống đã chuẩn bị câu trả lời nhưng chưa có API Key để hoàn tất. Vui lòng kiểm tra cấu hình."
+            is_error = True
+            error_message = "Missing LLM API Key"
+        else:
+            content = f"Xin lỗi, tôi gặp lỗi khi xử lý: {result.get('error', 'Lỗi không xác định')}"
+            is_error = True
+            error_message = result.get("error")
 
-        # For now, we use a mock response logic
-        content = f"OKE! Tôi đã nhận được yêu cầu: '{user_query[:50]}...'. Đây là phản hồi giả lập được xử lý ngầm (Background Task). Dù bạn có reload trang thì tôi vẫn sẽ trả lời!"
-        
         # ── Create the assistant message ──
         assistant_msg = create_assistant_response(db, session_id, content)
         
     except Exception as e:
         is_error = True
         error_message = str(e)
-        print(f"Error in background task: {e}")
+        logger.error(f"Error in background task: {e}")
+        # Optionally create a fallback error message in the chat
+        create_assistant_response(db, session_id, "Xin lỗi, đã có lỗi hệ thống xảy ra khi xử lý yêu cầu của bạn.")
     finally:
         end_time = time.perf_counter()
         response_time_ms = int((end_time - start_time) * 1000)
@@ -203,7 +213,7 @@ async def generate_assistant_response_task(
             db.add(query_log)
             db.commit()
         except Exception as log_err:
-            print(f"Failed to save query log: {log_err}")
+            logger.error(f"Failed to save query log: {log_err}")
             db.rollback()
         
         db.close()
