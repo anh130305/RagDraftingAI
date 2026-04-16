@@ -212,6 +212,7 @@ export function inferDocumentPreviewKind(input: {
 async function request<T>(
   endpoint: string,
   options: RequestInit = {},
+  timeoutMs: number = DEFAULT_TIMEOUT,
 ): Promise<T> {
   const token = localStorage.getItem('access_token');
   const headers: Record<string, string> = {
@@ -228,7 +229,7 @@ async function request<T>(
   }
 
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
+  const id = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const res = await fetch(`${API_BASE}${endpoint}`, {
@@ -500,7 +501,7 @@ export function generateDraftDocx(data: DraftRequest) {
   return request<DraftResponse>('/api/v1/drafting/generate-docx', {
     method: 'POST',
     body: JSON.stringify(data),
-  });
+  }, 180000);
 }
 
 /* ─── Chat ──────────────────────────────────────────────── */
@@ -559,12 +560,12 @@ export function deleteSession(id: string) {
   return request<void>(`/api/v1/chat/sessions/${id}`, { method: 'DELETE' });
 }
 
-export function sendMessage(sessionId: string, content: string) {
+export function sendMessage(sessionId: string, content: string, mode: 'qa' | 'generate' = 'qa') {
   return request<ChatMessage>(
     `/api/v1/chat/sessions/${sessionId}/messages`,
     {
       method: 'POST',
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, mode }),
     },
   );
 }

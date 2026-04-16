@@ -19,6 +19,7 @@ from app.db.base import Base  # noqa: F401 – ensure all models are registered
 from app.db.session import get_engine
 from app.core.rate_limit import init_rate_limiting
 from app.db.init_db import initialize_system
+from app.services.rag_service import rag_service
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
@@ -26,10 +27,8 @@ async def lifespan(app: FastAPI):
     # Startup: Initialize RAG service (load models)
     logger.info("Lifespan: Initializing services...")
     try:
-        from app.services.rag_service import rag_service
-        rag_service.initialize()
-        
         # Ensure directory for generated docs exists
+
         generated_docs_dir = Path("uploads/generated_docs")
         generated_docs_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"Initialized storage at {generated_docs_dir}")
@@ -39,6 +38,7 @@ async def lifespan(app: FastAPI):
     
     yield
     # Shutdown: Cleanup if needed
+    await rag_service.aclose()
     logger.info("Lifespan: Shutting down...")
 
 # ── Config Logging ──────────────────────────────────────────

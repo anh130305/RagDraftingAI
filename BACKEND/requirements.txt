@@ -47,14 +47,5 @@ python-docx
 # Cloud Storage
 cloudinary
 
-# RAG Module Dependencies
-rank-bm25
-sentence-transformers
-chromadb
-unicodedata2
-pandas
-pyarrow
-torch
-huggingface_hub
-groq
-openai
+# RAG module integration (minimal)
+python-docx

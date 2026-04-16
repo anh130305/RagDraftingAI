@@ -216,7 +216,7 @@ export default function Chat() {
     pollingRetryRef.current = 0;
     pollingTargetUserMessageIdRef.current = targetUserMessageId || null;
 
-    const maxRetries = 30; // 30 retries * 2s = 60s max wait
+    const maxRetries = 150; // 150 retries * 2s = 300s max wait
     const statuses = [
       'AI đang suy nghĩ...',
       'Đang phân tích yêu cầu...',
@@ -329,7 +329,7 @@ export default function Chat() {
       setMessages((prev) => [...prev, optimisticMessage]);
 
       // Gửi tin nhắn thực tế để backend lưu và xử lý AI trong nền
-      const userMessage = await api.sendMessage(currentId, content);
+      const userMessage = await api.sendMessage(currentId, content, mode);
       setMessages((prev) => {
         const withoutOptimistic = prev.filter((m) => m.id !== optimisticMessageId);
         if (withoutOptimistic.some((m) => m.id === userMessage.id)) {
@@ -367,11 +367,6 @@ export default function Chat() {
               created_at: new Date().toISOString(),
             };
             
-            // If the draftRes came back with a document object, the UI will eventually 
-            // pick it up from the message content or I can attach it.
-            // Actually, my parseMessageContent looks for [Nội dung tệp ...]. 
-            // For drafted files, they are in the DB and will be visible in the file browser 
-            // or I can manually append a reference.
             if (draftRes.document) {
                 assistantMsg.content += `\n\n[Tệp đính kèm: ${draftRes.document.title}]`;
             }
