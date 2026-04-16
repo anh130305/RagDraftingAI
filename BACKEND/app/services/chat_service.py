@@ -7,6 +7,7 @@ from uuid import UUID
 import asyncio
 import random
 import time
+import logging
 from sqlalchemy.sql import func
 
 
@@ -28,6 +29,9 @@ from app.schemas.chat import (
     ChatSessionWithMessages,
 )
 from app.db.session import get_session_local
+
+
+logger = logging.getLogger(__name__)
 
 
 # ── Sessions ─────────────────────────────────────────────────
@@ -155,6 +159,7 @@ def create_assistant_response(
 async def generate_assistant_response_task(
     session_id: UUID,
     user_query: str,
+    mode: str = "qa",
 ):
     """
     Background task to simulate RAG/LLM processing and save assistant response.
@@ -168,20 +173,27 @@ async def generate_assistant_response_task(
     error_message = None
     chunk_found = False
 
+    if mode != "qa":
+        db.close()
+        return
+
     try:
         # Use the actual RAG service for legal QA
         from app.services.rag_service import rag_service
         
         # We can pass extras if we want to add constraints, for now just the query
-        result = rag_service.answer_legal_question(query=user_query)
+        result = await rag_service.answer_legal_question(query=user_query)
         
         if result["status"] == "ok":
             content = result["answer"]
             chunk_found = result["meta"].get("n_legal_chunks", 0) > 0
         elif result["status"] == "prompt_only":
-            content = "Hệ thống đã chuẩn bị câu trả lời nhưng chưa có API Key để hoàn tất. Vui lòng kiểm tra cấu hình."
+            content = (
+                "Hệ thống đã nhận truy vấn nhưng chưa tạo được câu trả lời từ LLM. "
+                "Vui lòng kiểm tra cấu hình dịch vụ RAG (API key/model) và thử lại."
+            )
             is_error = True
-            error_message = "Missing LLM API Key"
+            error_message = "LLM response unavailable (prompt_only)"
         else:
             content = f"Xin lỗi, tôi gặp lỗi khi xử lý: {result.get('error', 'Lỗi không xác định')}"
             is_error = True

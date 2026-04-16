@@ -3,7 +3,7 @@ schemas.chat – Pydantic DTOs for chat sessions and messages.
 """
 
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -42,6 +42,7 @@ class ChatSessionResponse(BaseModel):
 class ChatMessageCreate(BaseModel):
     """POST /chat/sessions/{id}/messages"""
     content: str = Field(..., min_length=1)
+    mode: Literal["qa", "generate"] = Field("qa")
 
 class ChatMessageFeedbackUpdate(BaseModel):
     """PUT /chat/messages/{id}/feedback"""

@@ -20,14 +20,14 @@ router = APIRouter(prefix="/drafting", tags=["Drafting"])
 TEMP_GENERATION_DIR = Path("uploads/temp_drafts")
 
 @router.post("/generate", response_model=DraftResponse)
-def generate_draft(
+async def generate_draft(
     payload: DraftRequest,
     current_user: User = Depends(require_chat_user)
 ):
     """
     Generate administrative document fields based on a query and legal context.
     """
-    result = rag_service.draft_document(
+    result = await rag_service.draft_document(
         query=payload.query,
         extras=payload.extras,
         legal_type_filter=payload.legal_type_filter
@@ -45,7 +45,7 @@ def generate_draft(
     return result
 
 @router.post("/generate-docx", response_model=DraftResponse)
-def generate_draft_docx(
+async def generate_draft_docx(
     request: Request,
     payload: DraftRequest,
     db: Session = Depends(get_db),
@@ -55,7 +55,7 @@ def generate_draft_docx(
     Draft the document, generate a Word file, upload to Cloudinary, and save to DB.
     """
     # 1. Perform legal drafting
-    result = generate_draft(payload=payload, current_user=current_user)
+    result = await generate_draft(payload=payload, current_user=current_user)
     
     # 2. Export to Word Template (Temporarily on disk)
     form_id = result.get("meta", {}).get("form_id", "N/A")
@@ -64,6 +64,9 @@ def generate_draft_docx(
 
     local_path = None
     try:
+        fields = result.get("fields", {})
+        meta = result.get("meta", {})
+
         # Generate unique temporary name
         file_id = str(uuid.uuid4())
         filename = f"{form_id}_{file_id}.docx"
@@ -75,7 +78,7 @@ def generate_draft_docx(
         # Fill template
         rag_service.export_to_docx(
             form_id=form_id,
-            fields=result.fields,
+            fields=fields,
             output_path=str(local_path)
         )
         
@@ -90,7 +93,7 @@ def generate_draft_docx(
         # 4. Save to Database as a permanent Document record
         doc_response = document_service.upload_document(
             db,
-            title=f"Bản thảo: {result.meta.form_type} ({file_id[:8]})",
+            title=f"Bản thảo: {meta.get('form_type', 'Van ban')} ({file_id[:8]})",
             file_path=upload_result["url"],
             file_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             file_size=upload_result["bytes"],

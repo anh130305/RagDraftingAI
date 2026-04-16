@@ -127,12 +127,14 @@ def send_message(
 ):
     msg = chat_service.add_message(db, session_id, current_user.id, payload)
     
-    # Trigger intentional AI response in background
-    background_tasks.add_task(
-        chat_service.generate_assistant_response_task,
-        session_id=session_id,
-        user_query=payload.content
-    )
+    # Only QA mode needs an automatic assistant response in background.
+    if payload.mode == "qa":
+        background_tasks.add_task(
+            chat_service.generate_assistant_response_task,
+            session_id=session_id,
+            user_query=payload.content,
+            mode=payload.mode,
+        )
 
     # Log the query event
     background_tasks.add_task(
@@ -142,7 +144,7 @@ def send_message(
         resource_type="chat_session",
         resource_id=session_id,
         ip_address=request.client.host if request.client else None,
-        detail={"query_length": len(payload.content)}
+        detail={"query_length": len(payload.content), "mode": payload.mode},
     )
     return msg
 

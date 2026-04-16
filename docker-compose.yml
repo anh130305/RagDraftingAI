@@ -17,6 +17,24 @@ services:
       timeout: 5s
       retries: 5
 
+  rag_service:
+    build:
+      context: ./RAG
+      dockerfile: Dockerfile
+    container_name: rag_ai_service
+    restart: always
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./RAG:/app
+      - huggingface_cache:/app/models
+      - rag_dataset:/app/dataset
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/v1/rag/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
   backend:
     build:
       context: ./BACKEND
@@ -33,9 +51,12 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
+      - RAG_SERVICE_URL=http://rag_service:8001
     depends_on:
       DataBase:
         condition: service_healthy
+      rag_service:
+        condition: service_started
 
   frontend:
     build:
@@ -68,3 +89,5 @@ services:
 
 volumes:
   postgres_data:
+  huggingface_cache:
+  rag_dataset:

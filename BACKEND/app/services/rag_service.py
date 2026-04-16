@@ -1,117 +1,156 @@
 """
-services.rag_service – Wrapper for the PromptAPI from the RAG module.
+services.rag_service – Wrapper for the RAG Service (Standalone API).
 """
 
 import sys
-import os
 import logging
 from pathlib import Path
-from contextlib import contextmanager
 from typing import Dict, Any, Optional
+import httpx
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-@contextmanager
-def rag_working_directory(path: Path):
-    """Context manager to temporarily change the working directory."""
-    origin = Path.cwd()
-    try:
-        os.chdir(path)
-        yield
-    finally:
-        os.chdir(origin)
-
 class RAGService:
     def __init__(self):
-        self._api = None
-        # Root path of the RAG module relative to the backend execution context
+        self.base_url = f"{settings.RAG_SERVICE_URL.rstrip('/')}/api/v1/rag"
+        # RAG_ROOT_PATH might still be needed for local template filling
         self.rag_path = Path(settings.RAG_ROOT_PATH).resolve()
-        
-    def initialize(self):
-        """
-        Initialize the PromptAPI once. 
-        This is a heavy operation (20-40s) as it loads models.
-        """
-        if self._api is not None:
-            return
+        self._client = httpx.AsyncClient(
+            timeout=httpx.Timeout(120.0, connect=10.0, read=120.0),
+            limits=httpx.Limits(max_keepalive_connections=20, max_connections=100),
+        )
 
-        if not self.rag_path.exists():
-            logger.error(f"RAG root path not found at {self.rag_path}")
-            return
-
-        # Add RAG directory to sys.path to allow imports
-        if str(self.rag_path) not in sys.path:
-            sys.path.append(str(self.rag_path))
-
-        # Ensure API keys are in environment variables for PromptAPI to pick up
-        if settings.GROQ_API_KEY:
-            os.environ["GROQ_API_KEY"] = settings.GROQ_API_KEY
-        if settings.OPENAI_API_KEY:
-            os.environ["OPENAI_API_KEY"] = settings.OPENAI_API_KEY
-        if settings.LLM_MODEL:
-            os.environ["LLM_MODEL"] = settings.LLM_MODEL
-
+    @staticmethod
+    def _extract_error_detail(response: httpx.Response) -> str:
+        """Best-effort parsing of downstream error payload for clearer client messages."""
         try:
-            # Change directory to RAG root so hybrid_retrieval can find its dataset/models
-            with rag_working_directory(self.rag_path):
-                from promptApi import PromptAPI
-                logger.info("Initializing PromptAPI (this may take 20-40s)...")
-                # Không truyền tham số để sử dụng giá trị mặc định của module RAG
-                self._api = PromptAPI()
-                logger.info("PromptAPI initialized successfully.")
-        except Exception as e:
-            logger.exception(f"Failed to initialize PromptAPI: {e}")
+            payload = response.json()
+        except Exception:
+            text = response.text.strip()
+            return text or f"HTTP {response.status_code}"
 
-    @property
-    def api(self):
-        if self._api is None:
-            self.initialize()
-        return self._api
+        if isinstance(payload, dict):
+            detail = payload.get("detail")
+            if isinstance(detail, str):
+                return detail
+            if isinstance(detail, dict):
+                nested = detail.get("error")
+                if nested is not None:
+                    return str(nested)
+                return str(detail)
 
-    def answer_legal_question(self, query: str, extras: Optional[str] = None) -> Dict[str, Any]:
-        """Call the RAG legal_qa mode."""
-        if not self.api:
+            if "error" in payload:
+                return str(payload["error"])
+
+        return str(payload)
+
+    async def aclose(self) -> None:
+        """Close the shared HTTP client gracefully on app shutdown."""
+        await self._client.aclose()
+        
+    async def get_health(self) -> Dict[str, Any]:
+        """Check if RAG service is ready."""
+        try:
+            response = await self._client.get(
+                f"{self.base_url}/health",
+                timeout=httpx.Timeout(5.0, connect=2.0, read=5.0),
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
             return {
-                "status": "error", 
+                "status": "error",
+                "message": self._extract_error_detail(e.response),
+                "http_status": e.response.status_code,
+            }
+        except httpx.HTTPError as e:
+            return {"status": "error", "message": str(e)}
+
+    async def answer_legal_question(self, query: str, extras: Optional[str] = None) -> Dict[str, Any]:
+        """Call the RAG legal_qa mode via API."""
+        try:
+            response = await self._client.post(
+                f"{self.base_url}/legal_qa",
+                json={
+                    "query": query,
+                    "extras": extras,
+                    "call_llm": True,
+                },
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            detail = self._extract_error_detail(e.response)
+            logger.error(
+                "RAG API error (legal_qa) [%s]: %s",
+                e.response.status_code,
+                detail,
+            )
+            return {
+                "status": "error",
                 "mode": "legal_qa",
-                "error": "RAG Service not initialized",
+                "error": detail,
+                "http_status": e.response.status_code,
+                "meta": {"query": query, "extras": extras},
+            }
+        except httpx.HTTPError as e:
+            logger.error("RAG API transport error (legal_qa): %s", e)
+            return {
+                "status": "error",
+                "mode": "legal_qa",
+                "error": str(e),
                 "meta": {"query": query, "extras": extras}
             }
-        
-        with rag_working_directory(self.rag_path):
-            return self.api.legal_qa(query=query, extras=extras)
 
-    def draft_document(
+    async def draft_document(
         self, 
         query: str, 
         extras: Optional[str] = None, 
         legal_type_filter: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Call the RAG draft mode."""
-        if not self.api:
+        """Call the RAG draft mode via API."""
+        try:
+            response = await self._client.post(
+                f"{self.base_url}/draft",
+                json={
+                    "query": query,
+                    "extras": extras,
+                    "legal_type_filter": legal_type_filter,
+                    "call_llm": True,
+                },
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            detail = self._extract_error_detail(e.response)
+            logger.error(
+                "RAG API error (draft) [%s]: %s",
+                e.response.status_code,
+                detail,
+            )
             return {
-                "status": "error", 
+                "status": "error",
                 "mode": "draft",
-                "error": "RAG Service not initialized",
+                "error": detail,
+                "http_status": e.response.status_code,
+                "meta": {"query": query, "extras": extras},
+            }
+        except httpx.HTTPError as e:
+            logger.error("RAG API transport error (draft): %s", e)
+            return {
+                "status": "error",
+                "mode": "draft",
+                "error": str(e),
                 "meta": {"query": query, "extras": extras}
             }
-            
-        with rag_working_directory(self.rag_path):
-            return self.api.draft(
-                query=query, 
-                extras=extras, 
-                legal_type_filter=legal_type_filter
-            )
 
     def export_to_docx(self, form_id: str, fields: Dict[str, str], output_path: str) -> str:
         """
         Fill a Word template based on form_id and fields.
-        Returns the path to the generated file.
+        Note: This runs locally in the Backend as it requires access to local storage.
         """
-        # Mapping between Form_ID and the actual filenames in RAG/Forms/docx
-        # Note: expecting .docx files as per python-docx requirements
         FORM_MAPPING = {
             "Form_01": "Mau_1.1_–_Nghi_quyet_(ca_biet)_1011143252_2605081617.docx",
             "Form_02": "Mau_1.2_–_Quyet_dinh_(ca_biet)_quy_dinh_truc_tiep_1011143252_2605081624.docx",
@@ -131,23 +170,17 @@ class RAGService:
 
         template_path = self.rag_path / "Forms" / "docx" / template_filename
         
-        # Check if .docx exists, if not check if .doc exists to provide better error
         if not template_path.exists():
-            doc_fallback = template_path.with_suffix(".doc")
-            if doc_fallback.exists():
-                raise FileNotFoundError(
-                    f"Template {template_filename} not found. "
-                    f"Found {doc_fallback.name} but it must be converted to .docx first."
-                )
             raise FileNotFoundError(f"Template path not found: {template_path}")
 
         try:
-            with rag_working_directory(self.rag_path):
-                from promptTemplates import fill_word_template
-                # wrap fields into the structure expected by fill_word_template
-                parsed_mock = {"fields": fields}
-                fill_word_template(str(template_path), parsed_mock, output_path)
-                return output_path
+            # We still need promptTemplates.py locally for the generation logic
+            # This logic doesn't require heavy AI models
+            sys.path.append(str(self.rag_path))
+            from promptTemplates import fill_word_template
+            parsed_mock = {"fields": fields}
+            fill_word_template(str(template_path), parsed_mock, output_path)
+            return output_path
         except Exception as e:
             logger.exception(f"Error filling word template: {e}")
             raise
