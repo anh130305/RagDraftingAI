@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
+from pathlib import Path
 
 import time
 import logging
@@ -26,8 +27,6 @@ async def lifespan(app: FastAPI):
     logger.info("Lifespan: Initializing services...")
     try:
         from app.services.rag_service import rag_service
-        # Running in a separate thread/task might be better if we don't want to block, 
-        # but for RAG we usually want it ready.
         rag_service.initialize()
         
         # Ensure directory for generated docs exists

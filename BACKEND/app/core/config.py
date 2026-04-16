@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: Optional[str] = None
 
     # ── RAG Integration ──────────────────────────────────────
-    RAG_ROOT_PATH: str = "../RAG"
+    RAG_ROOT_PATH: str = "/RAG"
     
     # ── LLM Providers ────────────────────────────────────────
     GROQ_API_KEY: Optional[str] = None
