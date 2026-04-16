@@ -1,7 +1,3 @@
-Đây là bản viết lại file `README.md` của bạn theo phong cách chuyên nghiệp, cấu trúc rõ ràng và tối ưu cho việc trình bày dự án (Portfolio-ready).
-
----
-
 # 📝 Vietnamese Administrative RAG System
 
 Hệ thống hỗ trợ **soạn thảo văn bản hành chính** và **tra cứu pháp luật Việt Nam** ứng dụng kỹ thuật RAG (Retrieval-Augmented Generation). Dự án sử dụng mô hình **Hybrid Retrieval** để đảm bảo tính chính xác tối đa về mặt pháp lý và tuân thủ nghiêm ngặt thể thức văn bản.

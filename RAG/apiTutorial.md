@@ -44,7 +44,7 @@ api = PromptAPI(
 | `query` | Yêu cầu chính — nội dung cần soạn / câu hỏi cần trả lời | `"Soạn công văn gửi các Bộ về hướng dẫn Luật Lưu trữ"` |
 | `extras` | Thông tin bổ sung — metadata, ràng buộc, ngữ cảnh thêm | `"Ngày ký: 05/01/2025\nNgười ký: Cục trưởng Đặng Thanh Tùng"` |
 
-Bên trong, `extras` được truyền vào `build_messages()` / `build_legal_qa_messages()` và được lưu vào `meta["extras"]` để dễ debug/logging.
+Bên trong, `extras` được truyền vào `build_messages()` / `build_legal_qa_messages()` dưới dạng `extra_instructions`, và được lưu vào `meta["extras"]` để dễ debug/logging.
 
 ---
 
@@ -54,10 +54,11 @@ Bên trong, `extras` được truyền vào `build_messages()` / `build_legal_qa
 
 ```python
 api.draft(
-    query             : str,
-    extras            : str | None = None,
-    legal_type_filter : str | None = None,
-    call_llm          : bool = True,
+    query              : str,
+    extras             : str | None = None,
+    extra_instructions : str | None = None,   # alias tương thích ngược
+    legal_type_filter  : str | None = None,
+    call_llm           : bool = True,
 ) -> dict
 ```
 
@@ -152,11 +153,12 @@ messages = result["meta"]["messages"]
 
 ```python
 api.legal_qa(
-    query             : str,
-    extras            : str | None = None,
-    legal_top_k       : int | None = None,
-    legal_type_filter : str | None = None,
-    call_llm          : bool = True,
+    query              : str,
+    extras             : str | None = None,
+    extra_instructions : str | None = None,   # alias tương thích ngược
+    legal_top_k        : int | None = None,   # ghi đè số điều luật retrieve
+    legal_type_filter  : str | None = None,
+    call_llm           : bool = True,
 ) -> dict
 ```
 
@@ -277,6 +279,22 @@ python promptApi.py \
 # Dev mode — tắt reranker, nhanh hơn ~3x
 python promptApi.py --no-reranker
 ```
+
+---
+
+## Tương thích ngược
+
+Tham số `extra_instructions` vẫn hoạt động bình thường — code cũ không cần sửa:
+
+```python
+# Cách cũ — vẫn hoạt động
+api.draft(query="...", extra_instructions="Ngày ký: ...")
+
+# Cách mới — khuyến nghị
+api.draft(query="...", extras="Ngày ký: ...")
+```
+
+Khi cả hai được truyền, `extras` được ưu tiên.
 
 ---
 

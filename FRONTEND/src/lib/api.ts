@@ -412,7 +412,8 @@ export interface PromptTemplateResponse {
   id: string;
   name: string;
   description: string | null;
-  content: string;
+  query: string;
+  extra_instructions: string | null;
   is_default: boolean;
   is_active: boolean;
   created_by: string | null;
@@ -447,9 +448,6 @@ export function deletePromptTemplate(id: string) {
   return request<void>(`/api/v1/admin/prompt-templates/${id}`, { method: 'DELETE' });
 }
 
-export function setDefaultPromptTemplate(id: string) {
-  return request<PromptTemplateResponse>(`/api/v1/admin/prompt-templates/${id}/default`, { method: 'PUT' });
-}
 
 export function recordPromptTemplateUse(id: string) {
   return request<void>(`/api/v1/chat/prompt-templates/${id}/use`, { method: 'POST' });

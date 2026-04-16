@@ -30,8 +30,8 @@ class PromptTemplateResponse(BaseModel):
     id: UUID
     name: str
     description: Optional[str] = None
-    content: str
-    is_default: bool
+    query: str
+    extra_instructions: Optional[str] = None
     is_active: bool
     created_by: Optional[UUID] = None
     created_at: datetime
