@@ -14,16 +14,19 @@ import {
   Sparkles,
   Star,
   X,
+  FileQuestion,
+  FileEdit,
 } from 'lucide-react';
 import { useToast } from '../lib/ToastContext';
 import * as api from '../lib/api';
 import type { PromptTemplateResponse } from '../lib/api';
+import { AnimatePresence, motion } from 'motion/react';
 
 interface ChatComposerProps {
   placeholder?: string;
   note?: string;
   statusMessage?: string;
-  onSend?: (content: string) => void | Promise<void>;
+  onSend?: (content: string, mode: 'qa' | 'generate', extras?: string) => void | Promise<void>;
   disabled?: boolean;
   value?: string;
   onValueChange?: (val: string) => void;
@@ -90,6 +93,11 @@ export default function ChatComposer({
   const [promptTemplates, setPromptTemplates] = useState<PromptTemplateResponse[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const promptPickerRef = useRef<HTMLDivElement | null>(null);
+
+  // Mode and Extras state
+  const [mode, setMode] = useState<'qa' | 'generate'>('qa');
+  const [extras, setExtras] = useState('');
+  const [showExtras, setShowExtras] = useState(false);
 
   useEffect(() => {
     valueRef.current = value;
@@ -362,7 +370,10 @@ export default function ChatComposer({
     });
 
     try {
-      await onSend?.(finalMessage);
+      await onSend?.(finalMessage, mode, extras);
+      // Clear extras if successful
+      setExtras('');
+      setShowExtras(false);
     } catch {
       // Send failed - UI already cleared, keep it clean
     } finally {
@@ -560,6 +571,33 @@ export default function ChatComposer({
           event.currentTarget.value = '';
         }}
       />
+
+      {/* Mode Toggle Selection */}
+      <div className="flex items-center gap-2 mb-2 px-1">
+        <button
+          type="button"
+          onClick={() => { setMode('qa'); setShowExtras(false); }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${mode === 'qa'
+            ? 'bg-primary text-on-primary shadow-sm'
+            : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-highest'
+            }`}
+        >
+          <FileQuestion className="w-3.5 h-3.5" />
+          Hỏi đáp Pháp luật
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('generate')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${mode === 'generate'
+            ? 'bg-secondary text-on-secondary shadow-sm'
+            : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-highest'
+            }`}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          Soạn thảo Văn bản
+        </button>
+      </div>
+
       {attachments.length > 0 && (
         <div className="mb-3 rounded-[26px] border border-outline-variant/15 bg-surface/72 p-3 shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3 px-1 pb-2.5">
@@ -664,6 +702,36 @@ export default function ChatComposer({
           )}
         </div>
       )}
+
+      {/* Extras Field (Only for Generate Mode) */}
+      <AnimatePresence>
+        {mode === 'generate' && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden mb-2"
+          >
+            <div className="glass-morphism rounded-2xl border border-outline-variant/15 p-3 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-secondary">
+                  <FileEdit className="w-3.5 h-3.5" />
+                  Thông tin bổ sung (Ngày, Người ký, Số hiệu...)
+                </div>
+                <span className="text-[10px] text-on-surface-variant italic">Không bắt buộc</span>
+              </div>
+              <textarea
+                value={extras}
+                onChange={(e) => setExtras(e.target.value)}
+                placeholder="Ví dụ: Người ký: Nguyễn Văn A, Ngày ký: 20/05/2025, Số hiệu: 123/CV-BTC..."
+                className="w-full bg-transparent border-none focus:ring-0 text-sm font-body text-on-surface placeholder:text-on-surface-variant/40 resize-none min-h-[60px] no-scrollbar"
+                disabled={disabled}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <form
         onSubmit={handleSubmit}
         className={`relative glass-morphism rounded-[30px] p-2 flex items-center gap-2 border border-outline-variant/15 focus-within:ring-4 focus-within:ring-primary/10 transition-all shadow-[0_10px_28px_rgba(0,0,0,0.1)] ${isDragActive ? 'ring-4 ring-primary/25 border-primary/40' : ''}`}
@@ -793,7 +861,20 @@ export default function ChatComposer({
                     type="button"
                     className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-container-high transition-colors border-b border-outline-variant/10 last:border-b-0"
                     onClick={() => {
-                      onValueChange?.(tpl.content);
+                      onValueChange?.(tpl.query);
+                      
+                      // Auto-switch mode based on template configuration
+                      if (tpl.mode === 'generate') {
+                        setMode('generate');
+                        if (tpl.extra_instructions) {
+                          setExtras(tpl.extra_instructions);
+                          setShowExtras(true);
+                        }
+                      } else {
+                        setMode('qa');
+                        setShowExtras(false);
+                      }
+
                       setShowPromptPicker(false);
                       showToast(`Đã chèn mẫu "${tpl.name}"`, 'success');
                       // Log usage to backend
@@ -805,12 +886,9 @@ export default function ChatComposer({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-semibold text-on-surface truncate">{tpl.name}</span>
-                        {tpl.is_default && (
-                          <Star className="w-3 h-3 text-amber-500 shrink-0 fill-amber-500" />
-                        )}
                       </div>
                       <p className="text-[11px] text-on-surface-variant mt-0.5 line-clamp-2 leading-relaxed">
-                        {tpl.description || tpl.content.slice(0, 80) + '...'}
+                        {tpl.description || tpl.query.slice(0, 80) + '...'}
                       </p>
                     </div>
                   </button>

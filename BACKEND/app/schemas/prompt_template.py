@@ -15,6 +15,7 @@ class PromptTemplateCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = None
     content: str = Field(..., min_length=1)
+    mode: str = Field("qa", pattern="^(qa|generate)$")
 
 
 class PromptTemplateUpdate(BaseModel):
@@ -22,6 +23,7 @@ class PromptTemplateUpdate(BaseModel):
     description: Optional[str] = None
     content: Optional[str] = Field(None, min_length=1)
     is_active: Optional[bool] = None
+    mode: Optional[str] = Field(None, pattern="^(qa|generate)$")
 
 
 # ── Response ────────────────────────────────────────────────
@@ -32,6 +34,7 @@ class PromptTemplateResponse(BaseModel):
     description: Optional[str] = None
     query: str
     extra_instructions: Optional[str] = None
+    mode: str
     is_active: bool
     created_by: Optional[UUID] = None
     created_at: datetime

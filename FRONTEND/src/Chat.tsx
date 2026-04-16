@@ -291,7 +291,7 @@ export default function Chat() {
   };
 
   // ── Handle sending message ──────────────────────────────────
-  const handleSend = async (content: string) => {
+  const handleSend = async (content: string, mode: 'qa' | 'generate' = 'qa', extras?: string) => {
     if (isSubmittingMessage || sendingSessionId) return;
 
     let currentId = sessionId;
@@ -341,7 +341,52 @@ export default function Chat() {
       // Bắt đầu polling chỉ sau khi user message đã được backend chấp nhận
       pollingTerminatedUserMessageIdRef.current = null;
       autoResumeAttemptedUserMessageIdRef.current = userMessage.id;
-      startPolling(currentId, userMessage.id);
+
+      if (mode === 'qa') {
+        startPolling(currentId, userMessage.id);
+      } else {
+        // Mode 'generate' (Drafting)
+        setStatusText('Đang thực hiện soạn thảo văn bản...');
+        try {
+          const draftRes = await api.generateDraftDocx({
+            query: content,
+            extras: extras,
+            session_id: currentId,
+          });
+
+          if (draftRes.status === 'ok') {
+            // Add assistant response manually for drafting as it doesn't go through chat polling
+            const assistantMsg: ChatMessage = {
+              id: `draft-${Date.now()}`,
+              session_id: currentId,
+              role: 'assistant',
+              content: `Tôi đã soạn thảo xong bản thảo "${draftRes.meta.form_type}" dựa trên yêu cầu của bạn. 
+              \n\n**Các trường thông tin đã điền:**\n${Object.entries(draftRes.fields).slice(0, 5).map(([k, v]) => `- ${k}: ${v.slice(0, 30)}...`).join('\n')}\n...`,
+              feedback: null,
+              token_count: null,
+              created_at: new Date().toISOString(),
+            };
+            
+            // If the draftRes came back with a document object, the UI will eventually 
+            // pick it up from the message content or I can attach it.
+            // Actually, my parseMessageContent looks for [Nội dung tệp ...]. 
+            // For drafted files, they are in the DB and will be visible in the file browser 
+            // or I can manually append a reference.
+            if (draftRes.document) {
+                assistantMsg.content += `\n\n[Tệp đính kèm: ${draftRes.document.title}]`;
+            }
+            
+            setMessages((prev) => [...prev, assistantMsg]);
+            setStatusText('');
+          }
+        } catch (err: any) {
+          showToast(`Lỗi khi soạn thảo: ${err.message}`, 'error');
+        } finally {
+          setIsSubmittingMessage(false);
+          setSendingSessionId(null);
+          setStatusText('');
+        }
+      }
 
       // Cập nhật sidebar
       window.dispatchEvent(new Event('chat_activity_updated'));

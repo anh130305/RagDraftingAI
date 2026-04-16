@@ -58,7 +58,7 @@ def generate_draft_docx(
     result = generate_draft(payload=payload, current_user=current_user)
     
     # 2. Export to Word Template (Temporarily on disk)
-    form_id = result.meta.form_id
+    form_id = result.get("meta", {}).get("form_id", "N/A")
     if form_id == "N/A":
         return result
 
@@ -95,8 +95,7 @@ def generate_draft_docx(
             file_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             file_size=upload_result["bytes"],
             uploaded_by=current_user.id,
-            # We don't link to a chat_session for generic drafting yet, 
-            # but we could if payload included it.
+            session_id=payload.session_id,
             cloudinary_public_id=upload_result["public_id"],
         )
         
@@ -106,12 +105,14 @@ def generate_draft_docx(
         if doc_model:
             document_repo.update_status(db, db_obj=doc_model, status=DocStatus.ready)
             # Re-fetch or refresh if needed, but DocumentResponse will be recalculated
-            result.document = document_service.get_document(db, doc_response.id)
+            result["document"] = document_service.get_document(db, doc_response.id)
         
     except FileNotFoundError as fnf:
-        result.meta.extras = (result.meta.extras or "") + f"\n[Warning: Template not found: {str(fnf)}]"
+        if "meta" in result:
+            result["meta"]["extras"] = (result["meta"].get("extras") or "") + f"\n[Warning: Template not found: {str(fnf)}]"
     except Exception as e:
-        result.meta.extras = (result.meta.extras or "") + f"\n[Error: Word/Cloud/DB failed: {str(e)}]"
+        if "meta" in result:
+            result["meta"]["extras"] = (result["meta"].get("extras") or "") + f"\n[Error: Word/Cloud/DB failed: {str(e)}]"
     finally:
         # 6. Clean up temporary file
         if local_path and local_path.exists():

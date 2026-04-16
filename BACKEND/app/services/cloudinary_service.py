@@ -6,6 +6,7 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 import cloudinary.utils
+from typing import Optional
 from fastapi import UploadFile
 from app.core.config import settings
 

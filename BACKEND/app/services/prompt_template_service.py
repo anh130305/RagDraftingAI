@@ -84,6 +84,7 @@ def create_template(
             "description": payload.description,
             "query": query,
             "extra_instructions": extra,
+            "mode": payload.mode,
             "created_by": admin_id,
         },
     )

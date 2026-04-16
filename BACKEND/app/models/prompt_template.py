@@ -20,6 +20,7 @@ class PromptTemplate(Base):
     description = Column(Text, nullable=True)
     query = Column(Text, nullable=False)
     extra_instructions = Column(Text, nullable=True)
+    mode = Column(String(20), nullable=False, default="qa", server_default="qa")
     is_active = Column(Boolean, nullable=False, default=True, index=True)
     created_by = Column(
         UUID(as_uuid=True),

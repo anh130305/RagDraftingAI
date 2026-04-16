@@ -1,9 +1,12 @@
+from typing import Optional, List, Dict
+from pydantic import BaseModel, Field
 from app.schemas.document import DocumentResponse
 
 class DraftRequest(BaseModel):
     query: str = Field(..., description="Yêu cầu soạn thảo chính", example="Soạn công văn hướng dẫn Luật Lưu trữ")
     extras: Optional[str] = Field(None, description="Thông tin bổ sung / ràng buộc", example="Ngày ký: 05/01/2025\nNgười ký: Cục trưởng")
     legal_type_filter: Optional[str] = Field(None, description="Lọc loại văn bản: LUẬT | NGHỊ ĐỊNH | NGHỊ QUYẾT | PHÁP LỆNH")
+    session_id: Optional[str] = Field(None, description="ID của phiên chat để gắn tài liệu vào")
 
 class DraftMeta(BaseModel):
     query: str

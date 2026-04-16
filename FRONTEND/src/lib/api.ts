@@ -414,11 +414,26 @@ export interface PromptTemplateResponse {
   description: string | null;
   query: string;
   extra_instructions: string | null;
-  is_default: boolean;
+  mode: 'qa' | 'generate';
   is_active: boolean;
   created_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface PromptTemplateCreate {
+  name: string;
+  description?: string;
+  content: string;
+  mode: 'qa' | 'generate';
+}
+
+export interface PromptTemplateUpdate {
+  name?: string;
+  description?: string;
+  content?: string;
+  mode?: 'qa' | 'generate';
+  is_active?: boolean;
 }
 
 export interface PromptTemplateListResponse {
@@ -430,14 +445,14 @@ export function getPromptTemplates() {
   return request<PromptTemplateListResponse>('/api/v1/admin/prompt-templates');
 }
 
-export function createPromptTemplate(data: { name: string; description?: string; content: string }) {
+export function createPromptTemplate(data: PromptTemplateCreate) {
   return request<PromptTemplateResponse>('/api/v1/admin/prompt-templates', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export function updatePromptTemplate(id: string, data: { name?: string; description?: string; content?: string; is_active?: boolean }) {
+export function updatePromptTemplate(id: string, data: PromptTemplateUpdate) {
   return request<PromptTemplateResponse>(`/api/v1/admin/prompt-templates/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
@@ -453,6 +468,40 @@ export function recordPromptTemplateUse(id: string) {
   return request<void>(`/api/v1/chat/prompt-templates/${id}/use`, { method: 'POST' });
 }
 
+
+/* ─── Drafting / RAG ────────────────────────────────────── */
+
+export interface DraftRequest {
+  query: string;
+  extras?: string;
+  legal_type_filter?: string;
+  session_id?: string;
+}
+
+export interface DraftMeta {
+  query: string;
+  extras: string | null;
+  elapsed_s: number;
+  form_id: string;
+  form_type: string;
+  legal_sources: string[];
+  context_stats: Record<string, number>;
+}
+
+export interface DraftResponse {
+  status: string;
+  mode: 'draft' | 'legal_qa';
+  fields: Record<string, string>;
+  meta: DraftMeta;
+  document?: DocumentResponse | null;
+}
+
+export function generateDraftDocx(data: DraftRequest) {
+  return request<DraftResponse>('/api/v1/drafting/generate-docx', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
 
 /* ─── Chat ──────────────────────────────────────────────── */
 
