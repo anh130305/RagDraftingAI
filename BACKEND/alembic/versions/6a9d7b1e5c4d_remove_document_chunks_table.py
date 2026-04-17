@@ -17,8 +17,12 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
-    # Drop document_chunks table
-    op.drop_table('document_chunks')
+    # Drop document_chunks table if it exists
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    tables = inspector.get_table_names()
+    if 'document_chunks' in tables:
+        op.drop_table('document_chunks')
 
 def downgrade() -> None:
     # Re-create document_chunks table

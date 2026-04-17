@@ -12,6 +12,34 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+
+FORM_DOCX_MAPPING = {
+    "Form_01": "Mau_1.1_–_Nghi_quyet_(ca_biet)_1011143252_2605081617.docx",
+    "Form_02": "Mau_1.2_–_Quyet_dinh_(ca_biet)_quy_dinh_truc_tiep_1011143252_2605081624.docx",
+    "Form_03": "Mau_1.3_–_Quyet_dinh_(quy_dinh_gian_tiep)_1011143252_2605081844.docx",
+    "Form_04": "Mau_1.4_–_Van_ban_co_ten_loai_1011143252_2605082055.docx",
+    "Form_05": "Mau_1.5_–_Cong_van_1011143252_2605082306.docx",
+    "Form_06": "Mau_1.6_–_Cong_dien_1011143252_2605082456.docx",
+    "Form_07": "Mau_1.7_–_Giay_moi_1011143252_2605082531.docx",
+    "Form_08": "Mau_1.8_–_Giay_gioi_thieu_1011143252_2605082604.docx",
+    "Form_09": "Mau_1.9_–_Bien_ban_1011143252_2605082644.docx",
+    "Form_10": "Mau_1.10_-_Giay_nghi_phep_1011143252_2605082746.docx",
+}
+
+
+FORM_MD_MAPPING = {
+    "Form_01": "Mau_1.1_NghiQuyetCaBiet.md",
+    "Form_02": "Mau_1.2_QuyetDinhCaBiet.md",
+    "Form_03": "Mau_1.3_QuyetDinh.md",
+    "Form_04": "Mau_1.4_MauDaNang.md",
+    "Form_05": "Mau_1.5_CongVan.md",
+    "Form_06": "Mau_1.6_CongDien.md",
+    "Form_07": "Mau_1.7_GiayMoi.md",
+    "Form_08": "Mau_1.8_GiayGioiThieu.md",
+    "Form_09": "Mau_1.9_BienBan.md",
+    "Form_10": "Mau_1.10_GiayNghiPhep.md",
+}
+
 class RAGService:
     def __init__(self):
         self.base_url = f"{settings.RAG_SERVICE_URL.rstrip('/')}/api/v1/rag"
@@ -146,29 +174,24 @@ class RAGService:
                 "meta": {"query": query, "extras": extras}
             }
 
+    def get_template_docx_path(self, form_id: str) -> Path:
+        template_filename = FORM_DOCX_MAPPING.get(form_id)
+        if not template_filename:
+            raise ValueError(f"No template mapping found for {form_id}")
+        return self.rag_path / "Forms" / "docx" / template_filename
+
+    def get_template_markdown_path(self, form_id: str) -> Path:
+        template_filename = FORM_MD_MAPPING.get(form_id)
+        if not template_filename:
+            raise ValueError(f"No markdown template mapping found for {form_id}")
+        return self.rag_path / "Forms" / "md" / template_filename
+
     def export_to_docx(self, form_id: str, fields: Dict[str, str], output_path: str) -> str:
         """
         Fill a Word template based on form_id and fields.
         Note: This runs locally in the Backend as it requires access to local storage.
         """
-        FORM_MAPPING = {
-            "Form_01": "Mau_1.1_–_Nghi_quyet_(ca_biet)_1011143252_2605081617.docx",
-            "Form_02": "Mau_1.2_–_Quyet_dinh_(ca_biet)_quy_dinh_truc_tiep_1011143252_2605081624.docx",
-            "Form_03": "Mau_1.3_–_Quyet_dinh_(quy_dinh_gian_tiep)_1011143252_2605081844.docx",
-            "Form_04": "Mau_1.4_–_Van_ban_co_ten_loai_1011143252_2605082055.docx",
-            "Form_05": "Mau_1.5_–_Cong_van_1011143252_2605082306.docx",
-            "Form_06": "Mau_1.6_–_Cong_dien_1011143252_2605082456.docx",
-            "Form_07": "Mau_1.7_–_Giay_moi_1011143252_2605082531.docx",
-            "Form_08": "Mau_1.8_–_Giay_gioi_thieu_1011143252_2605082604.docx",
-            "Form_09": "Mau_1.9_–_Bien_ban_1011143252_2605082644.docx",
-            "Form_10": "Mau_1.10_-_Giay_nghi_phep_1011143252_2605082746.docx",
-        }
-
-        template_filename = FORM_MAPPING.get(form_id)
-        if not template_filename:
-            raise ValueError(f"No template mapping found for {form_id}")
-
-        template_path = self.rag_path / "Forms" / "docx" / template_filename
+        template_path = self.get_template_docx_path(form_id)
         
         if not template_path.exists():
             raise FileNotFoundError(f"Template path not found: {template_path}")

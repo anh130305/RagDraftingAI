@@ -25,6 +25,7 @@ import * as api from './lib/api';
 import type { ChatMessage } from './lib/api';
 import { useToast } from './lib/ToastContext';
 import ChatComposer from './components/ChatComposer';
+import DocxViewer from './components/DocxViewer';
 
 export default function Chat() {
   const { sessionId } = useParams();
@@ -302,6 +303,8 @@ export default function Chat() {
     setIsSubmittingMessage(true);
     setStatusText('Đang gửi tin nhắn...');
 
+    const combinedContent = extras ? `${content}\n\n**Thông tin bổ sung:**\n${extras}` : content;
+
     try {
       // Nếu chưa có session, tạo session mới trước
       if (!currentId) {
@@ -321,7 +324,8 @@ export default function Chat() {
         id: optimisticMessageId,
         session_id: currentId,
         role: 'user',
-        content,
+        content: combinedContent,
+        mode,
         feedback: null,
         token_count: null,
         created_at: new Date().toISOString(),
@@ -329,7 +333,7 @@ export default function Chat() {
       setMessages((prev) => [...prev, optimisticMessage]);
 
       // Gửi tin nhắn thực tế để backend lưu và xử lý AI trong nền
-      const userMessage = await api.sendMessage(currentId, content, mode);
+      const userMessage = await api.sendMessage(currentId, combinedContent, mode);
       setMessages((prev) => {
         const withoutOptimistic = prev.filter((m) => m.id !== optimisticMessageId);
         if (withoutOptimistic.some((m) => m.id === userMessage.id)) {
@@ -349,7 +353,7 @@ export default function Chat() {
         setStatusText('Đang thực hiện soạn thảo văn bản...');
         try {
           const draftRes = await api.generateDraftDocx({
-            query: content,
+            query: combinedContent,
             extras: extras,
             session_id: currentId,
           });
@@ -360,8 +364,7 @@ export default function Chat() {
               id: `draft-${Date.now()}`,
               session_id: currentId,
               role: 'assistant',
-              content: `Tôi đã soạn thảo xong bản thảo "${draftRes.meta.form_type}" dựa trên yêu cầu của bạn. 
-              \n\n**Các trường thông tin đã điền:**\n${Object.entries(draftRes.fields).slice(0, 5).map(([k, v]) => `- ${k}: ${v.slice(0, 30)}...`).join('\n')}\n...`,
+              content: `Tôi đã soạn thảo xong bản thảo "${draftRes.meta.form_type}" dựa trên yêu cầu của bạn.`,
               feedback: null,
               token_count: null,
               created_at: new Date().toISOString(),
@@ -406,7 +409,9 @@ export default function Chat() {
     if (messages.length === 0) return;
 
     const lastMsg = messages[messages.length - 1];
-    if (lastMsg.role !== 'user') return;
+    // Only auto-resume polling for 'qa' mode messages. 
+    // 'generate' mode is typically synchronous or handled in one go.
+    if (lastMsg.role !== 'user' || lastMsg.mode !== 'qa') return;
 
     // After timeout/error, do not auto-restart polling for the same user message.
     if (pollingTerminatedUserMessageIdRef.current === lastMsg.id) return;
@@ -555,7 +560,7 @@ export default function Chat() {
 
                         <div className={`flex flex-col gap-2 max-w-[85%] md:max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
                           {(() => {
-                            const { text, fileNames } = isUser ? parseMessageContent(msg.content) : { text: msg.content, fileNames: [] };
+                            const { text, fileNames } = parseMessageContent(msg.content);
                             return (
                               <>
                                 {/* File attachment bubbles - each as its own card */}
@@ -565,7 +570,7 @@ export default function Chat() {
                                     <div
                                       key={i}
                                       onClick={() => handleFileChipClick(name)}
-                                      className="flex items-center gap-3 px-4 py-3 bg-surface-container-high border border-outline-variant/20 rounded-2xl rounded-br-none shadow-sm min-w-[180px] max-w-[260px] self-end cursor-pointer hover:border-primary/40 hover:bg-surface-highest transition-colors"
+                                      className={`flex items-center gap-3 px-4 py-3 bg-surface-container-high border border-outline-variant/20 rounded-2xl shadow-sm min-w-[180px] max-w-[260px] cursor-pointer hover:border-primary/40 hover:bg-surface-highest transition-colors ${isUser ? 'rounded-br-none self-end' : 'rounded-bl-none self-start'}`}
                                     >
                                       <div className={`w-9 h-9 rounded-xl ${chipInfo.iconBg} flex items-center justify-center shrink-0`}>
                                         {lookingUpFile
@@ -600,6 +605,25 @@ export default function Chat() {
 
                           {/* Toolbar */}
                           <div className={`flex items-center gap-1 mt-2 transition-opacity ${isUser ? 'justify-end' : 'justify-start'}`}>
+                            {/* Mode Indicator Badge */}
+                            {(msg.mode === 'generate' || msg.mode === 'qa') && (
+                              <div className={`mr-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${msg.mode === 'generate' 
+                                ? 'bg-secondary/10 text-secondary border border-secondary/20' 
+                                : 'bg-primary/10 text-primary border border-primary/20'}`}>
+                                {msg.mode === 'generate' ? (
+                                  <>
+                                    <Sparkles className="w-2.5 h-2.5" />
+                                    Soạn thảo
+                                  </>
+                                ) : (
+                                  <>
+                                    <Compass className="w-2.5 h-2.5" />
+                                    Hỏi đáp
+                                  </>
+                                )}
+                              </div>
+                            )}
+
                             {isUser ? (
                               <>
                                 <button
@@ -761,16 +785,7 @@ export default function Chat() {
                 );
 
                 if (isWord) {
-                  return (
-                    <div className="flex flex-col items-center gap-4 py-12 text-center px-8">
-                      <FileText className="w-16 h-16 text-blue-400 opacity-60" />
-                      <h4 className="text-lg font-bold text-on-surface">Không thể xem trước Word trực tiếp</h4>
-                      <p className="text-sm text-on-surface-variant">Trình duyệt không hỗ trợ xem trước .docx. Hãy tải về để mở bằng Microsoft Word.</p>
-                      <a href={downloadUrl} download={previewFile.name} className="px-6 py-2.5 bg-primary text-on-primary rounded-xl font-bold hover:bg-primary/90 transition-colors">
-                        Tải xuống
-                      </a>
-                    </div>
-                  );
+                  return <DocxViewer url={downloadUrl} />;
                 }
 
                 if (isPDF) {

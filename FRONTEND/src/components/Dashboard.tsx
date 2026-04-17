@@ -100,7 +100,10 @@ export default function Dashboard() {
       setLastSync(d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     } catch (err: any) {
       setConnected(false);
-      setError(err.message ?? 'Không kết nối được với backend');
+      // Only set error message if it's a connection failure, not just empty data
+      if (err.message?.includes('Failed to fetch') || err.message?.includes('connect')) {
+        setError(err.message ?? 'Không kết nối được với backend');
+      }
     }
   }, []);
 
@@ -149,6 +152,17 @@ export default function Dashboard() {
     ]
     : [{ name: 'Chưa có dữ liệu', value: 1, color: 'var(--surface-highest)' }];
 
+  // Mode distribution data
+  const md = monitoringStats?.summary.mode_distribution;
+  const modeDonutData = md
+    ? [
+      { name: 'Hỏi đáp', value: md.qa || 0, color: 'var(--primary)' },
+      { name: 'Soạn thảo', value: md.generate || 0, color: 'var(--secondary)' },
+    ].filter(d => d.value > 0)
+    : [{ name: 'Chưa có dữ liệu', value: 1, color: 'var(--surface-highest)' }];
+
+  const topForms = monitoringStats?.summary.top_forms || [];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -185,7 +199,7 @@ export default function Dashboard() {
 
       {/* ── Error banner ────────────────────────────────────────────────────── */}
       <AnimatePresence>
-        {error && (
+        {error && connected === false && (
           <motion.div
             initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-error/10 border border-error/20 text-xs text-error"
@@ -437,6 +451,84 @@ export default function Dashboard() {
                 <div className="flex justify-center items-center mt-3 gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                   <span className="text-[10px] text-primary font-bold uppercase tracking-widest">Giám sát thời gian thực</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Separator */}
+            <div className="h-px w-full bg-outline-variant/20 my-6" />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Chat Mode Distribution */}
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-4">Phân bổ chế độ Chat</h4>
+                <div className="flex items-center gap-6">
+                  <div className="relative w-28 h-28 shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={modeDonutData} cx="50%" cy="50%"
+                          innerRadius={36} outerRadius={50}
+                          dataKey="value" startAngle={90} endAngle={450} paddingAngle={2}
+                        >
+                          {modeDonutData.map((entry, i) => (
+                            <Cell key={i} fill={entry.color} stroke="none" />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <MessageSquare className="w-5 h-5 text-on-surface-variant opacity-40" />
+                    </div>
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    {modeDonutData[0]?.name === 'Chưa có dữ liệu' ? (
+                      <p className="text-xs text-on-surface-variant italic">Chưa phát sinh hoạt động chat</p>
+                    ) : (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-primary" />
+                            <span className="text-xs font-medium">Hỏi đáp</span>
+                          </div>
+                          <span className="text-xs font-bold">{md?.qa || 0}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-secondary" />
+                            <span className="text-xs font-medium">Soạn thảo</span>
+                          </div>
+                          <span className="text-xs font-bold">{md?.generate || 0}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Top Form Types */}
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-4">Văn bản soạn thảo phổ biến</h4>
+                <div className="space-y-3">
+                  {topForms.length === 0 ? (
+                    <p className="text-xs text-on-surface-variant italic py-4">Chưa có bản thảo nào được tạo</p>
+                  ) : (
+                    topForms.map((form, i) => (
+                      <div key={i} className="group flex flex-col gap-1">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-bold text-on-surface truncate pr-2">{form.name}</span>
+                          <span className="text-[10px] font-medium bg-surface-highest px-2 py-0.5 rounded-md">{form.value} bản</span>
+                        </div>
+                        <div className="h-1 w-full bg-surface-highest rounded-full overflow-hidden">
+                          <motion.div
+                            className="h-full bg-secondary"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.min((form.value / (topForms[0]?.value || 1)) * 100, 100)}%` }}
+                            transition={{ duration: 1, delay: i * 0.1 }}
+                          />
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>

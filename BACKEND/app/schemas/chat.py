@@ -42,7 +42,7 @@ class ChatSessionResponse(BaseModel):
 class ChatMessageCreate(BaseModel):
     """POST /chat/sessions/{id}/messages"""
     content: str = Field(..., min_length=1)
-    mode: Literal["qa", "generate"] = Field("qa")
+    mode: str = Field("qa")
 
 class ChatMessageFeedbackUpdate(BaseModel):
     """PUT /chat/messages/{id}/feedback"""
@@ -54,6 +54,7 @@ class ChatMessageResponse(BaseModel):
     session_id: UUID
     role: MessageRole
     content: str
+    mode: Optional[str] = None
     feedback: Optional[str] = None
     token_count: Optional[int] = None
     created_at: datetime
