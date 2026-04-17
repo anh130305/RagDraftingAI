@@ -10,7 +10,9 @@ CREATE TYPE doc_status   AS ENUM ('pending', 'processing', 'ready', 'failed');
 CREATE TYPE audit_action AS ENUM (
     'login', 'logout', 'upload_document', 'delete_document',
     'query', 'create_session', 'delete_session', 'update_user',
-    'download_document', 'storage_error'
+    'download_document', 'storage_error',
+    'draft_document',
+    'create_template', 'update_template', 'delete_template', 'use_template'
 );
 
 

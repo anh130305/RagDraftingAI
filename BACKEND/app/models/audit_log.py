@@ -26,6 +26,7 @@ class AuditAction(str, enum.Enum):
     update_user = "update_user"
     download_document = "download_document"
     storage_error = "storage_error"
+    draft_document = "draft_document"
 
     # Prompt Templates
     create_template = "create_template"
@@ -45,7 +46,7 @@ class AuditLog(Base):
         index=True,
     )
     action = Column(
-        Enum(AuditAction, name="audit_action", create_type=False),
+        Enum(AuditAction, name="audit_action"),
         nullable=False,
     )
     resource_type = Column(String(50), nullable=True)

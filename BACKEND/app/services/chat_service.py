@@ -123,6 +123,7 @@ def add_message(
             "session_id": session_id,
             "role": MessageRole.user,
             "content": payload.content,
+            "mode": payload.mode,
         },
     )
     
@@ -136,7 +137,8 @@ def add_message(
 def create_assistant_response(
     db: Session,
     session_id: UUID,
-    content: str = "OKE! Tôi đã xử lý xong yêu cầu của bạn."
+    content: str = "OKE! Tôi đã xử lý xong yêu cầu của bạn.",
+    mode: str = "qa"
 ) -> ChatMessageResponse:
     """Internal helper to create an assistant message in the database."""
     msg = message_repo.create(
@@ -145,6 +147,7 @@ def create_assistant_response(
             "session_id": session_id,
             "role": MessageRole.assistant,
             "content": content,
+            "mode": mode,
         },
     )
     
@@ -200,14 +203,14 @@ async def generate_assistant_response_task(
             error_message = result.get("error")
 
         # ── Create the assistant message ──
-        assistant_msg = create_assistant_response(db, session_id, content)
+        assistant_msg = create_assistant_response(db, session_id, content, mode=mode)
         
     except Exception as e:
         is_error = True
         error_message = str(e)
         logger.error(f"Error in background task: {e}")
         # Optionally create a fallback error message in the chat
-        create_assistant_response(db, session_id, "Xin lỗi, đã có lỗi hệ thống xảy ra khi xử lý yêu cầu của bạn.")
+        create_assistant_response(db, session_id, "Xin lỗi, đã có lỗi hệ thống xảy ra khi xử lý yêu cầu của bạn.", mode=mode)
     finally:
         end_time = time.perf_counter()
         response_time_ms = int((end_time - start_time) * 1000)

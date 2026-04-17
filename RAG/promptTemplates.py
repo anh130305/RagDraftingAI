@@ -626,6 +626,9 @@ def fill_word_template(
     Placeholder trong .docx phải có dạng {{FIELD_NAME}}.
     Tất cả field (kể cả NOI_DUNG_*) lấy từ parsed["fields"].
 
+    Hỗ trợ map linh hoạt giữa tên field ở RAG và DOCX template bằng cách
+    chuẩn hóa key (bỏ ký tự phân tách như _, -, khoảng trắng).
+
     Args:
         template_path: Đường dẫn .docx template (có chứa {{FIELD_NAME}})
         parsed       : Dict từ parse_llm_json()
@@ -644,33 +647,66 @@ def fill_word_template(
             "python-docx chưa được cài. Chạy: pip install python-docx"
         )
 
-    mapping: Dict[str, str] = dict(parsed.get("fields", {}))
+    mapping: Dict[str, str] = {
+        str(k).strip(): str(v) if v is not None else ""
+        for k, v in dict(parsed.get("fields", {})).items()
+    }
+
+    def _normalize_field_key(name: str) -> str:
+        return re.sub(r"[^A-Za-z0-9]+", "", name).upper()
+
+    normalized_mapping: Dict[str, str] = {}
+    for key in mapping:
+        normalized_mapping.setdefault(_normalize_field_key(key), key)
+
+    placeholder_pattern = re.compile(r"\{\{\s*([^}]+?)\s*\}\}")
+    unresolved_placeholders: set[str] = set()
+
+    def _resolve_placeholder(raw_key: str) -> Optional[str]:
+        key = raw_key.strip()
+        if key in mapping:
+            return mapping[key]
+
+        alias = normalized_mapping.get(_normalize_field_key(key))
+        if alias is not None:
+            return mapping[alias]
+
+        unresolved_placeholders.add(key)
+        return None
+
+    def _replace_text(text: str) -> tuple[str, bool]:
+        changed = False
+
+        def _sub(match: re.Match) -> str:
+            nonlocal changed
+            value = _resolve_placeholder(match.group(1))
+            if value is None:
+                return match.group(0)
+            changed = True
+            return value
+
+        replaced = placeholder_pattern.sub(_sub, text)
+        return replaced, changed
 
     doc           = Document(template_path)
     replace_count = 0
 
     def _replace_para(para) -> bool:
         full_text = "".join(r.text for r in para.runs)
-        if not any(("{{" + k + "}}") in full_text for k in mapping):
+        if not placeholder_pattern.search(full_text):
             return False
 
         changed = False
         for run in para.runs:
-            new_text = run.text
-            for key, val in mapping.items():
-                placeholder = "{{" + key + "}}"
-                if placeholder in new_text:
-                    new_text = new_text.replace(placeholder, val)
-            if new_text != run.text:
+            new_text, run_changed = _replace_text(run.text)
+            if run_changed:
                 run.text = new_text
                 changed = True
 
         # Fallback: xử lý placeholder bị Word split thành nhiều run
         if not changed and para.runs:
-            new_full = full_text
-            for key, val in mapping.items():
-                new_full = new_full.replace("{{" + key + "}}", val)
-            if new_full != full_text:
+            new_full, full_changed = _replace_text(full_text)
+            if full_changed:
                 first_run = para.runs[0]
                 first_bold   = first_run.bold
                 first_italic = first_run.italic
@@ -700,12 +736,21 @@ def fill_word_template(
 
     for section in doc.sections:
         for para in section.header.paragraphs:
-            _replace_para(para)
+            if _replace_para(para):
+                replace_count += 1
         for para in section.footer.paragraphs:
-            _replace_para(para)
+            if _replace_para(para):
+                replace_count += 1
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     doc.save(output_path)
+
+    if unresolved_placeholders:
+        unresolved = sorted(unresolved_placeholders)
+        preview = ", ".join(unresolved[:20])
+        more = "" if len(unresolved) <= 20 else f", ... (+{len(unresolved) - 20})"
+        print(f"[WARN] Placeholder chưa có dữ liệu: {preview}{more}")
+
     print(f"[OK] Đã lưu Word: {output_path}  ({replace_count} đoạn được thay thế)")
     return output_path
 

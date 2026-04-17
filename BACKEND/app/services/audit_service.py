@@ -2,6 +2,7 @@
 services.audit_service – Audit log creation and retrieval.
 """
 
+import logging
 from typing import Optional, Any
 from uuid import UUID, UUID as py_uuid
 
@@ -11,6 +12,27 @@ from app.models.audit_log import AuditAction
 from app.repositories.audit_repo import audit_repo
 from app.schemas.audit import AuditLogFilter, AuditLogResponse, AuditLogListResponse
 from app.db.session import get_session_local
+
+
+logger = logging.getLogger(__name__)
+
+
+def _coerce_optional_uuid(value: Optional[UUID], field_name: str) -> Optional[UUID]:
+    """Convert UUID-like strings to UUID; return None for invalid inputs."""
+    if value is None:
+        return None
+
+    if isinstance(value, py_uuid):
+        return value
+
+    if isinstance(value, str):
+        try:
+            return py_uuid(value)
+        except ValueError:
+            logger.warning("Invalid %s for audit log: %s", field_name, value)
+            return None
+
+    return value
 
 
 def log_action(
@@ -31,14 +53,18 @@ def log_action(
     own_session = db is None
     if own_session:
         db = get_session_local()()
-        
-    try:
-        if isinstance(user_id, str):
-            user_id = py_uuid(user_id)
-        if isinstance(resource_id, str):
-            resource_id = py_uuid(resource_id)
-    except ValueError:
-        pass
+
+    user_id = _coerce_optional_uuid(user_id, "user_id")
+    resource_id = _coerce_optional_uuid(resource_id, "resource_id")
+
+    if isinstance(action, str):
+        try:
+            action = AuditAction(action)
+        except ValueError:
+            logger.warning("Unknown audit action: %s", action)
+            if own_session:
+                db.close()
+            return
         
     try:
         audit_repo.create(
@@ -52,10 +78,16 @@ def log_action(
                 "detail": detail,
             },
         )
-    except Exception:
+    except Exception as exc:
         if own_session:
             db.rollback()
-        raise
+        logger.warning(
+            "Failed to persist audit log action=%s user_id=%s resource_type=%s error=%s",
+            getattr(action, "value", action),
+            user_id,
+            resource_type,
+            exc,
+        )
     finally:
         if own_session:
             db.close()

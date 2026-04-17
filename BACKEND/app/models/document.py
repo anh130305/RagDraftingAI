@@ -29,7 +29,7 @@ class Document(Base):
     file_path = Column(String, nullable=False)
     cloudinary_public_id = Column(String, nullable=True)
     session_id = Column(UUID(as_uuid=True), ForeignKey("chat_sessions.id", ondelete="SET NULL"), nullable=True, index=True)
-    file_type = Column(String(20), nullable=True)
+    file_type = Column(String, nullable=True)
     file_size = Column(BigInteger, nullable=True)
     status = Column(
         Enum(DocStatus, name="doc_status", create_type=False),

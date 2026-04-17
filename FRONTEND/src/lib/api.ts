@@ -525,6 +525,7 @@ export interface ChatMessage {
   session_id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
+  mode?: string;
   feedback?: 'like' | 'dislike' | null;
   token_count: number | null;
   created_at: string;
@@ -739,6 +740,8 @@ export interface AIMonitoringResponse {
       dislikes: number;
       total_feedback: number;
     };
+    mode_distribution: Record<string, number>;
+    top_forms: Array<{ name: string; value: number }>;
   };
   trends: AIMonitoringTrend[];
   collected_at: string;

@@ -71,6 +71,8 @@ export default function ChatComposer({
   const rootRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const extrasRef = useRef<HTMLTextAreaElement | null>(null);
   const recognitionRef = useRef<any>(null);
   const valueRef = useRef(value);
   const attachmentsRef = useRef<PendingAttachment[]>([]);
@@ -101,7 +103,25 @@ export default function ChatComposer({
 
   useEffect(() => {
     valueRef.current = value;
+
+    // Auto-adjust height for textarea
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const scrollHeight = textareaRef.current.scrollHeight;
+      const maxHeight = 72; // ~3 lines (24px line-height)
+      textareaRef.current.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
+    }
   }, [value]);
+
+  useEffect(() => {
+    // Auto-adjust height for extras textarea
+    if (extrasRef.current) {
+      extrasRef.current.style.height = 'auto';
+      const scrollHeight = extrasRef.current.scrollHeight;
+      const maxHeight = 72; // ~3 lines (24px line-height)
+      extrasRef.current.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
+    }
+  }, [extras]);
 
   useEffect(() => {
     attachmentsRef.current = attachments;
@@ -357,6 +377,9 @@ export default function ChatComposer({
 
     // Clear UI immediately - don't make user wait
     onValueChange?.('');
+    const capturedExtras = extras; // snapshot reference
+    setExtras('');
+    setShowExtras(false);
     clearAttachments();
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (imageInputRef.current) imageInputRef.current.value = '';
@@ -370,10 +393,8 @@ export default function ChatComposer({
     });
 
     try {
-      await onSend?.(finalMessage, mode, extras);
-      // Clear extras if successful
-      setExtras('');
-      setShowExtras(false);
+      await onSend?.(finalMessage, mode, capturedExtras);
+      // Mode and basic clear already done above
     } catch {
       // Send failed - UI already cleared, keep it clean
     } finally {
@@ -493,7 +514,7 @@ export default function ChatComposer({
     }
   };
 
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const items = e.clipboardData?.items;
     if (!items) return;
 
@@ -721,10 +742,12 @@ export default function ChatComposer({
                 <span className="text-[10px] text-on-surface-variant italic">Không bắt buộc</span>
               </div>
               <textarea
+                ref={extrasRef}
                 value={extras}
                 onChange={(e) => setExtras(e.target.value)}
                 placeholder="Ví dụ: Người ký: Nguyễn Văn A, Ngày ký: 20/05/2025, Số hiệu: 123/CV-BTC..."
-                className="w-full bg-transparent border-none focus:ring-0 text-sm font-body text-on-surface placeholder:text-on-surface-variant/40 resize-none min-h-[60px] no-scrollbar"
+                rows={1}
+                className="w-full bg-transparent border-none focus:ring-0 text-[15px] leading-6 font-body text-on-surface placeholder:text-on-surface-variant/40 resize-none max-h-[72px] custom-scrollbar py-0.5"
                 disabled={disabled}
               />
             </div>
@@ -862,7 +885,7 @@ export default function ChatComposer({
                     className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-container-high transition-colors border-b border-outline-variant/10 last:border-b-0"
                     onClick={() => {
                       onValueChange?.(tpl.query);
-                      
+
                       // Auto-switch mode based on template configuration
                       if (tpl.mode === 'generate') {
                         setMode('generate');
@@ -898,11 +921,12 @@ export default function ChatComposer({
           </div>
         )}
 
-        <div className="flex min-h-14 flex-1 items-center rounded-[24px] bg-surface/70 px-3.5 py-1.5 transition-shadow focus-within:ring-0">
-          <input
-            className="flex-1 bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant font-body text-[15px] leading-6 outline-none"
+        <div className="flex min-h-14 flex-1 items-end rounded-[24px] bg-surface/70 px-3.5 py-2.5 transition-shadow focus-within:ring-0">
+          <textarea
+            ref={textareaRef}
+            className="flex-1 bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant font-body text-[15px] leading-6 outline-none resize-none py-0.5 max-h-[72px] custom-scrollbar"
             placeholder={placeholder}
-            type="text"
+            rows={1}
             value={value}
             onChange={(e) => onValueChange?.(e.target.value)}
             onKeyDown={handleKeyDown}
