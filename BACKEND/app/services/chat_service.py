@@ -117,12 +117,16 @@ def add_message(
     if s.user_id != user_id:
         raise ForbiddenError("You do not own this session")
 
+    storage_content = payload.content
+    if payload.extras:
+        storage_content += f"\n\n**Thông tin bổ sung:**\n{payload.extras}"
+
     msg = message_repo.create(
         db,
         obj_in={
             "session_id": session_id,
             "role": MessageRole.user,
-            "content": payload.content,
+            "content": storage_content,
             "mode": payload.mode,
         },
     )
@@ -163,6 +167,7 @@ async def generate_assistant_response_task(
     session_id: UUID,
     user_query: str,
     mode: str = "qa",
+    extras: Optional[str] = None,
 ):
     """
     Background task to simulate RAG/LLM processing and save assistant response.
@@ -184,8 +189,8 @@ async def generate_assistant_response_task(
         # Use the actual RAG service for legal QA
         from app.services.rag_service import rag_service
         
-        # We can pass extras if we want to add constraints, for now just the query
-        result = await rag_service.answer_legal_question(query=user_query)
+        # We can pass extras if we want to add constraints
+        result = await rag_service.answer_legal_question(query=user_query, extras=extras)
         
         if result["status"] == "ok":
             content = result["answer"]

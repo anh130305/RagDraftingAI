@@ -43,6 +43,7 @@ class ChatMessageCreate(BaseModel):
     """POST /chat/sessions/{id}/messages"""
     content: str = Field(..., min_length=1)
     mode: str = Field("qa")
+    extras: Optional[str] = Field(None, description="Optional extra context or instructions")
 
 class ChatMessageFeedbackUpdate(BaseModel):
     """PUT /chat/messages/{id}/feedback"""

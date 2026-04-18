@@ -143,6 +143,11 @@ export default function ChatComposer({
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const estimateTokens = (text: string) => {
+    if (!text) return 0;
+    return Math.ceil(text.length / 3.5);
+  };
+
   const getAttachmentInfo = (file: File): { kind: AttachmentKind; typeLabel: AttachmentTypeLabel } => {
     const lowerName = file.name.toLowerCase();
     const lowerType = file.type.toLowerCase();
@@ -223,6 +228,24 @@ export default function ChatComposer({
     for (const attachment of nextAttachments) {
       try {
         const res = await api.extractTextFromImage(attachment.file);
+        
+        const fileTokens = estimateTokens(res.text);
+        
+        // Immediate total token check (current text + existing attachments + new extraction)
+        const currentText = (value || '') + (extras || '');
+        const existingAttachmentsTokens = attachments
+          .filter(a => a.id !== attachment.id && a.extractedText)
+          .reduce((sum, a) => sum + estimateTokens(a.extractedText!), 0);
+        
+        const totalEstimatedTokens = estimateTokens(currentText) + existingAttachmentsTokens + fileTokens;
+
+        if (totalEstimatedTokens > 5000) {
+          showToast(`Tổng nội dung vượt quá giới hạn (~${totalEstimatedTokens} tokens). Tệp ${attachment.file.name} không được chấp nhận.`, 'error');
+          // Remove from list immediately
+          setAttachments(current => current.filter(item => item.id !== attachment.id));
+          continue;
+        }
+
         setAttachments(current => current.map(item =>
           item.id === attachment.id
             ? { ...item, uploadStatus: 'uploaded', extractedText: res.text }
@@ -370,10 +393,18 @@ export default function ChatComposer({
       .map(a => `[Nội dung tệp ${a.file.name}]:\n${a.extractedText}`)
       .join('\n\n');
 
-    // Build final message for AI
-    const finalMessage = trimmedValue
-      ? (extractedContent ? trimmedValue + '\n\n' + extractedContent : trimmedValue)
+    // Build final message and extras for AI
+    const finalMessage = trimmedValue;
+    const finalExtras = extras 
+      ? (extractedContent ? extras + '\n\n' + extractedContent : extras)
       : extractedContent;
+
+    // Token validation
+    const totalTokens = estimateTokens(finalMessage + (finalExtras || ''));
+    if (totalTokens > 5000) {
+      showToast(`Nội dung quá dài (~${totalTokens} tokens). Vui lòng giới hạn dưới 5000 tokens.`, 'warning');
+      return;
+    }
 
     // Clear UI immediately - don't make user wait
     onValueChange?.('');
@@ -393,7 +424,7 @@ export default function ChatComposer({
     });
 
     try {
-      await onSend?.(finalMessage, mode, capturedExtras);
+      await onSend?.(finalMessage, mode, finalExtras);
       // Mode and basic clear already done above
     } catch {
       // Send failed - UI already cleared, keep it clean

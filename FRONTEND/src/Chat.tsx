@@ -333,7 +333,7 @@ export default function Chat() {
       setMessages((prev) => [...prev, optimisticMessage]);
 
       // Gửi tin nhắn thực tế để backend lưu và xử lý AI trong nền
-      const userMessage = await api.sendMessage(currentId, combinedContent, mode);
+      const userMessage = await api.sendMessage(currentId, content, mode, extras);
       setMessages((prev) => {
         const withoutOptimistic = prev.filter((m) => m.id !== optimisticMessageId);
         if (withoutOptimistic.some((m) => m.id === userMessage.id)) {

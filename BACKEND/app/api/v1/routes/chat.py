@@ -134,6 +134,7 @@ def send_message(
             session_id=session_id,
             user_query=payload.content,
             mode=payload.mode,
+            extras=payload.extras,
         )
 
     # Log the query event

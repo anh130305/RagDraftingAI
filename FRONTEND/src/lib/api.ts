@@ -561,12 +561,12 @@ export function deleteSession(id: string) {
   return request<void>(`/api/v1/chat/sessions/${id}`, { method: 'DELETE' });
 }
 
-export function sendMessage(sessionId: string, content: string, mode: 'qa' | 'generate' = 'qa') {
+export function sendMessage(sessionId: string, content: string, mode: 'qa' | 'generate' = 'qa', extras?: string) {
   return request<ChatMessage>(
     `/api/v1/chat/sessions/${sessionId}/messages`,
     {
       method: 'POST',
-      body: JSON.stringify({ content, mode }),
+      body: JSON.stringify({ content, mode, extras }),
     },
   );
 }
