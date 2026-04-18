@@ -140,6 +140,16 @@ def _call_llm(messages: List[Dict[str, str]]) -> Optional[str]:
 def _clean_extras(extras: Optional[str]) -> Optional[str]:
     """Trả về extras đã strip, hoặc None nếu rỗng."""
     return extras.strip() if extras and extras.strip() else None
+
+def estimate_tokens(text: str) -> int:
+    """
+    Ước lượng số token (rule-of-thumb):
+    1 token ≈ 4 chars (English) / 2–3 chars (Vietnamese)
+    → dùng trung bình 3.5 cho an toàn
+    """
+    if not text:
+        return 0
+    return int(len(text) / 3.5)
 class PromptAPI:
     """
     API layer chính. Khởi tạo một lần, dùng nhiều lần.
@@ -234,6 +244,18 @@ class PromptAPI:
         """
         t0 = time.time()
         resolved_extras = _clean_extras(extras)
+
+        # Token validation (Limit: 5000)
+        total_text = query + (resolved_extras or "")
+        total_tokens = estimate_tokens(total_text)
+        if total_tokens > 5000:
+            return {
+                "status": "error",
+                "mode": "draft",
+                "error": f"Tổng đầu vào quá dài (~{total_tokens} tokens). Giới hạn tối đa là 5000 tokens.",
+                "meta": {"query": query, "extras": resolved_extras, "elapsed_s": 0}
+            }
+
         try:
             # 1. Retrieve
             retrieved = retrieve_all(
@@ -362,6 +384,18 @@ class PromptAPI:
         t0      = time.time()
         top_k   = legal_top_k if legal_top_k is not None else 5
         resolved_extras = _clean_extras(extras)
+
+        # Token validation (Limit: 5000)
+        total_text = query + (resolved_extras or "")
+        total_tokens = estimate_tokens(total_text)
+        if total_tokens > 5000:
+            return {
+                "status": "error",
+                "mode": "legal_qa",
+                "error": f"Tổng đầu vào quá dài (~{total_tokens} tokens). Giới hạn tối đa là 5000 tokens.",
+                "meta": {"query": query, "extras": resolved_extras, "elapsed_s": 0}
+            }
+
         try:
             # 1. Retrieve pháp luật
             legal_chunks = retrieve_legal(
