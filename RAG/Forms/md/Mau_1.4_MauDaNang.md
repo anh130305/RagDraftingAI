@@ -34,7 +34,7 @@ required_fields:
   - NAM
   - TRICH_YEU_NOI_DUNG
   - NOI_DUNG_VAN_BAN
-  - HO_VA_TEN_NGUOI_KY
+  
 ---
 
 {{TEN_CQ_CHU_QUAN}}  
@@ -42,7 +42,7 @@ required_fields:
 
 ---
 
-Số: {{SO_VAN_BAN}}/{{CHU_VIET_TAT_LOAI_VB}}-{{CHU_VIET_TAT_CQ_BAN_HANH}}
+Số: {{SO_VAN_BAN}}/{{CHU_VIET_TAT_LOAI_VB}}-
 
 **CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM**  
 **Độc lập - Tự do - Hạnh phúc**
@@ -67,5 +67,3 @@ Số: {{SO_VAN_BAN}}/{{CHU_VIET_TAT_LOAI_VB}}-{{CHU_VIET_TAT_CQ_BAN_HANH}}
 **{{QUYEN_HAN_CHUC_VU_NGUOI_KY}}**
 
 *(Ký, đóng dấu)*
-
-**{{HO_VA_TEN_NGUOI_KY}}**

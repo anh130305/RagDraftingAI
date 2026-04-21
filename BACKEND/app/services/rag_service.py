@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 FORM_DOCX_MAPPING = {
-    "Form_01": "Mau_1.1_–_Nghi_quyet_(ca_biet)_1011143252_2605081617.docx",
-    "Form_02": "Mau_1.2_–_Quyet_dinh_(ca_biet)_quy_dinh_truc_tiep_1011143252_2605081624.docx",
+    "Form_01": "Mau_1.1_–_Nghi_quyet__ca_biet__1011143252_2605081617.docx",
+    "Form_02": "Mau_1.2_–_Quyet_dinh__ca_biet__quy_dinh_truc_tiep_1011143252_2605081624.docx",
     "Form_03": "Mau_1.3_–_Quyet_dinh_(quy_dinh_gian_tiep)_1011143252_2605081844.docx",
     "Form_04": "Mau_1.4_–_Van_ban_co_ten_loai_1011143252_2605082055.docx",
     "Form_05": "Mau_1.5_–_Cong_van_1011143252_2605082306.docx",

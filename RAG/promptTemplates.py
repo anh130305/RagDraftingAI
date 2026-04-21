@@ -53,9 +53,15 @@ Nếu thiếu thông tin, điền giá trị mẫu hợp lý (ví dụ: "[Tên c
 câu ngắn gọn, rõ ràng; đúng thuật ngữ pháp lý.
 5. **Trích dẫn pháp lý**: Viện dẫn căn cứ bằng đúng số hiệu và tên điều khoản \
 từ LEGAL_CONTEXT. Ưu tiên văn bản có thứ bậc cao hơn khi chồng chéo. Chỉ trích dẫn nếu thực sự cần thiết và liên quan trực tiếp đến nội dung soạn thảo.\
-Nếu LEGAL_CONTEXT không cung cấp điều khoản phù hợp, không nên thêm căn cứ pháp lý ngoài ý muốn.
+Nếu LEGAL_CONTEXT không cung cấp điều khoản phù hợp, không nên thêm căn cứ pháp lý ngoài ý muốn. \
+Khi viết phần căn cứ (ví dụ: "Căn cứ Luật X số Y/Z..."), nếu LEGAL_CONTEXT có trường \
+"effective_date" hoặc thông tin ngày ban hành, hãy bổ sung ngày vào tên văn bản theo dạng \
+"[Tên văn bản] số [Số hiệu] ngày [DD/MM/YYYY]" (ví dụ: "Luật Ngân sách nhà nước số 83/2015/QH13 \
+ngày 25/06/2015"). Nếu không có thông tin ngày và không chắc chắn 100%, bỏ qua phần ngày, không được bịa đặt.
 6. **Tính nhất quán**: Số liệu, ngày tháng, chức danh, tên cơ quan phải nhất quán \
 xuyên suốt toàn bộ văn bản.
+7. **Điền Ngày Tháng Năm**: Nếu biểu mẫu yêu cầu các trường NGAY, THANG, NAM thì phải tách riêng từng thành phần từ ngày ban hành. NGAY chỉ điền ngày (ví dụ: 05), THANG chỉ điền tháng (ví dụ: 01), NAM chỉ điền năm (ví dụ: 2025).
+
 
 ## ĐỊNH DẠNG ĐẦU RA — BẮT BUỘC
 - Trả về DUY NHẤT một JSON object hợp lệ, không kèm bất kỳ text nào khác.
@@ -95,7 +101,9 @@ Chỉ trình bày nội dung tư vấn/soạn thảo một cách trực tiếp.
 ## ĐỊNH DẠNG ĐẦU RA
 - Trả lời bằng văn xuôi có cấu trúc rõ ràng (không cần JSON).
 - Sử dụng tiêu đề, gạch đầu dòng nếu cần để trình bày nhiều điểm.
-- Trích dẫn pháp luật theo dạng: "theo Điều X, [Tên văn bản] số [Số hiệu]..."
+- Trích dẫn pháp luật theo dạng: "theo Điều X, [Tên văn bản] số [Số hiệu] ngày [DD/MM/YYYY]..." \
+  — bổ sung ngày ban hành nếu LEGAL_CONTEXT cung cấp trường "effective_date" hoặc thông tin ngày; \
+  nếu không có thông tin ngày thì bỏ qua, không được bịa đặt.
 - Kết thúc bằng phần tóm tắt ngắn nếu câu trả lời dài.
 """
 

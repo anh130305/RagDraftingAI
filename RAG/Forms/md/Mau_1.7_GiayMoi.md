@@ -54,7 +54,7 @@ Thời gian: {{THOI_GIAN}}
 **Nơi nhận:**
 
 - {{CO_QUAN_NHAN_1}}  
-- Lưu: VT, {{CHU_VIET_TAT_DON_VI_SOAN_THAO}} ({{SO_BAN_LUU}})
+- Lưu: VT,  ({{SO_BAN_LUU}})
 
 **{{QUYEN_HAN_CHUC_VU_NGUOI_KY}}**
 
