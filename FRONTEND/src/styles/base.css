@@ -131,4 +131,22 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Obsidian Landing Custom Utilities */
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  .glass-panel {
+    background: color-mix(in srgb, var(--surface-highest) 60%, transparent);
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--outline-variant);
+  }
+  .nebula-bg {
+    background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--primary) 15%, transparent) 0%, transparent 70%);
+  }
+  .text-gradient {
+    background: linear-gradient(135deg, #85adff 0%, #c180ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
 }

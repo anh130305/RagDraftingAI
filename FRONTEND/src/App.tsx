@@ -11,6 +11,7 @@ import {
 } from './lib/AuthContext';
 import { ToastProvider } from './lib/ToastContext';
 import { ConfirmProvider } from './lib/ConfirmContext';
+import { ThemeProvider } from './lib/ThemeContext';
 import FullScreenLoader from './components/FullScreenLoader';
 import UserLayout from './components/UserLayout';
 
@@ -19,6 +20,7 @@ const Chat = lazy(() => import('./Chat'));
 const Login = lazy(() => import('./Login'));
 const Register = lazy(() => import('./Register'));
 const WorkspaceSettings = lazy(() => import('./Settings'));
+const Landing = lazy(() => import('./Landing'));
 
 function LoadingFallback() {
   return <FullScreenLoader text="Đang tải không gian làm việc..." />;
@@ -32,7 +34,7 @@ function RoleHomeRedirect() {
   }
 
   if (!isAuthenticated || !user) {
-    return <Navigate to="/login" replace />;
+    return <Landing />;
   }
 
   return <Navigate to={getHomePathByRole(user.role)} replace />;
@@ -45,29 +47,31 @@ export default function App() {
         <AuthProvider>
           <ToastProvider>
             <ConfirmProvider>
-              <Suspense fallback={<LoadingFallback />}>
-                <Routes>
-                  {/* Default redirect */}
-                  <Route path="/" element={<RoleHomeRedirect />} />
+              <ThemeProvider>
+                <Suspense fallback={<LoadingFallback />}>
+                  <Routes>
+                    {/* Default redirect */}
+                    <Route path="/" element={<RoleHomeRedirect />} />
 
-                  {/* Public routes — redirect to /chat if already logged in */}
-                  <Route path="/login" element={<RedirectIfAuth><Login /></RedirectIfAuth>} />
-                  <Route path="/register" element={<RedirectIfAuth><Register /></RedirectIfAuth>} />
+                    {/* Public routes — redirect to /chat if already logged in */}
+                    <Route path="/login" element={<RedirectIfAuth><Login /></RedirectIfAuth>} />
+                    <Route path="/register" element={<RedirectIfAuth><Register /></RedirectIfAuth>} />
 
-                  {/* Protected user routes — share a single persistent UserLayout (sidebar stays alive) */}
-                  <Route element={<RequireChatUser><UserLayout /></RequireChatUser>}>
-                    <Route path="/chat/:sessionId?" element={<Chat />} />
-                    <Route path="/settings" element={<WorkspaceSettings />} />
-                    <Route path="/chat/settings" element={<WorkspaceSettings />} />
-                  </Route>
+                    {/* Protected user routes — share a single persistent UserLayout (sidebar stays alive) */}
+                    <Route element={<RequireChatUser><UserLayout /></RequireChatUser>}>
+                      <Route path="/chat/:sessionId?" element={<Chat />} />
+                      <Route path="/settings" element={<WorkspaceSettings />} />
+                      <Route path="/chat/settings" element={<WorkspaceSettings />} />
+                    </Route>
 
-                  {/* Admin console — has its own layout */}
-                  <Route path="/admin" element={<RequireAdmin><AdminConsoleApp /></RequireAdmin>} />
+                    {/* Admin console — has its own layout */}
+                    <Route path="/admin" element={<RequireAdmin><AdminConsoleApp /></RequireAdmin>} />
 
-                  {/* Catch-all */}
-                  <Route path="*" element={<RoleHomeRedirect />} />
-                </Routes>
-              </Suspense>
+                    {/* Catch-all */}
+                    <Route path="*" element={<RoleHomeRedirect />} />
+                  </Routes>
+                </Suspense>
+              </ThemeProvider>
             </ConfirmProvider>
           </ToastProvider>
         </AuthProvider>

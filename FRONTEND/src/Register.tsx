@@ -177,14 +177,14 @@ export default function Register() {
 
         {/* Content — unchanged from original */}
         <div className="relative z-10 max-w-2xl">
-          <div className="mb-8 flex items-center gap-3">
+          <Link to="/" className="mb-8 flex items-center gap-3 hover:opacity-80 transition-opacity">
           <div className="w-10 h-10 rounded-full bg-[#4B91F7] flex items-center justify-center glow-shadow">
             <Hexagon className="w-6 h-6 text-black" strokeWidth={2.5} />
           </div>
             <span className="font-headline font-black text-2xl tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-container">
               RAG AI
             </span>
-          </div>
+          </Link>
           <h1 className="font-headline text-5xl font-extrabold tracking-tight leading-tight mb-6 text-white">
             Tham gia cùng <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
@@ -211,14 +211,14 @@ export default function Register() {
         <div className="flex-1 flex items-center justify-center p-6 sm:p-10 md:p-14">
           <div className="w-full max-w-md">
             {/* Mobile Logo */}
-            <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
+            <Link to="/" className="lg:hidden flex items-center gap-3 mb-8 justify-center hover:opacity-80 transition-opacity">
               <div className="w-10 h-10 rounded-full bg-[#4B91F7] flex items-center justify-center glow-shadow">
                 <Hexagon className="w-6 h-6 text-black" strokeWidth={2.5} />
               </div>
               <span className="font-headline font-black text-2xl tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-container">
                 RAG AI
               </span>
-            </div>
+            </Link>
 
             {/* Form Card */}
             <div className="glass-morphism rounded-2xl p-6 ghost-border space-y-3.5 shadow-2xl">
