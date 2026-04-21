@@ -148,14 +148,14 @@ export default function Login() {
           <div className="w-full max-w-md space-y-6">
             {/* Header & Logo */}
             <div className="text-center lg:text-left space-y-4">
-              <div className="flex items-center justify-center lg:justify-start gap-3">
+              <Link to="/" className="flex items-center justify-center lg:justify-start gap-3 hover:opacity-80 transition-opacity">
                 <div className="w-10 h-10 rounded-full bg-[#4B91F7] flex items-center justify-center glow-shadow">
                   <Hexagon className="w-6 h-6 text-black" strokeWidth={2.5} />
                 </div>
                 <span className="font-headline font-black text-2xl tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-container">
                   RAG AI
                 </span>
-              </div>
+              </Link>
             </div>
 
             {/* Glassmorphism Form Card */}

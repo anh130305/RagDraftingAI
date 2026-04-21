@@ -1,9 +1,9 @@
 import React from 'react';
 import { Monitor, Moon, Sun } from 'lucide-react';
-import { useUserTheme } from './UserShell';
+import { useTheme } from '../lib/ThemeContext';
 
 export default function ThemeModeRow() {
-  const { theme, setTheme } = useUserTheme();
+  const { theme, setTheme } = useTheme();
 
   return (
     <div className="flex items-center justify-between p-5 bg-surface-container-low rounded-lg transition-all hover:bg-surface-container">

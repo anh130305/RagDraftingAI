@@ -97,7 +97,7 @@ export default function NeuralCanvas({
             // For simplicity, we use the provided lineColor but adjust alpha
             // Note: This expects lineColor to be rgba for best results
             ctx.strokeStyle = lineColor.replace(/[\d.]+\)$/, `${alpha})`);
-            ctx.lineWidth = 0.75;
+            ctx.lineWidth = 1.2;
             ctx.stroke();
           }
         }

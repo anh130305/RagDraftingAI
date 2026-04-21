@@ -29,22 +29,15 @@ import { useToast } from '../lib/ToastContext';
 import { useConfirm } from '../lib/ConfirmContext';
 import * as api from '../lib/api';
 import type { ChatSession } from '../lib/api';
+import { useTheme } from '../lib/ThemeContext';
 import '../styles/chat-auth.css';
 import FullScreenLoader from './FullScreenLoader';
 
 type UserNav = 'chat' | 'settings';
-type ThemeMode = 'light' | 'dark' | 'system';
-
-interface UserThemeContextValue {
-  theme: ThemeMode;
-  setTheme: (theme: ThemeMode) => void;
-}
 
 type PreviewDocument = api.DocumentResponse & {
   mappedUrl: string;
 };
-
-const UserThemeContext = React.createContext<UserThemeContextValue | null>(null);
 
 interface UserShellProps {
   children: React.ReactNode;
@@ -52,15 +45,6 @@ interface UserShellProps {
   loadingText?: string;
 }
 
-export function useUserTheme() {
-  const context = React.useContext(UserThemeContext);
-
-  if (!context) {
-    throw new Error('useUserTheme must be used within UserShell');
-  }
-
-  return context;
-}
 
 export default function UserShell({ children, isLoading = false, loadingText }: Omit<UserShellProps, 'activeNav'>) {
   const { user, logout } = useAuth();
@@ -68,10 +52,7 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
   const { confirm } = useConfirm();
   const location = useLocation();
   const activeNav: UserNav = location.pathname.startsWith('/settings') ? 'settings' : 'chat';
-  const [theme, setTheme] = useState<ThemeMode>(() => {
-    const saved = localStorage.getItem('auth-theme') as ThemeMode | null;
-    return saved || 'dark';
-  });
+  const { theme, setTheme } = useTheme();
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const themeMenuRef = useRef<HTMLDivElement>(null);
   const [activeChatDropdown, setActiveChatDropdown] = useState<string | null>(null);
@@ -106,34 +87,6 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
     navigate('/login', { replace: true });
   };
 
-  useEffect(() => {
-    const root = window.document.documentElement;
-    const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-    const applyTheme = () => {
-      const resolvedTheme =
-        theme === 'system' ? (systemThemeQuery.matches ? 'dark' : 'light') : theme;
-      root.classList.remove('light', 'dark');
-      root.classList.add(resolvedTheme);
-    };
-
-    applyTheme();
-    localStorage.setItem('auth-theme', theme);
-
-    if (theme === 'system') {
-      const handleSystemThemeChange = () => applyTheme();
-
-      if (typeof systemThemeQuery.addEventListener === 'function') {
-        systemThemeQuery.addEventListener('change', handleSystemThemeChange);
-        return () => systemThemeQuery.removeEventListener('change', handleSystemThemeChange);
-      }
-
-      systemThemeQuery.addListener(handleSystemThemeChange);
-      return () => systemThemeQuery.removeListener(handleSystemThemeChange);
-    }
-
-    return undefined;
-  }, [theme]);
 
   useEffect(() => {
     let isMounted = true;
@@ -371,7 +324,7 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
   const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
 
   return (
-    <UserThemeContext.Provider value={{ theme, setTheme }}>
+    <>
       {isHistoryLoading || isLoading ? (
         <FullScreenLoader text={loadingText || 'Đang tải không gian làm việc...'} />
       ) : (
@@ -915,6 +868,6 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
           </main>
         </div>
       )}
-    </UserThemeContext.Provider>
+    </>
   );
 }
