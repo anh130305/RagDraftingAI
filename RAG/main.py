@@ -30,9 +30,11 @@ class LegalQARequest(BaseModel):
 
 @app.on_event("startup")
 async def startup_event():
-    # We no longer initialize heavy models here to avoid boot loops on low-RAM systems.
-    # Models will be loaded on the first request (Lazy Loading).
-    logger.info("RAG Service started. Models will be initialized on first request.")
+    logger.info("RAG Service started. Models will be initialized.")
+    global api
+    api = PromptAPI()
+    logger.info("RAG Service is ready to handle requests.")
+
 
 def get_api():
     global api

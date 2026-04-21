@@ -28,12 +28,17 @@ services:
     volumes:
       - ./RAG:/app
       - huggingface_cache:/app/models
-      - rag_dataset:/app/dataset
+    deploy:
+      resources:
+        limits:
+          memory: 8G  # Giới hạn tối đa RAM container được phép chạm tới
+        reservations:
+          memory: 4G  # Lượng RAM hệ thống "giữ chỗ" sẵn cho container này
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/api/v1/rag/health"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
+      interval: 20s
+      timeout: 20s
+      retries: 30
 
   backend:
     build:
