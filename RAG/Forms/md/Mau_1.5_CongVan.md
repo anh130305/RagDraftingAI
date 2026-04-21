@@ -36,7 +36,6 @@ V/v: {{TRICH_YEU_CONG_VAN}}
 
 **Kính gửi:**
 
-- {{CO_QUAN_CA_NHAN_NHAN_1}}  
 - {{CO_QUAN_CA_NHAN_NHAN_2}}
 
 {{NOI_DUNG_CONG_VAN}}

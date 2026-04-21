@@ -15,7 +15,7 @@ required_fields:
 - TRICH_YEU
 - TEN_VAN_BAN_KEM_THEO
 - TEN_DON_VI_DE_NGHI
-- HO_VA_TEN_NGUOI_KY
+
 ---
 
 {{TEN_CQ_CHU_QUAN}}  
@@ -46,7 +46,7 @@ Theo đề nghị của {{TEN_DON_VI_DE_NGHI}}.
 
 **Điều 1.** Ban hành kèm theo Quyết định này **{{TEN_VAN_BAN_KEM_THEO}}**.
 
-**Điều 2.** {{NOI_DUNG_TO_CHUC_THUC_HIEN}}.
+**Điều 2.** {{NOI_SUNG_TO_CHUC_THUC_HIEN}}.
 
 **Điều 3.** Quyết định này có hiệu lực kể từ ngày ký.
 
@@ -58,8 +58,6 @@ Theo đề nghị của {{TEN_DON_VI_DE_NGHI}}.
 - {{CO_QUAN_NHAN_KHAC}}  
 - Lưu: VT, {{CHU_VIET_TAT_DON_VI_SOAN_THAO}}
 
-**{{QUYEN_HAN_CHUC_VU_NGUOI_KY}}**
+**{{QUYEN_HAN_CHUC_ VU_NGUOI_KY}}**
 
 *(Ký, đóng dấu)*
-
-**{{HO_VA_TEN_NGUOI_KY}}**
