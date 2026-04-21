@@ -169,7 +169,7 @@ class PromptAPI:
     def __init__(
         self,
         use_reranker      : bool = True,
-        legal_top_k       : int  = 3,
+        legal_top_k       : int  = 4,
         examples_top_k    : int  = 1,
         force_rebuild_bm25: bool = False,
     ):
@@ -509,7 +509,7 @@ _api_instance: Optional[PromptAPI] = None
 
 def get_api(
     use_reranker   : bool = True,
-    legal_top_k    : int  = 2,
+    legal_top_k    : int  = 4,
     examples_top_k : int  = 1,
 ) -> PromptAPI:
     """
