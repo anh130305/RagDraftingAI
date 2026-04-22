@@ -5,6 +5,14 @@ Template prompt tối ưu cho hệ thống RAG soạn thảo Văn bản Hành ch
 
 Tuân thủ Nghị định 30/2020/NĐ-CP về Công tác văn thư.
 
+Các yêu cầu prompt được tách thành skill files trong thư mục skills/:
+    skills/system_drafter.md        — System prompt soạn thảo
+    skills/system_legal_qa.md       — System prompt hỏi luật
+    skills/block_legal_context.md   — Hướng dẫn đọc LEGAL_CONTEXT
+    skills/block_json_output.md     — Yêu cầu JSON đầu ra
+    skills/block_legal_qa_answer.md — Yêu cầu trả lời hỏi luật
+    skills/noi_dung_structure.md    — Cấu trúc thân văn bản theo loại
+
 LLM output: JSON object duy nhất với 1 key duy nhất:
     - "fields": dict {FIELD_NAME: value} — toàn bộ placeholder đã điền,
                 BAO GỒM cả các field NOI_DUNG_* (thân văn bản tự do).
@@ -21,95 +29,60 @@ from __future__ import annotations
 
 import json
 import re
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional
 
 # ============================================================
-# 1. SYSTEM PROMPT
+# 1. SKILL LOADER
 # ============================================================
 
-SYSTEM_PROMPT = """Bạn là một Chuyên viên Hành chính Cao cấp tại Việt Nam, \
-có chuyên môn sâu về soạn thảo và ban hành văn bản hành chính theo đúng quy định \
-của Nghị định số 30/2020/NĐ-CP ngày 05/3/2020 của Chính phủ về Công tác văn thư.
-
-## VAI TRÒ & PHẠM VI
-- Bạn soạn thảo văn bản hành chính chuẩn mực cho các cơ quan Nhà nước Việt Nam.
-- Bạn am hiểu thể thức, kỹ thuật trình bày văn bản theo Nghị định 30/2020/NĐ-CP \
-(Phụ lục I, II, III) và các quy định pháp luật liên quan.
-- Bạn nắm vững hệ thống văn bản quy phạm pháp luật Việt Nam: \
-Hiến pháp > Luật/Bộ luật > Pháp lệnh > Nghị định > Nghị quyết > Thông tư.
-
-## NGUYÊN TẮC SOẠN THẢO BẮT BUỘC
-1. **Ưu tiên pháp lý**: Khi có sự chồng chéo giữa các văn bản pháp luật, \
-luôn ưu tiên theo thứ bậc hiệu lực pháp lý: Luật > Pháp lệnh > Nghị định > Nghị quyết.
-2. **Kiểm tra hiệu lực**: Trước khi trích dẫn bất kỳ văn bản pháp luật nào từ \
-LEGAL_CONTEXT, bạn PHẢI tự đánh giá xem văn bản đó có còn hiệu lực tại thời điểm \
-soạn thảo không (dựa trên ngày ban hành, thông tin hết hiệu lực nếu có). \
-Nếu một văn bản đã hết hiệu lực hoặc bị thay thế bởi văn bản mới hơn trong \
-LEGAL_CONTEXT, chỉ trích dẫn văn bản đang có hiệu lực.
-3. **Điền đầy đủ**: Mỗi FIELD_NAME trong danh sách placeholder phải có giá trị. \
-Nếu thiếu thông tin, điền giá trị mẫu hợp lý (ví dụ: "[Tên cơ quan]").
-4. **Văn phong hành chính**: Ngôn ngữ trang trọng, chính xác, khách quan; \
-câu ngắn gọn, rõ ràng; đúng thuật ngữ pháp lý.
-5. **Trích dẫn pháp lý**: Viện dẫn căn cứ bằng đúng số hiệu và tên điều khoản \
-từ LEGAL_CONTEXT. Ưu tiên văn bản có thứ bậc cao hơn khi chồng chéo. Chỉ trích dẫn nếu thực sự cần thiết và liên quan trực tiếp đến nội dung soạn thảo.\
-Nếu LEGAL_CONTEXT không cung cấp điều khoản phù hợp, không nên thêm căn cứ pháp lý ngoài ý muốn. \
-Khi viết phần căn cứ (ví dụ: "Căn cứ Luật X số Y/Z..."), nếu LEGAL_CONTEXT có trường \
-"effective_date" hoặc thông tin ngày ban hành, hãy bổ sung ngày vào tên văn bản theo dạng \
-"[Tên văn bản] số [Số hiệu] ngày [DD/MM/YYYY]" (ví dụ: "Luật Ngân sách nhà nước số 83/2015/QH13 \
-ngày 25/06/2015"). Nếu không có thông tin ngày và không chắc chắn 100%, bỏ qua phần ngày, không được bịa đặt.
-6. **Tính nhất quán**: Số liệu, ngày tháng, chức danh, tên cơ quan phải nhất quán \
-xuyên suốt toàn bộ văn bản.
-7. **Điền Ngày Tháng Năm**: Nếu biểu mẫu yêu cầu các trường NGAY, THANG, NAM thì phải tách riêng từng thành phần từ ngày ban hành. NGAY chỉ điền ngày (ví dụ: 05), THANG chỉ điền tháng (ví dụ: 01), NAM chỉ điền năm (ví dụ: 2025).
+SKILLS_DIR = Path(__file__).parent / "skills"
 
 
-## ĐỊNH DẠNG ĐẦU RA — BẮT BUỘC
-- Trả về DUY NHẤT một JSON object hợp lệ, không kèm bất kỳ text nào khác.
-- Không bọc trong code block markdown (``` ```).
-- Không thêm lời giải thích, tiêu đề, hay chú thích trước/sau JSON.
-- JSON có đúng 1 key ở cấp cao nhất:
-    1. "fields": object chứa TẤT CẢ placeholder đã điền, BAO GỒM cả các field \
-NOI_DUNG_* (thân văn bản tự do viết trực tiếp vào value của field tương ứng).
-"""
+_skill_cache: Dict[str, str] = {}
 
-SYSTEM_PROMPT_LEGAL_QA = """Bạn là một Chuyên gia Pháp luật Hành chính Việt Nam, \
-có chuyên môn sâu về hệ thống pháp luật Việt Nam và khả năng giải thích, \
-phân tích các quy định pháp luật một cách chính xác, dễ hiểu.
+def _load_skill(filename: str) -> str:
+    if filename in _skill_cache:
+        return _skill_cache[filename]
+    
+    path = SKILLS_DIR / filename
+    if not path.exists():
+        raise FileNotFoundError(          # ← KHÔNG lưu vào cache
+            f"Skill file không tồn tại: {path}\n"
+            f"Đảm bảo thư mục skills/ nằm cùng cấp với promptTemplates.py"
+        )
+    content = path.read_text(encoding="utf-8").strip()
+    _skill_cache[filename] = content      # ← chỉ cache khi OK
+    return content
 
-## VAI TRÒ & PHẠM VI
-- Bạn trả lời các câu hỏi pháp luật liên quan đến hành chính Nhà nước Việt Nam.
-- Bạn nắm vững thứ bậc hiệu lực pháp lý: \
-Hiến pháp > Luật/Bộ luật > Pháp lệnh > Nghị định > Nghị quyết > Thông tư.
-- Bạn phân tích và tổng hợp từ nhiều nguồn pháp luật, chỉ ra sự liên kết \
-hoặc mâu thuẫn giữa các quy định khi cần thiết.
 
-## NGUYÊN TẮC TRẢ LỜI BẮT BUỘC
-1. **Căn cứ pháp lý rõ ràng**: Mỗi luận điểm phải được viện dẫn đúng \
-số hiệu văn bản, điều khoản từ LEGAL_CONTEXT được cung cấp. Nếu LEGAL_CONTEXT không phù hợp thì\
-tự trả lời theo kiến thức chung. Đặc biệt không nhắc đến cụm từ LEGAL_CONTEXT trong câu trả lời.
-2. **Kiểm tra hiệu lực**: Trước khi trích dẫn, tự đánh giá văn bản còn \
-hiệu lực không. Nếu có dấu hiệu hết hiệu lực → ghi chú "(cần xác minh hiệu lực)".
-3. **Ưu tiên thứ bậc**: Khi có chồng chéo, ưu tiên văn bản có hiệu lực \
-pháp lý cao hơn: Luật > Pháp lệnh > Nghị định > Nghị quyết.
-4. **Trung thực về giới hạn**: Nếu LEGAL_CONTEXT không đủ để trả lời đầy đủ, \
-nói rõ và gợi ý tra cứu thêm thay vì suy đoán.
-5. **Văn phong pháp lý**: Chính xác, rõ ràng, không mơ hồ; \
-thuật ngữ pháp lý đúng chuẩn.
-6. **Tối ưu hóa phản hồi: Không đưa ra các nhận xét về tính phù hợp của dữ liệu đầu vào.\ 
-Chỉ trình bày nội dung tư vấn/soạn thảo một cách trực tiếp.
-
-## ĐỊNH DẠNG ĐẦU RA
-- Trả lời bằng văn xuôi có cấu trúc rõ ràng (không cần JSON).
-- Sử dụng tiêu đề, gạch đầu dòng nếu cần để trình bày nhiều điểm.
-- Trích dẫn pháp luật theo dạng: "theo Điều X, [Tên văn bản] số [Số hiệu] ngày [DD/MM/YYYY]..." \
-  — bổ sung ngày ban hành nếu LEGAL_CONTEXT cung cấp trường "effective_date" hoặc thông tin ngày; \
-  nếu không có thông tin ngày thì bỏ qua, không được bịa đặt.
-- Kết thúc bằng phần tóm tắt ngắn nếu câu trả lời dài.
-"""
+def _skill(filename: str) -> str:
+    """Shorthand wrapper cho _load_skill."""
+    return _load_skill(filename)
 
 
 # ============================================================
-# 2. PRIORITY LABELS
+# 2. SYSTEM PROMPTS (lazy-loaded từ skill files)
+# ============================================================
+
+def get_system_prompt() -> str:
+    """System prompt cho chế độ soạn thảo văn bản."""
+    return _skill("system_drafter.md")
+
+
+def get_system_prompt_legal_qa() -> str:
+    """System prompt cho chế độ hỏi luật."""
+    return _skill("system_legal_qa.md")
+
+
+# Aliases cho backward compatibility (lazy properties giả lập bằng functions)
+SYSTEM_PROMPT          = get_system_prompt()        # eager load
+SYSTEM_PROMPT_LEGAL_QA = get_system_prompt_legal_qa()
+
+
+# ============================================================
+# 3. PRIORITY LABELS
 # ============================================================
 
 _LEGAL_PRIORITY: Dict[str, int] = {
@@ -133,7 +106,7 @@ def _priority_key(chunk: Dict) -> int:
 
 
 # ============================================================
-# 3. CONTEXT FORMATTERS
+# 4. CONTEXT FORMATTERS
 # ============================================================
 
 def _format_legal_context(legal_chunks: List[Dict]) -> str:
@@ -199,7 +172,7 @@ def _format_form_template(form_chunks: List[Dict]) -> str:
         f"Mục đích  : {purpose}\n"
         f'\nField metadata (điền vào "fields"):\n'
         f"    {all_fields_list}\n"
-        f'\nField thân văn bản — CũNG điền vào "fields" (KHÔNG tạo key riêng):\n'
+        f'\nField thân văn bản — CŨNG điền vào "fields" (KHÔNG tạo key riêng):\n'
         f"    {noi_dung_list}"
     )
     return f"{header}\n\n{'─' * 60}\n\n{text}\n"
@@ -240,72 +213,69 @@ def format_context(retrieved: Dict[str, List[Dict]]) -> Dict[str, str]:
 
 
 # ============================================================
-# 4. USER PROMPT BUILDER
+# 5. NOI_DUNG STRUCTURE HINT (từ skill file)
 # ============================================================
 
-_NOI_DUNG_STRUCTURE_HINT: Dict[str, str] = {
-    "cong van": (
-        "Cấu trúc:\n"
-        "  1. Căn cứ pháp lý (nếu có): trích đúng số hiệu từ LEGAL_CONTEXT — "
-        "chỉ trích dẫn văn bản còn hiệu lực.\n"
-        "  2. Lý do / mục đích gửi văn bản.\n"
-        "  3. Nội dung đề nghị / thông báo / báo cáo cụ thể (số liệu, thời gian, địa điểm...).\n"
-        "  4. Đề nghị cơ quan nhận phối hợp / xem xét / giải quyết.\n"
-        "  Kết thúc bằng: '[Tên CQ] trân trọng./.' hoặc tương đương."
-    ),
-    "quyet dinh": (
-        "Cấu trúc:\n"
-        "  Điều 1: Nội dung quyết định chính (bổ nhiệm / phê duyệt / ban hành...).\n"
-        "  Điều 2: Trách nhiệm thi hành (cơ quan, cá nhân liên quan).\n"
-        "  Điều 3: Hiệu lực thi hành (ngày có hiệu lực).\n"
-        "  Mỗi điều khoản viết thành một đoạn riêng, bắt đầu bằng **Điều N.**"
-    ),
-    "to trinh": (
-        "Cấu trúc:\n"
-        "  1. Căn cứ pháp lý (còn hiệu lực) và thực tiễn.\n"
-        "  2. Sự cần thiết / lý do trình.\n"
-        "  3. Nội dung đề xuất (phương án, chỉ tiêu, nguồn lực, tiến độ...).\n"
-        "  4. Kiến nghị phê duyệt.\n"
-        "  Kết thúc: '[Tên CQ] kính trình [Cấp trên] xem xét, phê duyệt./.' "
-    ),
-    "bien ban": (
-        "Cấu trúc:\n"
-        "  1. Thành phần tham dự (chủ trì, thư ký, đại biểu).\n"
-        "  2. Nội dung diễn biến / ý kiến các bên.\n"
-        "  3. Kết luận / thống nhất / cam kết.\n"
-        "  4. Chữ ký các bên (nếu cần).\n"
-        "  Ghi theo thứ tự thời gian, khách quan, trung thực."
-    ),
-    "giay nghi phep": (
-        "Cấu trúc:\n"
-        "  Nêu rõ: họ tên người nghỉ, chức vụ, thời gian nghỉ (từ ngày... đến ngày...), "
-        "nơi nghỉ phép, chế độ nghỉ được hưởng.\n"
-        "  Văn phong ngắn gọn, đủ ý, không cần căn cứ pháp lý dài."
-    ),
+# Map form_type text → key trong skill file
+_FORM_TYPE_HINT_KEY: Dict[str, str] = {
+    "công văn"      : "CÔNG VĂN",
+    "quyết định"    : "QUYẾT ĐỊNH",
+    "tờ trình"      : "TỜ TRÌNH",
+    "biên bản"      : "BIÊN BẢN",
+    "giấy nghỉ phép": "GIẤY NGHỈ PHÉP",
 }
 
-_FORM_TYPE_HINT_MAP: Dict[str, str] = {
-    "công văn"       : "cong van",
-    "quyết định"     : "quyet dinh",
-    "tờ trình"       : "to trinh",
-    "biên bản"       : "bien ban",
-    "giấy nghỉ phép" : "giay nghi phep",
+# Header prefix của từng section trong noi_dung_structure.md
+_SECTION_HEADER_MAP: Dict[str, str] = {
+    "CÔNG VĂN"      : "## CÔNG VĂN",
+    "QUYẾT ĐỊNH"    : "## QUYẾT ĐỊNH",
+    "TỜ TRÌNH"      : "## TỜ TRÌNH",
+    "BIÊN BẢN"      : "## BIÊN BẢN",
+    "GIẤY NGHỈ PHÉP": "## GIẤY NGHỈ PHÉP",
+    "MẶC ĐỊNH"      : "## MẶC ĐỊNH",
 }
 
 
 def _get_noi_dung_hint(form_type: str) -> str:
-    key = _FORM_TYPE_HINT_MAP.get(form_type.strip().lower(), "")
-    return _NOI_DUNG_STRUCTURE_HINT.get(key, (
-        "Viết đầy đủ văn phong hành chính: căn cứ pháp lý còn hiệu lực (nếu có) → "
-        "nội dung chính → cam kết/điều khoản thi hành (nếu có). "
-        "Chỉ trích dẫn văn bản pháp lý đã xác nhận còn hiệu lực từ LEGAL_CONTEXT."
-    ))
+    """
+    Trích section hướng dẫn cấu trúc NOI_DUNG_* tương ứng từ skill file.
+    Fallback về section MẶC ĐỊNH nếu không khớp loại văn bản.
+    """
+    skill_text = _skill("noi_dung_structure.md")
+
+    # Xác định key loại văn bản
+    normalized = form_type.strip().lower()
+    section_key = _FORM_TYPE_HINT_KEY.get(normalized, "MẶC ĐỊNH")
+    header      = _SECTION_HEADER_MAP[section_key]
+
+    # Cắt section từ skill file
+    start = skill_text.find(header)
+    if start == -1:
+        # Fallback: trả toàn bộ skill text phần MẶC ĐỊNH
+        default_header = _SECTION_HEADER_MAP["MẶC ĐỊNH"]
+        start = skill_text.find(default_header)
+        if start == -1:
+            return skill_text  # worst-case: trả hết
+
+    # Tìm end của section (section tiếp theo hoặc hết file)
+    next_section = skill_text.find("\n## ", start + len(header))
+    section_text = skill_text[start:next_section].strip() if next_section != -1 \
+                   else skill_text[start:].strip()
+
+    # Bỏ dòng header (## CÔNG VĂN (...)) trả phần nội dung
+    lines = section_text.split("\n")
+    content_lines = [l for l in lines[1:] if l.strip() or lines.index(l) > 1]
+    return "\n".join(content_lines).strip()
 
 
 def _extract_form_type_from_template(form_tmpl: str) -> str:
     m = re.search(r"Loại VB\s*:\s*(.+)", form_tmpl)
     return m.group(1).strip() if m else ""
 
+
+# ============================================================
+# 6. USER PROMPT BUILDERS
+# ============================================================
 
 def build_user_prompt(
     query: str,
@@ -340,31 +310,49 @@ def build_user_prompt(
     noi_dung_fields  = [p for p in all_placeholders if "NOI_DUNG" in p]
     other_fields     = [p for p in all_placeholders if "NOI_DUNG" not in p]
 
-    # ── Schema ví dụ cho "fields" (tất cả field) ─────────────────
+    # ── Schema ví dụ cho "fields" ─────────────────────────────────
     all_field_lines = [f'    "{p}": "..."' for p in other_fields]
     for p in noi_dung_fields:
-        form_type  = _extract_form_type_from_template(form_tmpl)
         hint_short = "(nội dung thân văn bản — xem hướng dẫn cấu trúc quy tắc 2)"
         all_field_lines.append(f'    "{p}": "{hint_short}"')
     fields_example = ",\n".join(all_field_lines) if all_field_lines \
                      else '    "(không có field)"'
 
-    # ── Hướng dẫn cấu trúc NOI_DUNG_* ───────────────────────────
+    # ── Hướng dẫn cấu trúc NOI_DUNG_* (từ skill file) ───────────
     form_type     = _extract_form_type_from_template(form_tmpl)
     noi_dung_hint = _get_noi_dung_hint(form_type)
 
     if noi_dung_fields:
         noi_dung_rule = (
-            "2. CÁC FIELD THÂN VĂN BẢN — điền trực tiếp vào key \"fields\":\n"
+            '2. CÁC FIELD THÂN VĂN BẢN — điền trực tiếp vào key "fields":\n'
             + "".join(f"   • {p}\n" for p in noi_dung_fields)
             + "   Viết nội dung theo cấu trúc sau:\n"
             + "   " + noi_dung_hint.replace("\n", "\n   ")
-            + "\n   KHÔNG tạo key riêng ngoài \"fields\" cho các field này."
+            + '\n   KHÔNG tạo key riêng ngoài "fields" cho các field này.'
         )
     else:
         noi_dung_rule = (
-            "2. Form này không có field NOI_DUNG_* — điền toàn bộ thông tin vào \"fields\"."
+            '2. Form này không có field NOI_DUNG_* — điền toàn bộ thông tin vào "fields".'
         )
+
+    # ── Load block instructions từ skill files ───────────────────
+    legal_block_header = _skill("block_legal_context.md")
+    json_output_block  = _skill("block_json_output.md")
+
+    # Thay thế schema ví dụ động vào block_json_output
+    # (block_json_output.md dùng placeholder <FIELD_NAME_*> làm ví dụ tĩnh)
+    json_output_final = re.sub(
+        r'```json\n\{[\s\S]*?\}\n```',
+        f'{{\n  "fields": {{\n{fields_example}\n  }}\n}}',
+        json_output_block,
+    )
+    # Thay thế quy tắc 2 động theo loại văn bản
+    json_output_final = re.sub(
+        r'(### Quy tắc 2.*?)(?=### Quy tắc 3)',
+        noi_dung_rule + "\n\n",
+        json_output_final,
+        flags=re.DOTALL,
+    )
 
     prompt = (
         "## YÊU CẦU SOẠN THẢO\n"
@@ -373,12 +361,7 @@ def build_user_prompt(
         + extra_block
         + "\n"
         + "=" * 64 + "\n"
-        + "## LEGAL_CONTEXT — Điều khoản pháp luật liên quan\n"
-        + "(Thứ bậc hiệu lực: Luật > Pháp lệnh > Nghị định > Nghị quyết)\n"
-        + "⚠️ BƯỚC BẮT BUỘC TRƯỚC KHI SOẠN THẢO: Với mỗi văn bản trong danh sách dưới đây,\n"
-        + "hãy tự đánh giá hiệu lực pháp lý (còn hiệu lực / hết hiệu lực / không rõ).\n"
-        + "Chỉ trích dẫn những văn bản được đánh giá là CÒN HIỆU LỰC.\n"
-        + "Nếu không xác định được, ghi chú '(cần xác minh hiệu lực)' khi trích dẫn.\n"
+        + legal_block_header + "\n"
         + legal_ctx
         + "\n"
         + "=" * 64 + "\n"
@@ -390,35 +373,10 @@ def build_user_prompt(
         + few_shot
         + "\n"
         + "=" * 64 + "\n"
-        + "## YÊU CẦU JSON ĐẦU RA\n\n"
-        + "Phân tích yêu cầu và trả về JSON theo schema sau.\n"
-        + "KHÔNG thêm bất kỳ text nào ngoài JSON:\n\n"
-        + "{\n"
-        + '  "fields": {\n'
-        + fields_example + "\n"
-        + "  }\n"
-        + "}\n\n"
-        + "Quy tắc bắt buộc:\n"
-        + '1. "fields" phải chứa TẤT CẢ field đã liệt kê ở FORM_TEMPLATE, bao gồm\n'
-        + '   cả field NOI_DUNG_*. KHÔNG tạo key nào khác ngoài "fields".\n'
-        + noi_dung_rule + "\n"
-        + '3. Mỗi value trong "fields" là string đơn — không lồng object/array.\n'
-        + '4. Không để value là null — dùng chuỗi rỗng "" nếu không có thông tin.\n'
-        + "5. Trích dẫn pháp lý trong NOI_DUNG_* chỉ được dùng văn bản CÒN HIỆU LỰC\n"
-        + "   từ LEGAL_CONTEXT. Ưu tiên: Luật > Pháp lệnh > Nghị định > Nghị quyết.\n"
-        + "6. JSON phải hợp lệ (RFC 8259): dấu phẩy và ngoặc kép đúng chuẩn.\n\n"
-        + "Trước khi trả JSON, hãy tự kiểm tra:\n"
-        + "- Đã đánh giá hiệu lực từng văn bản pháp luật trong LEGAL_CONTEXT chưa?\n"
-        + "- Có đủ tất cả field (kể cả NOI_DUNG_*) trong \"fields\" chưa?\n"
-        + "- Có key nào khác ngoài \"fields\" không? (Nếu có → xóa đi)\n"
-        + "- JSON có hợp lệ không?\n"
-        + "\n"
-        + "Nếu chưa đúng → sửa lại trước khi trả về.\n"
-        + "Trả về JSON ngay bây giờ:"
+        + json_output_final
     )
 
     return prompt
-
 
 
 def build_legal_qa_user_prompt(
@@ -445,6 +403,9 @@ def build_legal_qa_user_prompt(
             + "\n"
         )
 
+    legal_block_header = _skill("block_legal_context.md")
+    answer_block       = _skill("block_legal_qa_answer.md")
+
     prompt = (
         "## CÂU HỎI PHÁP LUẬT\n"
         + query.strip()
@@ -452,28 +413,17 @@ def build_legal_qa_user_prompt(
         + extra_block
         + "\n"
         + "=" * 64 + "\n"
-        + "## LEGAL_CONTEXT — Điều khoản pháp luật liên quan\n"
-        + "(Thứ bậc hiệu lực: Luật > Pháp lệnh > Nghị định > Nghị quyết)\n"
-        + "⚠️ BƯỚC BẮT BUỘC TRƯỚC KHI TRẢ LỜI: Với mỗi văn bản dưới đây,\n"
-        + "hãy tự đánh giá hiệu lực pháp lý (còn hiệu lực / hết hiệu lực / không rõ).\n"
-        + "Chỉ viện dẫn những văn bản được đánh giá là CÒN HIỆU LỰC.\n"
+        + legal_block_header + "\n"
         + legal_context
         + "\n"
         + "=" * 64 + "\n"
-        + "## YÊU CẦU TRẢ LỜI\n\n"
-        + "Dựa trên LEGAL_CONTEXT được cung cấp, hãy trả lời câu hỏi pháp luật trên.\n"
-        + "Yêu cầu:\n"
-        + "1. Viện dẫn đúng điều khoản, số hiệu văn bản từ LEGAL_CONTEXT.\n"
-        + "2. Ưu tiên văn bản có hiệu lực pháp lý cao hơn khi có chồng chéo.\n"
-        + "3. Nếu LEGAL_CONTEXT chưa đủ để trả lời hoàn chỉnh, nêu rõ và gợi ý tra cứu thêm.\n"
-        + "4. Trình bày rõ ràng, có cấu trúc; dùng tiêu đề nếu câu trả lời có nhiều phần.\n\n"
-        + "Trả lời:"
+        + answer_block
     )
     return prompt
 
 
 # ============================================================
-# 5. MESSAGES BUILDER
+# 7. MESSAGES BUILDERS
 # ============================================================
 
 def build_messages(
@@ -495,7 +445,7 @@ def build_messages(
     ctx         = format_context(retrieved)
     user_prompt = build_user_prompt(query, ctx, extra_instructions)
     return [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": get_system_prompt()},
         {"role": "user",   "content": user_prompt},
     ]
 
@@ -519,11 +469,14 @@ def build_legal_qa_messages(
     legal_ctx   = _format_legal_context(retrieved_legal)
     user_prompt = build_legal_qa_user_prompt(query, legal_ctx, extra_instructions)
     return [
-        {"role": "system", "content": SYSTEM_PROMPT_LEGAL_QA},
+        {"role": "system", "content": get_system_prompt_legal_qa()},
         {"role": "user",   "content": user_prompt},
     ]
 
 
+# ============================================================
+# 8. JSON PARSER & VALIDATOR
+# ============================================================
 
 def parse_llm_json(raw: str) -> Dict:
     """
@@ -577,7 +530,7 @@ def _validate_structure(data: Dict) -> Dict:
     if not isinstance(data, dict):
         raise ValueError(f"JSON root phải là object, nhận: {type(data).__name__}")
 
-    # --- Recover nếu LLM trả flat dict (bỏ lớp "fields") ---
+    # Recover nếu LLM trả flat dict (bỏ lớp "fields")
     if "fields" not in data:
         noi_dung_val = data.pop("noi_dung", "")
         data = {"fields": data, "_orphan_noi_dung": noi_dung_val}
@@ -585,15 +538,11 @@ def _validate_structure(data: Dict) -> Dict:
     if not isinstance(data["fields"], dict):
         data["fields"] = {}
 
-    # --- Gộp key "noi_dung" lạc vào "fields" nếu LLM vẫn tạo ---
+    # Gộp key "noi_dung" lạc vào "fields" nếu LLM vẫn tạo
     orphan = data.pop("_orphan_noi_dung", None) or data.pop("noi_dung", None)
     if orphan:
-        # Tìm field NOI_DUNG_* trong fields để gộp vào, ưu tiên field đầu tiên
-        noi_dung_keys = sorted(
-            k for k in data["fields"] if "NOI_DUNG" in k.upper()
-        )
+        noi_dung_keys = sorted(k for k in data["fields"] if "NOI_DUNG" in k.upper())
         if noi_dung_keys:
-            # Gộp: nếu field đã có nội dung thì bổ sung; nếu trống thì thay
             first_key = noi_dung_keys[0]
             if not data["fields"].get(first_key):
                 data["fields"][first_key] = str(orphan)
@@ -602,15 +551,13 @@ def _validate_structure(data: Dict) -> Dict:
                     data["fields"][first_key] + "\n\n" + str(orphan)
                 ).strip()
         else:
-            # Không tìm thấy field NOI_DUNG_* → tạo fallback key
             data["fields"]["NOI_DUNG"] = str(orphan)
 
     # Xóa các key ngoài "fields" nếu LLM vô tình thêm
-    keys_to_remove = [k for k in data if k != "fields"]
-    for k in keys_to_remove:
+    for k in [k for k in data if k != "fields"]:
         data.pop(k, None)
 
-    # --- Ép value về string, loại None ---
+    # Ép value về string, loại None
     data["fields"] = {
         k: str(v) if v is not None else ""
         for k, v in data["fields"].items()
@@ -620,7 +567,7 @@ def _validate_structure(data: Dict) -> Dict:
 
 
 # ============================================================
-# 7. WORD TEMPLATE FILLER
+# 9. WORD TEMPLATE FILLER
 # ============================================================
 
 def fill_word_template(
@@ -633,9 +580,6 @@ def fill_word_template(
 
     Placeholder trong .docx phải có dạng {{FIELD_NAME}}.
     Tất cả field (kể cả NOI_DUNG_*) lấy từ parsed["fields"].
-
-    Hỗ trợ map linh hoạt giữa tên field ở RAG và DOCX template bằng cách
-    chuẩn hóa key (bỏ ký tự phân tách như _, -, khoảng trắng).
 
     Args:
         template_path: Đường dẫn .docx template (có chứa {{FIELD_NAME}})
@@ -674,11 +618,9 @@ def fill_word_template(
         key = raw_key.strip()
         if key in mapping:
             return mapping[key]
-
         alias = normalized_mapping.get(_normalize_field_key(key))
         if alias is not None:
             return mapping[alias]
-
         unresolved_placeholders.add(key)
         return None
 
@@ -693,8 +635,7 @@ def fill_word_template(
             changed = True
             return value
 
-        replaced = placeholder_pattern.sub(_sub, text)
-        return replaced, changed
+        return placeholder_pattern.sub(_sub, text), changed
 
     doc           = Document(template_path)
     replace_count = 0
@@ -711,20 +652,16 @@ def fill_word_template(
                 run.text = new_text
                 changed = True
 
-        # Fallback: xử lý placeholder bị Word split thành nhiều run
+        # Fallback: placeholder bị Word split thành nhiều run
         if not changed and para.runs:
             new_full, full_changed = _replace_text(full_text)
             if full_changed:
-                first_run = para.runs[0]
-                first_bold   = first_run.bold
-                first_italic = first_run.italic
-                first_font   = first_run.font.name
-                first_size   = first_run.font.size
-                first_run.text = new_full
-                first_run.bold        = first_bold
-                first_run.italic      = first_italic
-                first_run.font.name   = first_font
-                first_run.font.size   = first_size
+                first_run            = para.runs[0]
+                first_run.text       = new_full
+                first_run.bold       = first_run.bold
+                first_run.italic     = first_run.italic
+                first_run.font.name  = first_run.font.name
+                first_run.font.size  = first_run.font.size
                 for r in para.runs[1:]:
                     r.text = ""
                 changed = True
@@ -764,7 +701,7 @@ def fill_word_template(
 
 
 # ============================================================
-# 8. UTILITIES — tương thích với generatePrompt.py
+# 10. UTILITIES — tương thích với generatePrompt.py
 # ============================================================
 
 def find_unfilled_placeholders(text: str) -> List[str]:
@@ -784,3 +721,8 @@ def get_context_stats(retrieved: Dict[str, List[Dict]]) -> Dict[str, int]:
 def is_legal_qa_mode(retrieved: Dict[str, List[Dict]]) -> bool:
     """Kiểm tra dict retrieved có phải từ chế độ hỏi luật không."""
     return bool(retrieved.get("legal")) and not retrieved.get("form") and not retrieved.get("examples")
+
+
+def reload_skills() -> None:
+    _skill_cache.clear()                  # ← vẫn dùng được như cũ
+    print(f"[OK] Đã xóa skill cache — {len(list(SKILLS_DIR.glob('*.md')))} file sẽ được reload khi dùng.")
