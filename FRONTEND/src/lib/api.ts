@@ -531,6 +531,14 @@ export interface ChatMessage {
   created_at: string;
 }
 
+export type ChatStreamEvent =
+  | { type: 'user_message'; message: ChatMessage }
+  | { type: 'meta'; meta: Record<string, unknown> }
+  | { type: 'token'; delta: string }
+  | { type: 'assistant_message'; message: ChatMessage }
+  | { type: 'done'; meta?: Record<string, unknown> }
+  | { type: 'error'; error: string; meta?: Record<string, unknown> };
+
 export function createSession(title?: string) {
   return request<ChatSession>('/api/v1/chat/sessions', {
     method: 'POST',
@@ -569,6 +577,75 @@ export function sendMessage(sessionId: string, content: string, mode: 'qa' | 'ge
       body: JSON.stringify({ content, mode, extras }),
     },
   );
+}
+
+export async function* streamMessage(
+  sessionId: string,
+  content: string,
+  mode: 'qa' | 'generate' = 'qa',
+  extras?: string,
+  signal?: AbortSignal,
+): AsyncGenerator<ChatStreamEvent> {
+  const token = localStorage.getItem('access_token');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE}/api/v1/chat/sessions/${sessionId}/messages/stream`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ content, mode, extras }),
+    signal,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({ detail: response.statusText }));
+    const message = errorBody.detail || `HTTP ${response.status}`;
+    throw new Error(message);
+  }
+
+  if (!response.body) {
+    throw new Error('Máy chủ không trả về luồng dữ liệu.');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const raw = line.trim();
+      if (!raw) continue;
+
+      try {
+        const event = JSON.parse(raw) as ChatStreamEvent;
+        yield event;
+      } catch {
+        // Ignore malformed streaming lines.
+      }
+    }
+  }
+
+  const tail = buffer.trim();
+  if (tail) {
+    try {
+      const event = JSON.parse(tail) as ChatStreamEvent;
+      yield event;
+    } catch {
+      // Ignore malformed trailing line.
+    }
+  }
 }
 
 export function getMessages(sessionId: string) {

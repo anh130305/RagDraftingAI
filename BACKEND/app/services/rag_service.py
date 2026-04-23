@@ -2,10 +2,12 @@
 services.rag_service – Wrapper for the RAG Service (Standalone API).
 """
 
+import asyncio
 import sys
+import json
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import AsyncGenerator, Dict, Any, Optional
 import httpx
 
 from app.core.config import settings
@@ -131,6 +133,61 @@ class RAGService:
                 "error": str(e),
                 "meta": {"query": query, "extras": extras}
             }
+
+    async def stream_legal_question(
+        self,
+        query: str,
+        extras: Optional[str] = None,
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """Stream legal QA tokens via RAG NDJSON endpoint."""
+        try:
+            async with self._client.stream(
+                "POST",
+                f"{self.base_url}/legal_qa_stream",
+                json={
+                    "query": query,
+                    "extras": extras,
+                    "call_llm": True,
+                },
+            ) as response:
+                response.raise_for_status()
+
+                async for line in response.aiter_lines():
+                    raw = (line or "").strip()
+                    if not raw:
+                        continue
+
+                    try:
+                        payload = json.loads(raw)
+                    except json.JSONDecodeError:
+                        logger.warning("Invalid NDJSON payload from RAG stream: %s", raw[:200])
+                        continue
+
+                    if isinstance(payload, dict):
+                        yield payload
+        except httpx.HTTPStatusError as e:
+            detail = self._extract_error_detail(e.response)
+            logger.error(
+                "RAG API error (legal_qa_stream) [%s]: %s",
+                e.response.status_code,
+                detail,
+            )
+            yield {
+                "type": "error",
+                "error": detail,
+                "http_status": e.response.status_code,
+                "meta": {"query": query, "extras": extras},
+            }
+        except httpx.HTTPError as e:
+            logger.error("RAG API transport error (legal_qa_stream): %s", e)
+            yield {
+                "type": "error",
+                "error": str(e),
+                "meta": {"query": query, "extras": extras},
+            }
+        except asyncio.CancelledError:
+            logger.info("RAG stream cancelled by downstream client")
+            raise
 
     async def draft_document(
         self, 

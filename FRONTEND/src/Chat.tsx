@@ -22,16 +22,23 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import * as api from './lib/api';
-import type { ChatMessage } from './lib/api';
+import type { ChatMessage, ChatStreamEvent } from './lib/api';
 import { useToast } from './lib/ToastContext';
 import ChatComposer from './components/ChatComposer';
 import DocxViewer from './components/DocxViewer';
+import {
+  clearChatProcessingState,
+  readChatProcessingState,
+  subscribeChatProcessingState,
+  writeChatProcessingState,
+} from './lib/chatActivityStore';
 
 export default function Chat() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
   const isLanding = !sessionId;
+  const currentSessionKey = sessionId || 'new';
 
   // Parse message content: separate typed text from [Nội dung tệp X]: blocks
   const parseMessageContent = (content: string): { text: string; fileNames: string[] } => {
@@ -78,12 +85,10 @@ export default function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sendingSessionId, setSendingSessionId] = useState<string | null>(null);
-  const [isSubmittingMessage, setIsSubmittingMessage] = useState(false);
+  const [submittingSessionId, setSubmittingSessionId] = useState<string | null>(null);
   const [composerValue, setComposerValue] = useState('');
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [statusText, setStatusText] = useState('');
-  const [composerStatus, setComposerStatus] = useState<string | undefined>(undefined);
-  const composerStatusTimerRef = useRef<number | null>(null);
   // File preview state
   const [previewFile, setPreviewFile] = useState<{ name: string; url: string; fileType?: string | null } | null>(null);
   const [lookingUpFile, setLookingUpFile] = useState(false);
@@ -95,12 +100,75 @@ export default function Chat() {
   const pollingTargetUserMessageIdRef = useRef<string | null>(null);
   const autoResumeAttemptedUserMessageIdRef = useRef<string | null>(null);
   const pollingTerminatedUserMessageIdRef = useRef<string | null>(null);
+  const pendingPollingRequestRef = useRef<{ sid: string; targetUserMessageId: string | null } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const activeSessionIdRef = useRef<string | null>(sessionId || null);
+  const streamAbortRef = useRef<AbortController | null>(null);
+
+  // Local submit state must take precedence so the status appears instantly on send,
+  // even if a stale restored busy session exists in storage.
+  const activeBusySessionId = submittingSessionId || sendingSessionId;
+  const isBusyCurrentSession = activeBusySessionId === currentSessionKey;
+  const isBusyAnotherSession = !!activeBusySessionId && activeBusySessionId !== currentSessionKey;
+  const hasStreamingAssistantInView = !!sessionId
+    && messages.some((m) => m.id === `streaming-assistant-${sessionId}`);
+  const composerStatus = isBusyAnotherSession
+    ? 'AI đang bận xử lý ở một đoạn chat khác...'
+    : undefined;
 
   // Auto-scroll to bottom when messages or status changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, statusText]);
+
+  useEffect(() => {
+    activeSessionIdRef.current = sessionId || null;
+  }, [sessionId]);
+
+  useEffect(() => {
+    const persisted = readChatProcessingState();
+    setSendingSessionId(persisted.busySessionId);
+    setStatusText(persisted.busySessionId ? (persisted.statusText || 'AI đang suy nghĩ...') : '');
+
+    const unsubscribe = subscribeChatProcessingState((state) => {
+      setSendingSessionId(state.busySessionId);
+      setStatusText(state.busySessionId ? (state.statusText || 'AI đang suy nghĩ...') : '');
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const abortActiveStream = () => {
+    streamAbortRef.current?.abort();
+    streamAbortRef.current = null;
+  };
+
+  const removeOptimisticMessage = (optimisticMessageId: string | null) => {
+    if (!optimisticMessageId) return;
+    setMessages((prev) => prev.filter((message) => message.id !== optimisticMessageId));
+  };
+
+  const removeStreamingAssistantMessage = (streamingAssistantId: string) => {
+    setMessages((prev) => prev.filter((message) => message.id !== streamingAssistantId));
+  };
+
+  const replaceOptimisticMessage = (optimisticMessageId: string | null, nextMessage: ChatMessage) => {
+    if (!optimisticMessageId) return;
+    setMessages((prev) => {
+      const withoutOptimistic = prev.filter((message) => message.id !== optimisticMessageId);
+      if (withoutOptimistic.some((message) => message.id === nextMessage.id)) {
+        return withoutOptimistic;
+      }
+      return [...withoutOptimistic, nextMessage];
+    });
+  };
+
+  const clearSendRuntimeState = () => {
+    stopPolling();
+    abortActiveStream();
+    setSendingSessionId(null);
+    setStatusText('');
+  };
 
   // Look up file URL from DB and open preview
   const handleFileChipClick = async (fileName: string) => {
@@ -186,7 +254,7 @@ export default function Chat() {
     }
   }, [sessionId]);
 
-  const stopPolling = () => {
+  const stopPolling = (options: { drainPending?: boolean } = {}) => {
     if (pollingIntervalRef.current !== null) {
       window.clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
@@ -196,19 +264,39 @@ export default function Chat() {
     pollingActiveRef.current = false;
     pollingSessionIdRef.current = null;
     pollingTargetUserMessageIdRef.current = null;
+
+    if (options.drainPending && pendingPollingRequestRef.current) {
+      const pending = pendingPollingRequestRef.current;
+      pendingPollingRequestRef.current = null;
+      window.setTimeout(() => {
+        startPolling(pending.sid, pending.targetUserMessageId || undefined);
+      }, 0);
+    }
+  };
+
+  const clearPollingUiState = (options: { drainPending?: boolean } = {}) => {
+    stopPolling(options);
+    setStatusText('');
+    setSendingSessionId(null);
   };
 
   useEffect(() => {
-    stopPolling();
-    setSendingSessionId(null);
-    setStatusText('');
     autoResumeAttemptedUserMessageIdRef.current = null;
-    pollingTerminatedUserMessageIdRef.current = null;
   }, [sessionId]);
 
   const startPolling = (sid: string, targetUserMessageId?: string) => {
     if (!sid) return;
-    if (pollingActiveRef.current && pollingSessionIdRef.current === sid) return;
+    if (pollingActiveRef.current) {
+      if (pollingSessionIdRef.current === sid) return;
+
+      pendingPollingRequestRef.current = {
+        sid,
+        targetUserMessageId: targetUserMessageId || null,
+      };
+      return;
+    }
+
+    pendingPollingRequestRef.current = null;
 
     stopPolling();
     pollingActiveRef.current = true;
@@ -232,7 +320,9 @@ export default function Chat() {
 
       try {
         const updatedMessages = await api.getMessages(sid);
-        setMessages(updatedMessages);
+        if (activeSessionIdRef.current === sid) {
+          setMessages(updatedMessages);
+        }
 
         const latestUserMessageId = [...updatedMessages]
           .reverse()
@@ -255,9 +345,7 @@ export default function Chat() {
 
         if (hasAssistantAfterTarget) {
           pollingTerminatedUserMessageIdRef.current = null;
-          stopPolling();
-          setStatusText('');
-          setSendingSessionId(null);
+          clearPollingUiState({ drainPending: true });
           window.dispatchEvent(new Event('chat_activity_updated'));
           return;
         }
@@ -265,9 +353,7 @@ export default function Chat() {
         pollingRetryRef.current += 1;
         if (pollingRetryRef.current >= maxRetries) {
           pollingTerminatedUserMessageIdRef.current = targetId || latestUserMessageId;
-          stopPolling();
-          setStatusText('');
-          setSendingSessionId(null);
+          clearPollingUiState({ drainPending: true });
           showToast('Quá thời gian phản hồi. Vui lòng thử lại.', 'warning');
         }
       } catch (err) {
@@ -275,9 +361,7 @@ export default function Chat() {
         pollingRetryRef.current += 1;
         if (pollingRetryRef.current >= maxRetries) {
           pollingTerminatedUserMessageIdRef.current = pollingTargetUserMessageIdRef.current;
-          stopPolling();
-          setStatusText('');
-          setSendingSessionId(null);
+          clearPollingUiState({ drainPending: true });
           showToast('Không thể đồng bộ phản hồi từ máy chủ. Vui lòng thử lại.', 'error');
         }
       } finally {
@@ -293,14 +377,14 @@ export default function Chat() {
 
   // ── Handle sending message ──────────────────────────────────
   const handleSend = async (content: string, mode: 'qa' | 'generate' = 'qa', extras?: string) => {
-    if (isSubmittingMessage || sendingSessionId) return;
+    if (activeBusySessionId) return;
 
     let currentId = sessionId;
     let optimisticMessageId: string | null = null;
 
     // Clear thanh nhập Input ngay sau khi sendMessage
     setComposerValue('');
-    setIsSubmittingMessage(true);
+    setSubmittingSessionId(currentSessionKey);
     setStatusText('Đang gửi tin nhắn...');
 
     const combinedContent = extras ? `${content}\n\n**Thông tin bổ sung:**\n${extras}` : content;
@@ -311,18 +395,22 @@ export default function Chat() {
         const title = content.length > 30 ? `${content.slice(0, 30)}...` : content;
         const newSession = await api.createSession(title);
         currentId = newSession.id;
+        setSubmittingSessionId(currentId);
         navigate(`/chat/${currentId}`, { replace: true });
+        window.dispatchEvent(new Event('chat_activity_updated'));
       }
 
       if (!currentId) {
         throw new Error('Không thể xác định session hiện tại');
       }
 
+      const resolvedSessionId = currentId;
+
       // Render ngay lập tức để UI phản hồi tức thì, không phụ thuộc độ trễ API
       optimisticMessageId = `temp-${Date.now()}`;
       const optimisticMessage: ChatMessage = {
         id: optimisticMessageId,
-        session_id: currentId,
+        session_id: resolvedSessionId,
         role: 'user',
         content: combinedContent,
         mode,
@@ -331,38 +419,137 @@ export default function Chat() {
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, optimisticMessage]);
+      window.dispatchEvent(new Event('chat_activity_updated'));
 
       // Gửi tin nhắn thực tế để backend lưu và xử lý AI trong nền
-      const userMessage = await api.sendMessage(currentId, content, mode, extras);
-      setMessages((prev) => {
-        const withoutOptimistic = prev.filter((m) => m.id !== optimisticMessageId);
-        if (withoutOptimistic.some((m) => m.id === userMessage.id)) {
-          return withoutOptimistic;
-        }
-        return [...withoutOptimistic, userMessage];
-      });
-
-      // Bắt đầu polling chỉ sau khi user message đã được backend chấp nhận
-      pollingTerminatedUserMessageIdRef.current = null;
-      autoResumeAttemptedUserMessageIdRef.current = userMessage.id;
-
       if (mode === 'qa') {
-        startPolling(currentId, userMessage.id);
+        abortActiveStream();
+        const streamAbortController = new AbortController();
+        streamAbortRef.current = streamAbortController;
+
+        const streamingAssistantId = `streaming-assistant-${resolvedSessionId}`;
+        const streamingCreatedAt = new Date().toISOString();
+        let streamedText = '';
+        let streamDone = false;
+
+        // Avoid stale temporary stream bubbles from previous failed attempts.
+        removeStreamingAssistantMessage(streamingAssistantId);
+
+        setSendingSessionId(resolvedSessionId);
+        setStatusText('AI đang suy nghĩ...');
+
+        pollingTerminatedUserMessageIdRef.current = null;
+        autoResumeAttemptedUserMessageIdRef.current = null;
+
+        try {
+          for await (const event of api.streamMessage(
+            resolvedSessionId,
+            content,
+            mode,
+            extras,
+            streamAbortController.signal,
+          )) {
+            const streamEvent = event as ChatStreamEvent;
+
+            if (streamEvent.type === 'user_message') {
+              if (activeSessionIdRef.current === resolvedSessionId) {
+                replaceOptimisticMessage(optimisticMessageId, streamEvent.message);
+              }
+              continue;
+            }
+
+            if (streamEvent.type === 'token') {
+              if (!streamEvent.delta) continue;
+
+              streamedText += streamEvent.delta;
+              setStatusText(streamedText);
+
+              if (activeSessionIdRef.current === resolvedSessionId) {
+                setMessages((prev) => {
+                  const existingIndex = prev.findIndex((m) => m.id === streamingAssistantId);
+                  if (existingIndex === -1) {
+                    return [
+                      ...prev,
+                      {
+                        id: streamingAssistantId,
+                        session_id: resolvedSessionId,
+                        role: 'assistant',
+                        content: streamedText,
+                        mode: 'qa',
+                        feedback: null,
+                        token_count: null,
+                        created_at: streamingCreatedAt,
+                      },
+                    ];
+                  }
+
+                  const updated = [...prev];
+                  updated[existingIndex] = {
+                    ...updated[existingIndex],
+                    content: streamedText,
+                  };
+                  return updated;
+                });
+              }
+              continue;
+            }
+
+            if (streamEvent.type === 'assistant_message') {
+              if (activeSessionIdRef.current === resolvedSessionId) {
+                setMessages((prev) => {
+                  const withoutTemp = prev.filter((message) => message.id !== streamingAssistantId);
+                  if (withoutTemp.some((message) => message.id === streamEvent.message.id)) {
+                    return withoutTemp;
+                  }
+                  return [...withoutTemp, streamEvent.message];
+                });
+              }
+              setStatusText('');
+              continue;
+            }
+
+            if (streamEvent.type === 'error') {
+              throw new Error(streamEvent.error || 'Streaming thất bại.');
+            }
+
+            if (streamEvent.type === 'done') {
+              streamDone = true;
+              break;
+            }
+          }
+        } catch (err: any) {
+          removeStreamingAssistantMessage(streamingAssistantId);
+          if (err?.name === 'AbortError') {
+            removeOptimisticMessage(optimisticMessageId);
+            clearSendRuntimeState();
+            return;
+          }
+          throw err;
+        }
+
+        if (!streamDone) {
+          removeStreamingAssistantMessage(streamingAssistantId);
+          throw new Error('Luồng phản hồi bị ngắt trước khi hoàn tất.');
+        }
+        clearSendRuntimeState();
       } else {
+        const userMessage = await api.sendMessage(resolvedSessionId, content, mode, extras);
+        replaceOptimisticMessage(optimisticMessageId, userMessage);
+
         // Mode 'generate' (Drafting)
         setStatusText('Đang thực hiện soạn thảo văn bản...');
         try {
           const draftRes = await api.generateDraftDocx({
             query: combinedContent,
             extras: extras,
-            session_id: currentId,
+            session_id: resolvedSessionId,
           });
 
           if (draftRes.status === 'ok') {
             // Add assistant response manually for drafting as it doesn't go through chat polling
             const assistantMsg: ChatMessage = {
               id: `draft-${Date.now()}`,
-              session_id: currentId,
+              session_id: resolvedSessionId,
               role: 'assistant',
               content: `Tôi đã soạn thảo xong bản thảo "${draftRes.meta.form_type}" dựa trên yêu cầu của bạn.`,
               feedback: null,
@@ -380,31 +567,30 @@ export default function Chat() {
         } catch (err: any) {
           showToast(`Lỗi khi soạn thảo: ${err.message}`, 'error');
         } finally {
-          setIsSubmittingMessage(false);
-          setSendingSessionId(null);
-          setStatusText('');
+          clearSendRuntimeState();
         }
       }
 
       // Cập nhật sidebar
       window.dispatchEvent(new Event('chat_activity_updated'));
     } catch (err: any) {
-      if (optimisticMessageId) {
-        setMessages((prev) => prev.filter((m) => m.id !== optimisticMessageId));
+      removeOptimisticMessage(optimisticMessageId);
+      clearSendRuntimeState();
+      if (err?.name !== 'AbortError') {
+        console.error('Failed to send message:', err);
+        showToast('Có lỗi xảy ra khi gửi tin nhắn.', 'system-error');
       }
-      stopPolling();
-      setSendingSessionId(null);
-      setStatusText('');
-      console.error('Failed to send message:', err);
-      showToast('Có lỗi xảy ra khi gửi tin nhắn.', 'system-error');
     } finally {
-      setIsSubmittingMessage(false);
+      setSubmittingSessionId(null);
+      if (!activeBusySessionId) {
+        abortActiveStream();
+      }
     }
   };
 
   // Handle reloads / page revisits: if last message is from user, resume polling automatically
   useEffect(() => {
-    if (!sessionId || isLoading || isSubmittingMessage || sendingSessionId) return;
+    if (!sessionId || isLoading || activeBusySessionId) return;
     if (pollingActiveRef.current) return;
     if (messages.length === 0) return;
 
@@ -421,7 +607,7 @@ export default function Chat() {
 
     autoResumeAttemptedUserMessageIdRef.current = lastMsg.id;
     startPolling(sessionId, lastMsg.id);
-  }, [messages, isLoading, isSubmittingMessage, sendingSessionId, sessionId]);
+  }, [messages, isLoading, activeBusySessionId, sessionId]);
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -434,12 +620,29 @@ export default function Chat() {
   };
 
   const handleReload = () => {
-    if (isSubmittingMessage || sendingSessionId) return; // Prevent spam clicks
+    if (activeBusySessionId) return; // Prevent spam clicks
     if (messages.length > 0) {
       const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
       if (lastUserMsg) handleSend(lastUserMsg.content);
     }
   };
+
+  useEffect(() => {
+    if (activeBusySessionId) {
+      const previewText = statusText || 'AI đang suy nghĩ...';
+      const normalizedPreview = previewText.length > 240
+        ? previewText.slice(-240)
+        : previewText;
+
+      writeChatProcessingState({
+        busySessionId: activeBusySessionId,
+        statusText: normalizedPreview,
+      });
+      return;
+    }
+
+    clearChatProcessingState();
+  }, [activeBusySessionId, statusText]);
 
   const handleFeedback = async (messageId: string, feedback: 'like' | 'dislike') => {
     // Optimistic UI update
@@ -464,10 +667,9 @@ export default function Chat() {
 
   useEffect(() => {
     return () => {
+      pendingPollingRequestRef.current = null;
       stopPolling();
-      if (composerStatusTimerRef.current) {
-        window.clearTimeout(composerStatusTimerRef.current);
-      }
+      abortActiveStream();
     };
   }, []);
 
@@ -681,7 +883,7 @@ export default function Chat() {
                     );
                   })}
 
-                  {(isSubmittingMessage || sendingSessionId === (sessionId || 'new')) && (
+                  {isBusyCurrentSession && (
                     <div className="flex justify-start mb-4 animate-in fade-in duration-300 gap-4">
                       <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center shrink-0 mt-1 shadow-sm border border-primary/20">
                         <Hexagon className="w-4 h-4 text-on-primary-fixed" />
@@ -720,7 +922,7 @@ export default function Chat() {
         <div className="w-full shrink-0 flex justify-center px-2 md:px-12 pb-1">
           <ChatComposer
             onSend={handleSend}
-            disabled={isSubmittingMessage || !!sendingSessionId}
+            disabled={!!activeBusySessionId}
             value={composerValue}
             onValueChange={setComposerValue}
             statusMessage={composerStatus}
@@ -734,8 +936,8 @@ export default function Chat() {
 
       {/* File Preview Modal */}
       {previewFile && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setPreviewFile(null)}>
-          <div className="bg-surface border border-outline-variant rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+        <div className="fixed top-4 right-4 bottom-4 z-[200] w-[min(92vw,56rem)] pointer-events-none">
+          <div className="pointer-events-auto bg-surface border border-outline-variant rounded-2xl shadow-2xl w-full h-full flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-200">
             {/* Header */}
             <div className="px-5 py-3 border-b border-outline-variant/30 flex justify-between items-center bg-surface-low shrink-0">
               <h3 className="font-bold text-on-surface truncate flex-1 pr-4">{previewFile.name}</h3>

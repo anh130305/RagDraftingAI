@@ -3,6 +3,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Bell,
   CircleHelp,
+  ChevronLeft,
+  ChevronRight,
   Hexagon,
   History,
   MessageSquare,
@@ -21,7 +23,8 @@ import {
   Folders,
   X,
   File,
-  Download
+  Download,
+  Loader2
 } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
@@ -30,6 +33,7 @@ import { useConfirm } from '../lib/ConfirmContext';
 import * as api from '../lib/api';
 import type { ChatSession } from '../lib/api';
 import { useTheme } from '../lib/ThemeContext';
+import { readChatProcessingState, subscribeChatProcessingState } from '../lib/chatActivityStore';
 import '../styles/chat-auth.css';
 import FullScreenLoader from './FullScreenLoader';
 
@@ -38,6 +42,8 @@ type UserNav = 'chat' | 'settings';
 type PreviewDocument = api.DocumentResponse & {
   mappedUrl: string;
 };
+
+const SIDEBAR_COLLAPSED_STORAGE_KEY = 'rag_ai_sidebar_collapsed_v1';
 
 interface UserShellProps {
   children: React.ReactNode;
@@ -77,7 +83,22 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
   const [previewRenderUrl, setPreviewRenderUrl] = useState<string | null>(null);
   const [preparingPreview, setPreparingPreview] = useState(false);
   const [previewLoadFailed, setPreviewLoadFailed] = useState(false);
+  const [chatProcessingState, setChatProcessingState] = useState(readChatProcessingState);
+  const [animatedProcessingPreview, setAnimatedProcessingPreview] = useState('');
   const previewObjectUrlRef = useRef<string | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+
+    try {
+      return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  const uploadedFiles = modalFiles.filter((file) => !String(file.title || '').startsWith('Bản thảo:'));
+  const createdFiles = modalFiles.filter((file) => String(file.title || '').startsWith('Bản thảo:'));
+  const visibleFiles = fileTab === 'created' ? createdFiles : uploadedFiles;
 
   const currentSession = sessions.find(s => s.id === sessionId);
 
@@ -109,7 +130,36 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
       isMounted = false;
       window.removeEventListener('chat_activity_updated', fetchHistory);
     };
-  }, [user]);
+  }, [user, sessionId]);
+
+  useEffect(() => {
+    setChatProcessingState(readChatProcessingState());
+    const unsubscribe = subscribeChatProcessingState((state) => {
+      setChatProcessingState(state);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, isSidebarCollapsed ? '1' : '0');
+    } catch {
+      // Ignore storage write failures.
+    }
+  }, [isSidebarCollapsed]);
+
+  useEffect(() => {
+    const previewSource = chatProcessingState.statusText || '';
+
+    if (!chatProcessingState.busySessionId || !previewSource.trim()) {
+      setAnimatedProcessingPreview('');
+      return;
+    }
+
+    // During token streaming, statusText already grows naturally character-by-character.
+    setAnimatedProcessingPreview(previewSource);
+  }, [chatProcessingState.busySessionId, chatProcessingState.statusText]);
 
   useEffect(() => {
     if (!showFilesModal) return;
@@ -329,41 +379,59 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
         <FullScreenLoader text={loadingText || 'Đang tải không gian làm việc...'} />
       ) : (
         <div className="bg-background text-on-surface font-body h-screen flex overflow-hidden w-full">
-          <aside className="hidden md:flex h-screen w-64 flex-col bg-surface-low py-6 px-4 shrink-0 border-r border-outline-variant/20">
-            <div className="flex items-center gap-3 px-4 mb-10">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center">
+          <aside className={`hidden md:flex h-screen flex-col bg-surface-low py-6 shrink-0 border-r border-outline-variant/20 transition-all duration-300 ease-out ${isSidebarCollapsed ? 'w-20 px-2' : 'w-64 px-4'}`}>
+            <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 mb-8' : 'justify-between px-4 mb-10'} gap-3`}>
+              <div className={`w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center shrink-0 ${isSidebarCollapsed ? '' : 'ml-0'}`}>
                 <Hexagon className="w-4 h-4 text-on-primary-fixed" />
               </div>
-              <span className="text-xl font-bold tracking-tight text-primary font-headline">RAG AI</span>
+              {!isSidebarCollapsed && <span className="text-xl font-bold tracking-tight text-primary font-headline">RAG AI</span>}
+              <button
+                type="button"
+                onClick={() => setIsSidebarCollapsed((current) => !current)}
+                className="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-highest transition-colors"
+                aria-label={isSidebarCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
+                title={isSidebarCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
+              >
+                {isSidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+              </button>
             </div>
 
             <button
               onClick={handleNewChat}
-              className="flex items-center gap-3 w-full px-5 py-4 mb-8 bg-surface-container-highest rounded-full transition-transform active:scale-95 group"
+              className={`flex items-center w-full py-4 mb-8 bg-surface-container-highest rounded-full transition-transform active:scale-95 group ${isSidebarCollapsed ? 'justify-center px-3' : 'gap-3 px-5'}`}
+              title={isSidebarCollapsed ? 'Hội thoại mới' : undefined}
             >
               <Plus className="w-5 h-5 text-primary" />
-              <span className="font-semibold text-primary font-label items-center justify-center text-center text-base">HỘI THOẠI MỚI</span>
+              {!isSidebarCollapsed && <span className="font-semibold text-primary font-label items-center justify-center text-center text-base">HỘI THOẠI MỚI</span>}
             </button>
 
             <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-2 min-h-0" ref={chatListRef}>
               {sessions.length === 0 ? (
-                <div className="px-4 py-6 text-center">
-                  <p className="text-xs text-on-surface-variant font-medium opacity-50">Chưa có cuộc trò chuyện nào</p>
+                <div className={`py-6 text-center ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
+                  <p className={`text-xs text-on-surface-variant font-medium opacity-50 ${isSidebarCollapsed ? 'sr-only' : ''}`}>Chưa có cuộc trò chuyện nào</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-5 w-full">
                   {/* Pinned Chats */}
                   {sessions.filter(s => s.is_pinned).length > 0 && (
                     <div className="flex flex-col gap-2 w-full">
-                      <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest px-4 mb-1">Đã ghim</span>
+                      {!isSidebarCollapsed && <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest px-4 mb-1">Đã ghim</span>}
                       {sessions.filter(s => s.is_pinned).map(chat => (
                         <div key={chat.id} className="relative group w-full">
+                          {(() => {
+                            const isChatProcessing = chatProcessingState.busySessionId === chat.id;
+                            const processingPreview = isChatProcessing
+                              ? (animatedProcessingPreview || chatProcessingState.statusText || 'AI đang xử lý...')
+                              : '';
+
+                            return (
                           <Link
-                            className={`ui-nav-item py-3 px-4 flex items-center pr-10 ${sessionId === chat.id ? 'ui-nav-item-active' : ''}`}
+                            className={`ui-nav-item py-3 flex ${sessionId === chat.id ? 'ui-nav-item-active' : ''} ${isSidebarCollapsed ? 'items-center justify-center px-2 pr-2 gap-0' : 'items-start px-4 pr-10 gap-3'}`}
                             to={`/chat/${chat.id}`}
+                            title={isSidebarCollapsed ? (chat.title || 'Untitled Chat') : undefined}
                           >
                             <Pin className="w-6 h-6 shrink-0 text-primary -rotate-45" fill="currentColor" />
-                            {editingSessionId === chat.id ? (
+                            {!isSidebarCollapsed && editingSessionId === chat.id ? (
                               <input
                                 autoFocus
                                 value={editingTitle}
@@ -373,17 +441,27 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                                 onClick={(e) => e.preventDefault()}
                                 className="text-sm font-label bg-transparent outline-none border-b border-primary w-full"
                               />
-                            ) : (
-                              <span className="text-base truncate font-label">{chat.title || 'Untitled Chat'}</span>
-                            )}
+                            ) : !isSidebarCollapsed ? (
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-base truncate font-label">{chat.title || 'Untitled Chat'}</span>
+                                  {isChatProcessing && <Loader2 className="w-3.5 h-3.5 text-primary animate-spin shrink-0" />}
+                                </div>
+                                {isChatProcessing && (
+                                  <p className="mt-0.5 text-[11px] text-primary/90 font-medium truncate">{processingPreview}</p>
+                                )}
+                              </div>
+                            ) : null}
                           </Link>
+                            );
+                          })()}
                           <button
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
                               setActiveChatDropdown(activeChatDropdown === chat.id ? null : chat.id);
                             }}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-highest rounded-lg opacity-0 group-hover:opacity-100 transition-all font-bold"
+                            className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-highest rounded-lg opacity-0 group-hover:opacity-100 transition-all font-bold ${isSidebarCollapsed ? 'hidden' : ''}`}
                           >
                             <MoreHorizontal className="w-4 h-4" />
                           </button>
@@ -410,15 +488,23 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
 
                   {/* Recent Chats */}
                   <div className="flex flex-col gap-2 w-full">
-                    <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest px-4 mb-1">Gần đây</span>
+                    {!isSidebarCollapsed && <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest px-4 mb-1">Gần đây</span>}
                     {sessions.filter(s => !s.is_pinned).map(chat => (
                       <div key={chat.id} className="relative group w-full">
+                        {(() => {
+                          const isChatProcessing = chatProcessingState.busySessionId === chat.id;
+                          const processingPreview = isChatProcessing
+                            ? (animatedProcessingPreview || chatProcessingState.statusText || 'AI đang xử lý...')
+                            : '';
+
+                          return (
                         <Link
-                          className={`ui-nav-item py-3 px-4 flex items-center pr-10 ${sessionId === chat.id ? 'ui-nav-item-active' : ''}`}
+                          className={`ui-nav-item py-3 flex ${sessionId === chat.id ? 'ui-nav-item-active' : ''} ${isSidebarCollapsed ? 'items-center justify-center px-2 pr-2 gap-0' : 'items-start px-4 pr-10 gap-3'}`}
                           to={`/chat/${chat.id}`}
+                          title={isSidebarCollapsed ? (chat.title || 'Hội thoại không tên') : undefined}
                         >
                           <MessageSquare className="w-6 h-6 shrink-0" />
-                          {editingSessionId === chat.id ? (
+                          {!isSidebarCollapsed && editingSessionId === chat.id ? (
                             <input
                               autoFocus
                               value={editingTitle}
@@ -428,17 +514,27 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                               onClick={(e) => e.preventDefault()}
                               className="text-sm font-label bg-transparent outline-none border-b border-primary w-full"
                             />
-                          ) : (
-                            <span className="text-base truncate font-label">{chat.title || 'Hội thoại không tên'}</span>
-                          )}
+                          ) : !isSidebarCollapsed ? (
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-base truncate font-label">{chat.title || 'Hội thoại không tên'}</span>
+                                {isChatProcessing && <Loader2 className="w-3.5 h-3.5 text-primary animate-spin shrink-0" />}
+                              </div>
+                              {isChatProcessing && (
+                                <p className="mt-0.5 text-[11px] text-primary/90 font-medium truncate">{processingPreview}</p>
+                              )}
+                            </div>
+                          ) : null}
                         </Link>
+                          );
+                        })()}
                         <button
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             setActiveChatDropdown(activeChatDropdown === chat.id ? null : chat.id);
                           }}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-highest rounded-lg opacity-0 group-hover:opacity-100 transition-all font-bold"
+                          className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-highest rounded-lg opacity-0 group-hover:opacity-100 transition-all font-bold ${isSidebarCollapsed ? 'hidden' : ''}`}
                         >
                           <MoreHorizontal className="w-4 h-4" />
                         </button>
@@ -466,13 +562,13 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
             </div>
 
             <div className="mt-auto pt-4 border-t-2 border-on-surface-variant/10 flex flex-col gap-1">
-              <a className="ui-nav-item py-3 px-4" href="#">
+              <a className={`ui-nav-item py-3 ${isSidebarCollapsed ? 'px-2 justify-center' : 'px-4'}`} href="#" title={isSidebarCollapsed ? 'Trợ giúp' : undefined}>
                 <CircleHelp className="w-7 h-7" />
-                <span className="text-base font-label">Trợ giúp</span>
+                {!isSidebarCollapsed && <span className="text-base font-label">Trợ giúp</span>}
               </a>
-              <Link className={`ui-nav-item py-3 px-4 ${activeNav === 'settings' ? 'ui-nav-item-active' : ''}`} to="/settings">
+              <Link className={`ui-nav-item py-3 ${isSidebarCollapsed ? 'px-2 justify-center' : 'px-4'} ${activeNav === 'settings' ? 'ui-nav-item-active' : ''}`} to="/settings" title={isSidebarCollapsed ? 'Cài đặt' : undefined}>
                 <Settings className="w-7 h-7" />
-                <span className="text-base font-label">Cài đặt</span>
+                {!isSidebarCollapsed && <span className="text-base font-label">Cài đặt</span>}
               </Link>
             </div>
           </aside>
@@ -505,7 +601,7 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                     {showHeaderMenu && (
                       <div className="absolute right-0 mt-2 w-48 bg-surface border border-outline-variant/50 rounded-lg shadow-[0_4px_18px_rgba(0,0,0,0.12)] overflow-hidden py-1 z-50">
                         <button
-                          onClick={() => { setShowHeaderMenu(false); setShowFilesModal(true); }}
+                          onClick={() => { setShowHeaderMenu(false); setFileTab('uploaded'); setShowFilesModal(true); }}
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-surface-high transition-colors text-on-surface font-medium"
                         >
                           <Folders className="w-4 h-4" /> Tra cứu Tệp
@@ -627,13 +723,13 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                       onClick={() => setFileTab('uploaded')}
                       className={`py-3 px-1 border-b-2 font-semibold text-sm transition-colors ${fileTab === 'uploaded' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}
                     >
-                      Đã thêm
+                      Đã thêm ({uploadedFiles.length})
                     </button>
                     <button
                       onClick={() => setFileTab('created')}
                       className={`py-3 px-1 border-b-2 font-semibold text-sm transition-colors ${fileTab === 'created' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}
                     >
-                      Đã tạo
+                      Đã tạo ({createdFiles.length})
                     </button>
                   </div>
 
@@ -643,19 +739,18 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                         <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin mb-4" />
                         <p className="text-sm font-medium">Đang tải danh sách tệp...</p>
                       </div>
-                    ) : modalFiles.length === 0 ? (
+                    ) : visibleFiles.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full opacity-50 py-10 text-on-surface-variant">
                         <Folders className="w-12 h-12 mb-4 opacity-50" />
-                        <p className="font-medium">Chưa có tệp nào được lưu trữ.</p>
-                      </div>
-                    ) : fileTab === 'created' ? (
-                      <div className="flex flex-col items-center justify-center h-full opacity-50 py-10 text-on-surface-variant">
-                        <File className="w-12 h-12 mb-4 opacity-50" />
-                        <p className="font-medium">Bạn chưa tạo tệp nào từ RAG AI.</p>
+                        <p className="font-medium">
+                          {fileTab === 'created'
+                            ? 'Chưa có tệp nào được tạo từ RAG AI trong đoạn chat này.'
+                            : 'Chưa có tệp nào được tải lên trong đoạn chat này.'}
+                        </p>
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {modalFiles.map(file => {
+                        {visibleFiles.map(file => {
                           const fileUrl = api.resolveDocumentFileUrl(file.file_path);
                           const fileKind = api.inferDocumentPreviewKind({
                             fileName: file.title,

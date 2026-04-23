@@ -81,13 +81,11 @@ export default function ChatComposer({
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
 
   const [isUploading, setIsUploading] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
-  const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
   const [retryingAttachmentId, setRetryingAttachmentId] = useState<string | null>(null);
 
   // Prompt template states
@@ -323,7 +321,6 @@ export default function ChatComposer({
 
   const uploadSingleAttachment = async (attachment: PendingAttachment) => {
     // Text extraction is already done in addAttachments. This is just a fallback to retry.
-    setActiveUploadId(attachment.id);
     setAttachments((current) =>
       current.map((item) =>
         item.id === attachment.id
@@ -362,7 +359,6 @@ export default function ChatComposer({
     setRetryingAttachmentId(id);
     await uploadSingleAttachment(target);
     setRetryingAttachmentId(null);
-    setActiveUploadId(null);
   };
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -408,7 +404,6 @@ export default function ChatComposer({
 
     // Clear UI immediately - don't make user wait
     onValueChange?.('');
-    const capturedExtras = extras; // snapshot reference
     setExtras('');
     setShowExtras(false);
     clearAttachments();
@@ -523,18 +518,15 @@ export default function ChatComposer({
 
     recognition.onerror = () => {
       setIsListening(false);
-      setIsTranscribing(false);
     };
 
     recognition.onend = () => {
       setIsListening(false);
-      setIsTranscribing(false);
       recognitionRef.current = null;
     };
 
     recognitionRef.current = recognition;
     setIsListening(true);
-    setIsTranscribing(true);
     recognition.start();
   };
 
@@ -788,7 +780,7 @@ export default function ChatComposer({
 
       <form
         onSubmit={handleSubmit}
-        className={`relative glass-morphism rounded-[30px] p-2 flex items-center gap-2 border border-outline-variant/15 focus-within:ring-4 focus-within:ring-primary/10 transition-all shadow-[0_10px_28px_rgba(0,0,0,0.1)] ${isDragActive ? 'ring-4 ring-primary/25 border-primary/40' : ''}`}
+        className={`relative glass-morphism rounded-[30px] p-2 flex items-center gap-2 border border-outline-variant/15 focus-within:ring-4 focus-within:ring-primary/10 transition-all shadow-[0_10px_28px_rgba(0,0,0,0.1)] ${isDragActive ? 'ring-4 ring-primary/25 border-primary/40' : ''} ${disabled ? 'opacity-70' : ''}`}
       >
         {isDragActive && (
           <div className="absolute inset-2 z-10 flex items-center justify-center rounded-[24px] border border-dashed border-primary/45 bg-primary/10 backdrop-blur-sm pointer-events-none">
@@ -962,6 +954,7 @@ export default function ChatComposer({
             onChange={(e) => onValueChange?.(e.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
+            disabled={disabled}
           />
           <button
             className={`ml-2 rounded-full p-2 text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors disabled:pointer-events-none ${isListening ? 'text-primary bg-primary/10' : ''}`}
