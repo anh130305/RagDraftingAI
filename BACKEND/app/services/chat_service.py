@@ -2,7 +2,7 @@
 services.chat_service – Chat session and message orchestration.
 """
 
-from typing import List, Optional
+from typing import AsyncGenerator, Dict, List, Optional
 from uuid import UUID
 import asyncio
 import random
@@ -264,3 +264,17 @@ def update_message_feedback(
     db.commit()
     db.refresh(msg)
     return ChatMessageResponse.model_validate(msg)
+
+
+async def stream_assistant_response(
+    user_query: str,
+    extras: Optional[str] = None,
+) -> AsyncGenerator[Dict[str, object], None]:
+    """Proxy token stream events from RAG service for legal QA."""
+    from app.services.rag_service import rag_service
+
+    async for event in rag_service.stream_legal_question(
+        query=user_query,
+        extras=extras,
+    ):
+        yield event

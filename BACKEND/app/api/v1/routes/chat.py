@@ -2,10 +2,14 @@
 routes.chat – Session and message endpoints.
 """
 
-from typing import List
+import asyncio
+import json
+import time
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, Query, Request, BackgroundTasks, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_chat_user
@@ -21,9 +25,14 @@ from app.schemas.chat import (
 )
 from app.services import chat_service, audit_service, prompt_template_service
 from app.models.audit_log import AuditAction
+from app.models.query_log import QueryLog
 from app.schemas.prompt_template import PromptTemplateListResponse
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
+
+
+def _to_ndjson(payload: Dict[str, Any]) -> str:
+    return json.dumps(payload, ensure_ascii=False, default=str) + "\n"
 
 
 # ── Sessions ─────────────────────────────────────────────────
@@ -148,6 +157,140 @@ def send_message(
         detail={"query_length": len(payload.content), "mode": payload.mode},
     )
     return msg
+
+
+@router.post("/sessions/{session_id}/messages/stream")
+async def stream_message(
+    request: Request,
+    session_id: UUID,
+    payload: ChatMessageCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_chat_user),
+):
+    if payload.mode != "qa":
+        raise HTTPException(
+            status_code=400,
+            detail="Streaming chỉ hỗ trợ mode 'qa'.",
+        )
+
+    user_msg = chat_service.add_message(db, session_id, current_user.id, payload)
+
+    background_tasks.add_task(
+        audit_service.log_action,
+        user_id=current_user.id,
+        action=AuditAction.query,
+        resource_type="chat_session",
+        resource_id=session_id,
+        ip_address=request.client.host if request.client else None,
+        detail={"query_length": len(payload.content), "mode": payload.mode, "stream": True},
+    )
+
+    async def event_generator():
+        start_time = time.perf_counter()
+        answer_parts: List[str] = []
+        error_message: Optional[str] = None
+        chunk_found = False
+        stream_meta: Dict[str, Any] = {}
+        assistant_msg: Optional[ChatMessageResponse] = None
+        cancelled = False
+
+        yield _to_ndjson({
+            "type": "user_message",
+            "message": user_msg.model_dump(mode="json"),
+        })
+
+        try:
+            async for event in chat_service.stream_assistant_response(
+                user_query=payload.content,
+                extras=payload.extras,
+            ):
+                event_type = str(event.get("type", ""))
+
+                if event_type == "meta":
+                    meta_payload = event.get("meta")
+                    if isinstance(meta_payload, dict):
+                        stream_meta = meta_payload
+                        chunk_found = bool(meta_payload.get("n_legal_chunks", 0))
+                    yield _to_ndjson({"type": "meta", "meta": stream_meta})
+                    continue
+
+                if event_type == "token":
+                    delta = event.get("delta")
+                    if isinstance(delta, str) and delta:
+                        answer_parts.append(delta)
+                        yield _to_ndjson({"type": "token", "delta": delta})
+                    continue
+
+                if event_type == "done":
+                    done_answer = event.get("answer")
+                    if isinstance(done_answer, str) and done_answer and not answer_parts:
+                        answer_parts.append(done_answer)
+
+                    done_meta = event.get("meta")
+                    if isinstance(done_meta, dict):
+                        stream_meta = done_meta
+                        chunk_found = bool(done_meta.get("n_legal_chunks", 0))
+                    break
+
+                if event_type == "error":
+                    raw_error = event.get("error")
+                    error_message = str(raw_error) if raw_error else "Lỗi streaming từ RAG service."
+                    break
+        except asyncio.CancelledError:
+            cancelled = True
+            raise
+        except Exception as stream_err:
+            error_message = str(stream_err)
+
+        elapsed_ms = int((time.perf_counter() - start_time) * 1000)
+        assistant_text = "".join(answer_parts).strip()
+
+        if error_message and not assistant_text:
+            assistant_text = "Xin lỗi, đã có lỗi hệ thống xảy ra khi xử lý yêu cầu của bạn."
+
+        try:
+            if assistant_text:
+                assistant_msg = chat_service.create_assistant_response(
+                    db,
+                    session_id,
+                    assistant_text,
+                    mode=payload.mode,
+                )
+                yield _to_ndjson({
+                    "type": "assistant_message",
+                    "message": assistant_msg.model_dump(mode="json"),
+                })
+                yield _to_ndjson({"type": "done", "meta": stream_meta})
+            else:
+                yield _to_ndjson({
+                    "type": "error",
+                    "error": error_message or "Không nhận được phản hồi từ mô hình.",
+                    "meta": stream_meta,
+                })
+        finally:
+            try:
+                query_log = QueryLog(
+                    session_id=session_id,
+                    message_id=assistant_msg.id if assistant_msg else None,
+                    response_time_ms=elapsed_ms,
+                    chunk_found=chunk_found,
+                    is_error=bool(error_message),
+                    error_message=error_message,
+                )
+                db.add(query_log)
+                db.commit()
+            except Exception:
+                db.rollback()
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 #API Mock Test Reponse from RAG AI
 @router.post(

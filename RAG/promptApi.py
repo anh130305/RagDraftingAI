@@ -43,7 +43,7 @@ import os
 import time
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -132,6 +132,84 @@ def _call_llm(messages: List[Dict[str, str]]) -> Optional[str]:
             logger.error(f"OpenAI API lỗi: {e}")
 
     return None
+
+
+def _stream_llm(messages: List[Dict[str, str]]) -> Iterator[str]:
+    """
+    Stream token từ LLM. Ưu tiên Groq → OpenAI.
+    Raise RuntimeError nếu không stream được.
+    """
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    openai_key = os.environ.get("OPENAI_API_KEY", "")
+
+    if not groq_key and not openai_key:
+        raise RuntimeError("Không có LLM API key để stream.")
+
+    # ── Groq ────────────────────────────────────────────────────
+    if groq_key:
+        try:
+            from groq import Groq
+
+            client = Groq(api_key=groq_key)
+            stream = client.chat.completions.create(
+                model=_LLM_CONFIG["groq_model"],
+                messages=messages,
+                max_tokens=_LLM_CONFIG["max_tokens"],
+                temperature=_LLM_CONFIG["temperature"],
+                stream=True,
+            )
+
+            emitted_any = False
+            for chunk in stream:
+                try:
+                    token = chunk.choices[0].delta.content
+                except Exception:
+                    token = None
+
+                if isinstance(token, str) and token:
+                    emitted_any = True
+                    yield token
+
+            if emitted_any:
+                return
+        except ImportError:
+            logger.warning("groq chưa cài. Chạy: pip install groq")
+        except Exception as e:
+            logger.error(f"Groq stream lỗi: {e}")
+
+    # ── OpenAI ──────────────────────────────────────────────────
+    if openai_key:
+        try:
+            import openai
+
+            client = openai.OpenAI(api_key=openai_key)
+            stream = client.chat.completions.create(
+                model=_LLM_CONFIG["openai_model"],
+                messages=messages,
+                max_tokens=_LLM_CONFIG["max_tokens"],
+                temperature=_LLM_CONFIG["temperature"],
+                stream=True,
+            )
+
+            emitted_any = False
+            for chunk in stream:
+                try:
+                    token = chunk.choices[0].delta.content
+                except Exception:
+                    token = None
+
+                if isinstance(token, str) and token:
+                    emitted_any = True
+                    yield token
+
+            if emitted_any:
+                return
+        except ImportError:
+            logger.warning("openai chưa cài. Chạy: pip install openai")
+        except Exception as e:
+            logger.error(f"OpenAI stream lỗi: {e}")
+
+    raise RuntimeError("Không thể stream phản hồi từ LLM.")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -451,6 +529,107 @@ class PromptAPI:
                 "mode"  : "legal_qa",
                 "error" : str(e),
                 "meta"  : {"query": query, "extras": resolved_extras, "elapsed_s": round(time.time() - t0, 2)},
+            }
+
+    def legal_qa_stream(
+        self,
+        query: str,
+        extras: Optional[str] = None,
+        legal_top_k: Optional[int] = None,
+        legal_type_filter: Optional[str] = None,
+        call_llm: bool = True,
+    ) -> Iterator[Dict[str, Any]]:
+        """
+        Stream kết quả legal_qa theo NDJSON events:
+          - {"type": "meta",  "meta": {...}}
+          - {"type": "token", "delta": "..."}
+          - {"type": "done",  "answer": "...", "meta": {...}}
+          - {"type": "error", "error": "...", "meta": {...}}
+        """
+        t0 = time.time()
+        top_k = legal_top_k if legal_top_k is not None else 5
+        resolved_extras = _clean_extras(extras)
+
+        total_text = query + (resolved_extras or "")
+        total_tokens = estimate_tokens(total_text)
+        if total_tokens > 5000:
+            yield {
+                "type": "error",
+                "error": f"Tổng đầu vào quá dài (~{total_tokens} tokens). Giới hạn tối đa là 5000 tokens.",
+                "meta": {"query": query, "extras": resolved_extras, "elapsed_s": 0},
+            }
+            return
+
+        try:
+            legal_chunks = retrieve_legal(
+                query,
+                top_k=top_k,
+                type_filter=legal_type_filter,
+                use_reranker=self.use_reranker,
+                expand=True,
+            )
+
+            messages = build_legal_qa_messages(
+                query,
+                legal_chunks,
+                extra_instructions=resolved_extras,
+            )
+
+            legal_sources = [
+                r["metadata"].get("source_doc_no", r["metadata"].get("id", "?"))
+                for r in legal_chunks
+            ]
+
+            meta: Dict[str, Any] = {
+                "query": query,
+                "extras": resolved_extras,
+                "elapsed_s": round(time.time() - t0, 2),
+                "n_legal_chunks": len(legal_chunks),
+                "legal_sources": legal_sources,
+            }
+
+            yield {"type": "meta", "meta": meta}
+
+            if not call_llm:
+                yield {
+                    "type": "error",
+                    "error": "Streaming yêu cầu call_llm=True và API key hợp lệ.",
+                    "meta": meta,
+                }
+                return
+
+            answer_parts: List[str] = []
+            for token in _stream_llm(messages):
+                if not token:
+                    continue
+                answer_parts.append(token)
+                yield {"type": "token", "delta": token}
+
+            answer = "".join(answer_parts).strip()
+            if not answer:
+                yield {
+                    "type": "error",
+                    "error": "LLM không trả về nội dung.",
+                    "meta": meta,
+                }
+                return
+
+            meta["elapsed_s"] = round(time.time() - t0, 2)
+            yield {
+                "type": "done",
+                "answer": answer,
+                "meta": meta,
+            }
+        except Exception as e:
+            logger.exception(f"legal_qa_stream() thất bại: {e}")
+            yield {
+                "type": "error",
+                "error": str(e),
+                "meta": {
+                    "query": query,
+                    "extras": resolved_extras,
+                    "elapsed_s": round(time.time() - t0, 2),
+                },
             }
 
     # ───────────────────────────────────────────────────────────

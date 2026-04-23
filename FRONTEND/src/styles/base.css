@@ -149,4 +149,116 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
+
+  .chat-markdown {
+    line-height: 1.7;
+  }
+
+  .chat-markdown > * + * {
+    margin-top: 0.6rem;
+  }
+
+  .chat-markdown h1,
+  .chat-markdown h2,
+  .chat-markdown h3,
+  .chat-markdown h4 {
+    margin-top: 0.9rem;
+    margin-bottom: 0.45rem;
+    font-family: var(--font-headline);
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  .chat-markdown h1 {
+    font-size: 1.35rem;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--primary) 82%, var(--on-surface) 18%);
+  }
+
+  .chat-markdown h2 {
+    font-size: 1.15rem;
+    border-left: 3px solid color-mix(in srgb, var(--primary) 60%, transparent);
+    padding-left: 0.55rem;
+  }
+
+  .chat-markdown h3 {
+    font-size: 1.05rem;
+  }
+
+  .chat-markdown p {
+    margin: 0;
+  }
+
+  .chat-markdown ul,
+  .chat-markdown ol {
+    margin: 0.35rem 0 0.35rem 1.15rem;
+  }
+
+  .chat-markdown li + li {
+    margin-top: 0.2rem;
+  }
+
+  .chat-markdown blockquote {
+    margin: 0.5rem 0;
+    padding: 0.5rem 0.75rem;
+    border-left: 3px solid color-mix(in srgb, var(--primary) 52%, transparent);
+    background: color-mix(in srgb, var(--surface-highest) 55%, transparent);
+    border-radius: 0.5rem;
+    color: var(--on-surface-variant);
+  }
+
+  .chat-markdown code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+      'Courier New', monospace;
+    font-size: 0.88em;
+    background: color-mix(in srgb, var(--surface-highest) 85%, transparent);
+    padding: 0.12rem 0.36rem;
+    border-radius: 0.35rem;
+  }
+
+  .chat-markdown pre {
+    margin: 0.6rem 0;
+    overflow: auto;
+    border-radius: 0.75rem;
+    padding: 0.75rem 0.85rem;
+    background: color-mix(in srgb, var(--surface-highest) 88%, transparent);
+  }
+
+  .chat-markdown pre code {
+    background: transparent;
+    padding: 0;
+  }
+
+  .chat-markdown a {
+    color: color-mix(in srgb, var(--primary) 85%, var(--on-surface) 15%);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .chat-markdown hr {
+    border: none;
+    border-top: 1px solid var(--outline-variant);
+    margin: 0.75rem 0;
+  }
+
+  .chat-markdown table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.7rem 0;
+    font-size: 0.95em;
+  }
+
+  .chat-markdown th,
+  .chat-markdown td {
+    border: 1px solid var(--outline-variant);
+    padding: 0.4rem 0.5rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .chat-markdown th {
+    background: color-mix(in srgb, var(--surface-highest) 70%, transparent);
+    font-weight: 700;
+  }
 }
