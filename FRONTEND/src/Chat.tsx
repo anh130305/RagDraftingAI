@@ -17,15 +17,15 @@ import {
   Hexagon,
   Check,
   FileText,
-  X,
-  Download,
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import * as api from './lib/api';
 import type { ChatMessage, ChatStreamEvent } from './lib/api';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useToast } from './lib/ToastContext';
 import ChatComposer from './components/ChatComposer';
-import DocxViewer from './components/DocxViewer';
+import DocumentPreviewModal from './components/DocumentPreviewModal';
 import {
   clearChatProcessingState,
   readChatProcessingState,
@@ -792,7 +792,15 @@ export default function Chat() {
                                     ? 'bg-primary text-on-primary-fixed rounded-tr-none'
                                     : 'bg-surface-container-high text-on-surface rounded-tl-none border border-outline-variant/10'
                                     }`}>
-                                    <p className="text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap font-body">{text}</p>
+                                    {isUser ? (
+                                      <p className="text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap font-body">{text}</p>
+                                    ) : (
+                                      <div className="chat-markdown text-sm md:text-[15px] leading-relaxed font-body">
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                          {text}
+                                        </ReactMarkdown>
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                                 {/* Fallback if only files with no typed text and no extract */}
@@ -934,81 +942,10 @@ export default function Chat() {
         <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-tertiary/5 rounded-full blur-[120px] -z-10"></div>
       </div>
 
-      {/* File Preview Modal */}
-      {previewFile && (
-        <div className="fixed top-4 right-4 bottom-4 z-[200] w-[min(92vw,56rem)] pointer-events-none">
-          <div className="pointer-events-auto bg-surface border border-outline-variant rounded-2xl shadow-2xl w-full h-full flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-200">
-            {/* Header */}
-            <div className="px-5 py-3 border-b border-outline-variant/30 flex justify-between items-center bg-surface-low shrink-0">
-              <h3 className="font-bold text-on-surface truncate flex-1 pr-4">{previewFile.name}</h3>
-              <div className="flex items-center gap-2">
-                <a
-                  href={api.getDocumentDownloadUrl(
-                    previewFile.url,
-                    api.inferDocumentPreviewKind({
-                      fileName: previewFile.name,
-                      fileType: previewFile.fileType,
-                      filePath: previewFile.url,
-                    }),
-                    previewFile.name,
-                    previewFile.fileType,
-                  )}
-                  download={previewFile.name}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-primary text-on-primary hover:bg-primary/90 rounded-lg transition-colors text-sm font-semibold"
-                >
-                  <Download className="w-4 h-4" /> Tải về
-                </a>
-                <button onClick={() => setPreviewFile(null)} className="p-2 hover:bg-surface-highest rounded-full text-on-surface-variant transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-            {/* Content */}
-            <div className="flex-1 overflow-hidden bg-surface-lowest flex items-center justify-center relative">
-              {(() => {
-                const previewKind = api.inferDocumentPreviewKind({
-                  fileName: previewFile.name,
-                  fileType: previewFile.fileType,
-                  filePath: previewFile.url,
-                });
-                const isWord = previewKind === 'word';
-                const isPDF = previewKind === 'pdf';
-                const inlineUrl = api.getDocumentPreviewUrl(
-                  previewFile.url,
-                  previewKind,
-                  previewFile.name,
-                  previewFile.fileType,
-                );
-                const downloadUrl = api.getDocumentDownloadUrl(
-                  previewFile.url,
-                  previewKind,
-                  previewFile.name,
-                  previewFile.fileType,
-                );
-
-                if (isWord) {
-                  return <DocxViewer url={downloadUrl} />;
-                }
-
-                if (isPDF) {
-                  return (
-                    <embed
-                      src={inlineUrl}
-                      type="application/pdf"
-                      className="w-full h-full border-none"
-                    />
-                  );
-                }
-
-                // Default iframe for other types (Images, etc.)
-                return (
-                  <iframe src={inlineUrl} className="w-full h-full border-none" title="File Preview" />
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
+      <DocumentPreviewModal
+        file={previewFile}
+        onClose={() => setPreviewFile(null)}
+      />
       {/* Mobile BottomNavBar (Visible only on mobile) */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full glass-morphism border-t border-outline-variant/10 flex justify-around items-center h-20 px-4 z-50">
         <a className="flex flex-col items-center gap-1 text-primary" href="#">

@@ -58,7 +58,7 @@ const DocxViewer: React.FC<DocxViewerProps> = ({ url }) => {
   }, [url]);
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-white overflow-auto relative">
+    <div className="w-full h-full flex flex-col min-h-0 bg-white overflow-auto relative">
       {loading && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
           <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />

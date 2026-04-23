@@ -2,11 +2,10 @@ FROM node:20-slim
 
 WORKDIR /app
 
-COPY package.json ./
+COPY package*.json ./
 
-# Remove package-lock to avoid host-container os mismatch bindings
-RUN rm -f package-lock.json && npm install
+RUN npm ci
 
 COPY . .
 
-CMD ["npm", "run", "dev"]
+CMD ["sh", "-c", "npm install && npm run dev"]

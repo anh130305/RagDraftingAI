@@ -36,12 +36,9 @@ import { useTheme } from '../lib/ThemeContext';
 import { readChatProcessingState, subscribeChatProcessingState } from '../lib/chatActivityStore';
 import '../styles/chat-auth.css';
 import FullScreenLoader from './FullScreenLoader';
+import DocumentPreviewModal from './DocumentPreviewModal';
 
 type UserNav = 'chat' | 'settings';
-
-type PreviewDocument = api.DocumentResponse & {
-  mappedUrl: string;
-};
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'rag_ai_sidebar_collapsed_v1';
 
@@ -79,13 +76,9 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
   const [modalFiles, setModalFiles] = useState<api.DocumentResponse[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [fileTab, setFileTab] = useState<'uploaded' | 'created'>('uploaded');
-  const [previewFile, setPreviewFile] = useState<PreviewDocument | null>(null);
-  const [previewRenderUrl, setPreviewRenderUrl] = useState<string | null>(null);
-  const [preparingPreview, setPreparingPreview] = useState(false);
-  const [previewLoadFailed, setPreviewLoadFailed] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{ name: string; url: string; fileType?: string | null } | null>(null);
   const [chatProcessingState, setChatProcessingState] = useState(readChatProcessingState);
   const [animatedProcessingPreview, setAnimatedProcessingPreview] = useState('');
-  const previewObjectUrlRef = useRef<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     if (typeof window === 'undefined') return false;
 
@@ -192,92 +185,6 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
       isCancelled = true;
     };
   }, [showFilesModal, sessionId]);
-
-  useEffect(() => {
-    setPreviewLoadFailed(false);
-
-    if (previewObjectUrlRef.current) {
-      URL.revokeObjectURL(previewObjectUrlRef.current);
-      previewObjectUrlRef.current = null;
-    }
-
-    if (!previewFile) {
-      setPreviewRenderUrl(null);
-      setPreparingPreview(false);
-      return;
-    }
-
-    const previewKind = api.inferDocumentPreviewKind({
-      fileName: previewFile.title,
-      fileType: previewFile.file_type,
-      filePath: previewFile.mappedUrl,
-    });
-    const previewSourceUrl = api.getDocumentPreviewUrl(
-      previewFile.mappedUrl,
-      previewKind,
-      previewFile.title,
-      previewFile.file_type,
-    );
-
-    // For PDF, build a local blob URL to avoid blank previews from remote header/content-type quirks.
-    if (previewKind === 'pdf') {
-      const controller = new AbortController();
-      let cancelled = false;
-
-      const preparePdfPreview = async () => {
-        setPreparingPreview(true);
-        try {
-          const response = await fetch(previewSourceUrl, {
-            signal: controller.signal,
-            credentials: 'omit',
-          });
-          if (!response.ok) {
-            throw new Error(`Failed to fetch preview file (HTTP ${response.status})`);
-          }
-
-          const rawBlob = await response.blob();
-          if (cancelled) return;
-
-          const normalizedBlob = rawBlob.type === 'application/pdf'
-            ? rawBlob
-            : new Blob([rawBlob], { type: 'application/pdf' });
-
-          const objectUrl = URL.createObjectURL(normalizedBlob);
-          previewObjectUrlRef.current = objectUrl;
-          setPreviewRenderUrl(objectUrl);
-        } catch (err) {
-          if (!cancelled) {
-            console.warn('Unable to prepare local PDF preview. Falling back to source URL.', err);
-            setPreviewRenderUrl(previewSourceUrl);
-          }
-        } finally {
-          if (!cancelled) {
-            setPreparingPreview(false);
-          }
-        }
-      };
-
-      void preparePdfPreview();
-
-      return () => {
-        cancelled = true;
-        controller.abort();
-      };
-    }
-
-    setPreparingPreview(false);
-    setPreviewRenderUrl(previewSourceUrl);
-    return;
-  }, [previewFile]);
-
-  useEffect(() => {
-    return () => {
-      if (previewObjectUrlRef.current) {
-        URL.revokeObjectURL(previewObjectUrlRef.current);
-        previewObjectUrlRef.current = null;
-      }
-    };
-  }, []);
 
   const handleNewChat = () => {
     navigate('/chat', { replace: true });
@@ -761,7 +668,7 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                           return (
                             <div
                               key={file.id}
-                              onClick={() => setPreviewFile({ ...file, mappedUrl: fileUrl })}
+                              onClick={() => setPreviewFile({ name: file.title, url: fileUrl, fileType: file.file_type })}
                               className="p-3 rounded-xl border border-outline-variant/50 bg-surface-high flex items-start gap-3 hover:border-primary/30 transition-colors group cursor-pointer"
                             >
                               <div className="p-2.5 bg-surface rounded-lg text-primary shrink-0">
@@ -796,169 +703,10 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
               </div>
             )}
 
-            {/* Modal Xem trước (Preview) */}
-            {previewFile && (
-              <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-background/90 backdrop-blur-md animate-in fade-in duration-200">
-                <div className="bg-surface border border-outline-variant rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-                  <div className="px-5 py-3 border-b border-outline-variant/30 flex justify-between items-center bg-surface-low">
-                    <h3 className="font-bold text-on-surface truncate flex-1 pr-4">{previewFile.title}</h3>
-                    <div className="flex items-center gap-3">
-                      <a
-                        href={api.getDocumentDownloadUrl(
-                          previewFile.mappedUrl,
-                          api.inferDocumentPreviewKind({
-                            fileName: previewFile.title,
-                            fileType: previewFile.file_type,
-                            filePath: previewFile.mappedUrl,
-                          }),
-                          previewFile.title,
-                          previewFile.file_type,
-                        )}
-                        download={previewFile.title}
-                        className="flex items-center gap-2 px-4 py-1.5 bg-primary text-on-primary hover:bg-primary/90 rounded-lg transition-colors text-sm font-semibold"
-                      >
-                        <Download className="w-4 h-4" /> Tải về
-                      </a>
-                      <button onClick={() => setPreviewFile(null)} className="p-2 bg-surface hover:bg-surface-highest rounded-full text-on-surface-variant transition-colors">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex-1 overflow-hidden bg-surface-lowest flex items-center justify-center relative">
-                    {(() => {
-                      const previewKind = api.inferDocumentPreviewKind({
-                        fileName: previewFile.title,
-                        fileType: previewFile.file_type,
-                        filePath: previewFile.mappedUrl,
-                      });
-                      const isWord = previewKind === 'word';
-                      const isPDF = previewKind === 'pdf';
-                      const inlineUrl = api.getDocumentPreviewUrl(
-                        previewFile.mappedUrl,
-                        previewKind,
-                        previewFile.title,
-                        previewFile.file_type,
-                      );
-                      const downloadUrl = api.getDocumentDownloadUrl(
-                        previewFile.mappedUrl,
-                        previewKind,
-                        previewFile.title,
-                        previewFile.file_type,
-                      );
-                      const finalUrl = previewRenderUrl || inlineUrl;
-
-                      if (preparingPreview) {
-                        return (
-                          <div className="flex flex-col items-center gap-4 py-16 text-center px-8">
-                            <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                            <h4 className="text-base font-bold">Đang chuẩn bị bản xem trước...</h4>
-                            <p className="font-medium text-on-surface-variant">Hệ thống đang tối ưu tệp để hiển thị trong trình duyệt.</p>
-                          </div>
-                        );
-                      }
-
-                      if (isWord) {
-                        return (
-                          <div className="flex flex-col items-center gap-4 py-16">
-                            <File className="w-20 h-20 text-primary opacity-50" />
-                            <h4 className="text-xl font-bold">Không thể xem trước tệp trực tiếp</h4>
-                            <p className="font-medium text-on-surface-variant mb-4">
-                              Trình duyệt không hỗ trợ xem trước tệp Microsoft Word (.docx).<br />
-                              Vui lòng sử dụng tính năng bên dưới để tải tệp về thiết bị.
-                            </p>
-                            <a
-                              href={downloadUrl}
-                              download={previewFile.title}
-                              className="px-6 py-3 bg-primary text-on-primary rounded-xl font-bold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
-                            >
-                              Tải xuống tài liệu gốc
-                            </a>
-                          </div>
-                        );
-                      }
-
-                      if (isPDF) {
-                        return (
-                          <div className="w-full h-full relative">
-                            <iframe
-                              src={finalUrl}
-                              title="PDF Preview"
-                              className="w-full h-full border-none"
-                              onLoad={() => setPreviewLoadFailed(false)}
-                            />
-                            {previewLoadFailed && (
-                              <div className="absolute inset-0 bg-surface-lowest/95 flex flex-col items-center justify-center text-center px-6 gap-3">
-                                <p className="font-semibold text-on-surface">Không thể hiển thị PDF trực tiếp trong khung xem trước.</p>
-                                <a
-                                  href={inlineUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="px-4 py-2 rounded-lg bg-primary text-on-primary font-semibold hover:bg-primary/90 transition-colors"
-                                >
-                                  Mở trong tab mới
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      }
-
-                      if (previewKind === 'image') {
-                        return (
-                          <div className="w-full h-full flex items-center justify-center p-4 bg-surface-lowest">
-                            <img
-                              src={finalUrl}
-                              alt={previewFile.title}
-                              className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                              onLoad={() => setPreviewLoadFailed(false)}
-                              onError={() => setPreviewLoadFailed(true)}
-                            />
-                            {previewLoadFailed && (
-                              <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 gap-3">
-                                <p className="font-semibold text-on-surface">Không thể tải hình ảnh xem trước.</p>
-                                <a
-                                  href={inlineUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="px-4 py-2 rounded-lg bg-primary text-on-primary font-semibold hover:bg-primary/90 transition-colors"
-                                >
-                                  Mở ảnh gốc
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      }
-
-                      // Default iframe for other types (Text, etc.)
-                      return (
-                        <div className="w-full h-full relative">
-                          <iframe
-                            src={finalUrl}
-                            className="w-full h-full border-none bg-white"
-                            title="Document Preview"
-                            onLoad={() => setPreviewLoadFailed(false)}
-                          />
-                          {previewLoadFailed && (
-                            <div className="absolute inset-0 bg-surface-lowest/95 flex flex-col items-center justify-center text-center px-6 gap-3">
-                              <p className="font-semibold text-on-surface">Không thể hiển thị xem trước trực tiếp cho tệp này.</p>
-                              <a
-                                href={inlineUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="px-4 py-2 rounded-lg bg-primary text-on-primary font-semibold hover:bg-primary/90 transition-colors"
-                              >
-                                Mở trong tab mới
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </div>
-            )}
+            <DocumentPreviewModal
+              file={previewFile}
+              onClose={() => setPreviewFile(null)}
+            />
 
           </main>
         </div>
