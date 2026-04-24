@@ -118,8 +118,6 @@ def add_message(
         raise ForbiddenError("You do not own this session")
 
     storage_content = payload.content
-    if payload.extras:
-        storage_content += f"\n\n**Thông tin bổ sung:**\n{payload.extras}"
 
     msg = message_repo.create(
         db,

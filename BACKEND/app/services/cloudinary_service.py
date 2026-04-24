@@ -2,6 +2,9 @@
 services.cloudinary_service - Cloudinary SDK integration
 """
 
+import os
+import time
+
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
@@ -19,6 +22,82 @@ if settings.CLOUDINARY_CLOUD_NAME and settings.CLOUDINARY_CLOUD_NAME != "YOUR_CL
         secure=True
     )
 
+
+def _resolve_upload_context(file_name: str, content_type: Optional[str], user_id: str, session_id: str) -> dict:
+    filename = (file_name or "").strip()
+    normalized_name = os.path.basename(filename) if filename else "document"
+    lowered_name = normalized_name.lower()
+    lowered_content_type = (content_type or "").lower()
+
+    RAW_EXTENSIONS = (".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".md")
+    RAW_CONTENT_TYPES = (
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument",
+        "application/vnd.ms-",
+        "text/plain",
+        "text/markdown",
+    )
+
+    if any(lowered_name.endswith(ext) for ext in RAW_EXTENSIONS):
+        upload_resource_type = "raw"
+    elif any(lowered_content_type.startswith(ct) for ct in RAW_CONTENT_TYPES):
+        upload_resource_type = "raw"
+    elif lowered_content_type.startswith("image/"):
+        upload_resource_type = "image"
+    elif lowered_content_type.startswith("video/"):
+        upload_resource_type = "video"
+    else:
+        upload_resource_type = "raw"
+
+    folder_path = f"RagDraftingAI/{user_id}/{session_id}"
+    public_id = normalized_name if upload_resource_type == "raw" else normalized_name.rsplit(".", 1)[0]
+
+    return {
+        "folder_path": folder_path,
+        "public_id": public_id,
+        "resource_type": upload_resource_type,
+    }
+
+
+def build_signed_upload_payload(
+    *,
+    file_name: str,
+    content_type: Optional[str],
+    user_id: str,
+    session_id: str = "general",
+) -> dict:
+    """Build a signed Cloudinary upload payload for browser-based uploads."""
+    if not settings.CLOUDINARY_CLOUD_NAME or settings.CLOUDINARY_CLOUD_NAME == "YOUR_CLOUD_NAME":
+        raise ValueError("Cloudinary is not configured. Missing CLOUD_NAME.")
+    if not settings.CLOUDINARY_API_KEY or not settings.CLOUDINARY_API_SECRET:
+        raise ValueError("Cloudinary is not configured. Missing API credentials.")
+
+    context = _resolve_upload_context(file_name, content_type, user_id, session_id)
+    timestamp = int(time.time())
+
+    sign_params = {
+        "timestamp": timestamp,
+        "folder": context["folder_path"],
+        "public_id": context["public_id"],
+        "type": "upload",
+        "access_mode": "public",
+    }
+    signature = cloudinary.utils.api_sign_request(sign_params, settings.CLOUDINARY_API_SECRET)
+
+    return {
+        "cloud_name": settings.CLOUDINARY_CLOUD_NAME,
+        "api_key": settings.CLOUDINARY_API_KEY,
+        "upload_url": f"https://api.cloudinary.com/v1_1/{settings.CLOUDINARY_CLOUD_NAME}/{context['resource_type']}/upload",
+        "signature": signature,
+        "timestamp": timestamp,
+        "folder": context["folder_path"],
+        "public_id": context["public_id"],
+        "resource_type": context["resource_type"],
+        "type": "upload",
+        "access_mode": "public",
+    }
+
 def upload_to_cloudinary(file: UploadFile, user_id: str, session_id: str = "general") -> dict:
     """
     Uploads a file to Cloudinary and returns a dict with 'url', 'public_id', 'resource_type'.
@@ -31,33 +110,14 @@ def upload_to_cloudinary(file: UploadFile, user_id: str, session_id: str = "gene
     if not settings.CLOUDINARY_CLOUD_NAME or settings.CLOUDINARY_CLOUD_NAME == "YOUR_CLOUD_NAME":
         raise ValueError("Cloudinary is not configured. Missing CLOUD_NAME.")
 
-    folder_path = f"RagDraftingAI/{user_id}/{session_id}"
-
     filename = (file.filename or "").lower()
     content_type = (file.content_type or "").lower()
 
     print(f"[Cloudinary] upload filename={filename!r} content_type={content_type!r}")
 
-    RAW_EXTENSIONS = (".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".md")
-    RAW_CONTENT_TYPES = (
-        "application/pdf",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument",
-        "application/vnd.ms-",
-        "text/plain",
-        "text/markdown",
-    )
-
-    if any(filename.endswith(ext) for ext in RAW_EXTENSIONS):
-        upload_resource_type = "raw"
-    elif any(content_type.startswith(ct) for ct in RAW_CONTENT_TYPES):
-        upload_resource_type = "raw"
-    elif content_type.startswith("image/"):
-        upload_resource_type = "image"
-    elif content_type.startswith("video/"):
-        upload_resource_type = "video"
-    else:
-        upload_resource_type = "raw"  # safe default: raw accepts all file types
+    context = _resolve_upload_context(file.filename or "", file.content_type, user_id, session_id)
+    folder_path = context["folder_path"]
+    upload_resource_type = context["resource_type"]
 
     print(f"[Cloudinary] resolved resource_type={upload_resource_type!r}")
 
@@ -65,7 +125,7 @@ def upload_to_cloudinary(file: UploadFile, user_id: str, session_id: str = "gene
 
     # Cloudinary requires the extension in the public_id for 'raw' assets.
     # For 'image' assets, we typically exclude the extension in public_id.
-    actual_public_id = file.filename if upload_resource_type == "raw" else file.filename.rsplit('.', 1)[0]
+    actual_public_id = context["public_id"]
 
     upload_params = {
         "folder": folder_path,
@@ -136,15 +196,15 @@ def upload_local_file_to_cloudinary(
         raise ValueError("Cloudinary is not configured.")
 
     if not filename:
-        import os
         filename = os.path.basename(file_path)
 
-    folder_path = f"RagDraftingAI/{user_id}/{session_id}"
+    context = _resolve_upload_context(filename, "application/octet-stream", user_id, session_id)
+    folder_path = context["folder_path"]
     
     # We treat documents as 'raw' for proper rendering/downloading
     upload_params = {
         "folder": folder_path,
-        "public_id": filename,
+        "public_id": context["public_id"],
         "resource_type": "raw",
         "use_filename": True,
         "unique_filename": True,
@@ -224,19 +284,42 @@ def ensure_public_delivery(public_id: str) -> bool:
 def delete_session_folder(user_id: str, session_id: str) -> bool:
     """
     Delete an entire session folder from Cloudinary.
-    Deletes all resources in the folder, then deletes the folder itself.
+    Deletes all resources (both raw and image types) in the folder, then the folder itself.
     """
     if not settings.CLOUDINARY_CLOUD_NAME:
         return False
 
     folder_path = f"RagDraftingAI/{user_id}/{session_id}"
+    prefix = folder_path + "/"
 
     try:
-        cloudinary.api.delete_resources_by_prefix(folder_path + "/")
-        cloudinary.api.delete_folder(folder_path)
+        # Delete raw resources (PDFs, DOCX, etc.) — default resource_type is 'image', which misses these.
+        try:
+            cloudinary.api.delete_resources_by_prefix(prefix, resource_type="raw")
+        except Exception as e:
+            print(f"Cloudinary raw resource cleanup info: {str(e)}")
+
+        # Delete image resources (screenshots, previews, etc.)
+        try:
+            cloudinary.api.delete_resources_by_prefix(prefix, resource_type="image")
+        except Exception as e:
+            print(f"Cloudinary image resource cleanup info: {str(e)}")
+
+        # Delete the now-empty folder.  If it never existed (no files were ever uploaded
+        # for this session), Cloudinary returns 404 — treat that as a non-error.
+        try:
+            cloudinary.api.delete_folder(folder_path)
+        except Exception as e:
+            err_str = str(e)
+            if "404" in err_str or "Can't find folder" in err_str:
+                # Folder didn't exist — nothing to clean up, that's fine.
+                pass
+            else:
+                print(f"Cloudinary folder delete warning: {err_str}")
+
         return True
     except Exception as e:
-        print(f"Cloudinary folder cleanup info: {str(e)}")
+        print(f"Cloudinary folder cleanup error: {str(e)}")
         return False
 
 
