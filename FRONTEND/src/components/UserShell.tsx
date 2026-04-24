@@ -3,8 +3,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Bell,
   CircleHelp,
-  ChevronLeft,
-  ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
   Hexagon,
   History,
   MessageSquare,
@@ -286,22 +286,24 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
         <FullScreenLoader text={loadingText || 'Đang tải không gian làm việc...'} />
       ) : (
         <div className="bg-background text-on-surface font-body h-screen flex overflow-hidden w-full">
-          <aside className={`hidden md:flex h-screen flex-col bg-surface-low py-6 shrink-0 border-r border-outline-variant/20 transition-all duration-300 ease-out ${isSidebarCollapsed ? 'w-20 px-2' : 'w-64 px-4'}`}>
+          <aside className={`hidden md:flex h-screen flex-col bg-surface-low py-6 shrink-0 border-r border-outline-variant/20 transition-all duration-300 ease-out relative ${isSidebarCollapsed ? 'w-20 px-2' : 'w-64 px-4'}`}>
             <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2 mb-8' : 'justify-between px-4 mb-10'} gap-3`}>
               <div className={`w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center shrink-0 ${isSidebarCollapsed ? '' : 'ml-0'}`}>
                 <Hexagon className="w-4 h-4 text-on-primary-fixed" />
               </div>
               {!isSidebarCollapsed && <span className="text-xl font-bold tracking-tight text-primary font-headline">RAG AI</span>}
-              <button
-                type="button"
-                onClick={() => setIsSidebarCollapsed((current) => !current)}
-                className="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-highest transition-colors"
-                aria-label={isSidebarCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
-                title={isSidebarCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
-              >
-                {isSidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-              </button>
             </div>
+
+            {/* Floating border toggle — fixed on the sidebar/content border at logo row height */}
+            <button
+              type="button"
+              onClick={() => setIsSidebarCollapsed((current) => !current)}
+              className={`fixed top-[40px] -translate-x-1/2 -translate-y-1/2 z-50 w-7 h-7 rounded-md bg-surface border border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:bg-surface-highest shadow-md transition-[left] duration-300 ease-out flex items-center justify-center ${isSidebarCollapsed ? 'left-20' : 'left-64'}`}
+              aria-label={isSidebarCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
+              title={isSidebarCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
+            >
+              {isSidebarCollapsed ? <PanelLeftOpen className="w-3.5 h-3.5" /> : <PanelLeftClose className="w-3.5 h-3.5" />}
+            </button>
 
             <button
               onClick={handleNewChat}
@@ -332,34 +334,34 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                               : '';
 
                             return (
-                          <Link
-                            className={`ui-nav-item py-3 flex ${sessionId === chat.id ? 'ui-nav-item-active' : ''} ${isSidebarCollapsed ? 'items-center justify-center px-2 pr-2 gap-0' : 'items-start px-4 pr-10 gap-3'}`}
-                            to={`/chat/${chat.id}`}
-                            title={isSidebarCollapsed ? (chat.title || 'Untitled Chat') : undefined}
-                          >
-                            <Pin className="w-6 h-6 shrink-0 text-primary -rotate-45" fill="currentColor" />
-                            {!isSidebarCollapsed && editingSessionId === chat.id ? (
-                              <input
-                                autoFocus
-                                value={editingTitle}
-                                onChange={(e) => setEditingTitle(e.target.value)}
-                                onBlur={() => saveTitle(chat.id)}
-                                onKeyDown={(e) => e.key === 'Enter' && saveTitle(chat.id)}
-                                onClick={(e) => e.preventDefault()}
-                                className="text-sm font-label bg-transparent outline-none border-b border-primary w-full"
-                              />
-                            ) : !isSidebarCollapsed ? (
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-base truncate font-label">{chat.title || 'Untitled Chat'}</span>
-                                  {isChatProcessing && <Loader2 className="w-3.5 h-3.5 text-primary animate-spin shrink-0" />}
-                                </div>
-                                {isChatProcessing && (
-                                  <p className="mt-0.5 text-[11px] text-primary/90 font-medium truncate">{processingPreview}</p>
-                                )}
-                              </div>
-                            ) : null}
-                          </Link>
+                              <Link
+                                className={`ui-nav-item py-3 flex ${sessionId === chat.id ? 'ui-nav-item-active' : ''} ${isSidebarCollapsed ? 'items-center justify-center px-2 pr-2 gap-0' : 'items-start px-4 pr-10 gap-3'}`}
+                                to={`/chat/${chat.id}`}
+                                title={isSidebarCollapsed ? (chat.title || 'Untitled Chat') : undefined}
+                              >
+                                <Pin className="w-6 h-6 shrink-0 text-primary -rotate-45" fill="currentColor" />
+                                {!isSidebarCollapsed && editingSessionId === chat.id ? (
+                                  <input
+                                    autoFocus
+                                    value={editingTitle}
+                                    onChange={(e) => setEditingTitle(e.target.value)}
+                                    onBlur={() => saveTitle(chat.id)}
+                                    onKeyDown={(e) => e.key === 'Enter' && saveTitle(chat.id)}
+                                    onClick={(e) => e.preventDefault()}
+                                    className="text-sm font-label bg-transparent outline-none border-b border-primary w-full"
+                                  />
+                                ) : !isSidebarCollapsed ? (
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-base truncate font-label">{chat.title || 'Untitled Chat'}</span>
+                                      {isChatProcessing && <Loader2 className="w-3.5 h-3.5 text-primary animate-spin shrink-0" />}
+                                    </div>
+                                    {isChatProcessing && (
+                                      <p className="mt-0.5 text-[11px] text-primary/90 font-medium truncate">{processingPreview}</p>
+                                    )}
+                                  </div>
+                                ) : null}
+                              </Link>
                             );
                           })()}
                           <button
@@ -405,34 +407,34 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                             : '';
 
                           return (
-                        <Link
-                          className={`ui-nav-item py-3 flex ${sessionId === chat.id ? 'ui-nav-item-active' : ''} ${isSidebarCollapsed ? 'items-center justify-center px-2 pr-2 gap-0' : 'items-start px-4 pr-10 gap-3'}`}
-                          to={`/chat/${chat.id}`}
-                          title={isSidebarCollapsed ? (chat.title || 'Hội thoại không tên') : undefined}
-                        >
-                          <MessageSquare className="w-6 h-6 shrink-0" />
-                          {!isSidebarCollapsed && editingSessionId === chat.id ? (
-                            <input
-                              autoFocus
-                              value={editingTitle}
-                              onChange={(e) => setEditingTitle(e.target.value)}
-                              onBlur={() => saveTitle(chat.id)}
-                              onKeyDown={(e) => e.key === 'Enter' && saveTitle(chat.id)}
-                              onClick={(e) => e.preventDefault()}
-                              className="text-sm font-label bg-transparent outline-none border-b border-primary w-full"
-                            />
-                          ) : !isSidebarCollapsed ? (
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-base truncate font-label">{chat.title || 'Hội thoại không tên'}</span>
-                                {isChatProcessing && <Loader2 className="w-3.5 h-3.5 text-primary animate-spin shrink-0" />}
-                              </div>
-                              {isChatProcessing && (
-                                <p className="mt-0.5 text-[11px] text-primary/90 font-medium truncate">{processingPreview}</p>
-                              )}
-                            </div>
-                          ) : null}
-                        </Link>
+                            <Link
+                              className={`ui-nav-item py-3 flex ${sessionId === chat.id ? 'ui-nav-item-active' : ''} ${isSidebarCollapsed ? 'items-center justify-center px-2 pr-2 gap-0' : 'items-start px-4 pr-10 gap-3'}`}
+                              to={`/chat/${chat.id}`}
+                              title={isSidebarCollapsed ? (chat.title || 'Hội thoại không tên') : undefined}
+                            >
+                              <MessageSquare className="w-6 h-6 shrink-0" />
+                              {!isSidebarCollapsed && editingSessionId === chat.id ? (
+                                <input
+                                  autoFocus
+                                  value={editingTitle}
+                                  onChange={(e) => setEditingTitle(e.target.value)}
+                                  onBlur={() => saveTitle(chat.id)}
+                                  onKeyDown={(e) => e.key === 'Enter' && saveTitle(chat.id)}
+                                  onClick={(e) => e.preventDefault()}
+                                  className="text-sm font-label bg-transparent outline-none border-b border-primary w-full"
+                                />
+                              ) : !isSidebarCollapsed ? (
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-base truncate font-label">{chat.title || 'Hội thoại không tên'}</span>
+                                    {isChatProcessing && <Loader2 className="w-3.5 h-3.5 text-primary animate-spin shrink-0" />}
+                                  </div>
+                                  {isChatProcessing && (
+                                    <p className="mt-0.5 text-[11px] text-primary/90 font-medium truncate">{processingPreview}</p>
+                                  )}
+                                </div>
+                              ) : null}
+                            </Link>
                           );
                         })()}
                         <button

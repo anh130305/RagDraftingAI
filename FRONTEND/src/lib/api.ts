@@ -348,6 +348,89 @@ export function googleLogin(id_token: string, department?: string) {
   );
 }
 
+export interface CloudinaryUploadSignatureResponse {
+  cloud_name: string;
+  api_key: string;
+  upload_url: string;
+  signature: string;
+  timestamp: number;
+  folder: string;
+  public_id: string;
+  resource_type: 'raw' | 'image' | 'video';
+  type: 'upload';
+  access_mode: 'public';
+}
+
+export interface CloudinaryUploadCompleteResponse {
+  document: DocumentResponse;
+  extracted_text: string | null;
+  ocr_error: string | null;
+}
+
+async function requestCloudinaryUploadSignature(file: File, chatSessionId?: string) {
+  return request<CloudinaryUploadSignatureResponse>('/api/v1/documents/upload/presign', {
+    method: 'POST',
+    body: JSON.stringify({
+      file_name: file.name,
+      content_type: file.type,
+      chat_session_id: chatSessionId || 'general',
+    }),
+  });
+}
+
+async function uploadFileDirectlyToCloudinary(file: File, signature: CloudinaryUploadSignatureResponse) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('api_key', signature.api_key);
+  formData.append('timestamp', String(signature.timestamp));
+  formData.append('signature', signature.signature);
+  formData.append('folder', signature.folder);
+  formData.append('public_id', signature.public_id);
+  formData.append('type', signature.type);
+  formData.append('access_mode', signature.access_mode);
+
+  const response = await fetch(signature.upload_url, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    const message = errorBody?.error?.message || errorBody?.message || response.statusText || 'Cloudinary upload failed';
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
+async function finalizeCloudinaryUpload(
+  uploadResult: any,
+  file: File,
+  title?: string,
+  chatSessionId?: string,
+) {
+  const completeResponse = await request<CloudinaryUploadCompleteResponse>('/api/v1/documents/upload/complete', {
+    method: 'POST',
+    body: JSON.stringify({
+      title,
+      file_path: uploadResult.secure_url || uploadResult.url,
+      file_type: file.type,
+      file_size: uploadResult.bytes,
+      cloudinary_public_id: uploadResult.public_id,
+      chat_session_id: chatSessionId || 'general',
+      resource_type: uploadResult.resource_type,
+    }),
+  });
+
+  return completeResponse.document;
+}
+
+export async function uploadDocument(file: File, title?: string, chatSessionId?: string) {
+  const signature = await requestCloudinaryUploadSignature(file, chatSessionId);
+  const uploadResult = await uploadFileDirectlyToCloudinary(file, signature);
+  return finalizeCloudinaryUpload(uploadResult, file, title, chatSessionId);
+}
+
 export function logout() {
   return request<void>('/api/v1/auth/logout', { method: 'POST' });
 }
@@ -676,17 +759,6 @@ export interface DocumentResponse {
   error_message: string | null;
   created_at: string;
   updated_at: string;
-}
-
-export function uploadDocument(file: File, title?: string, chatSessionId?: string) {
-  const formData = new FormData();
-  formData.append('file', file);
-  if (title) formData.append('title', title);
-  if (chatSessionId) formData.append('chat_session_id', chatSessionId);
-  return request<DocumentResponse>('/api/v1/documents/upload', {
-    method: 'POST',
-    body: formData,
-  });
 }
 
 export function extractTextFromImage(file: File) {

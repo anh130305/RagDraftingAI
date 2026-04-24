@@ -26,7 +26,7 @@ interface ChatComposerProps {
   placeholder?: string;
   note?: string;
   statusMessage?: string;
-  onSend?: (content: string, mode: 'qa' | 'generate', extras?: string) => void | Promise<void>;
+  onSend?: (content: string, mode: 'qa' | 'generate', extras?: string) => string | undefined | void | Promise<string | undefined | void>;
   disabled?: boolean;
   value?: string;
   onValueChange?: (val: string) => void;
@@ -48,6 +48,7 @@ interface PendingAttachment {
   previewUrl?: string;
   uploadStatus: AttachmentUploadStatus;
   extractedText?: string;
+  errorMessage?: string;
 }
 
 interface UploadProgress {
@@ -84,6 +85,7 @@ export default function ChatComposer({
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isWaitingForAttachments, setIsWaitingForAttachments] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [retryingAttachmentId, setRetryingAttachmentId] = useState<string | null>(null);
@@ -122,6 +124,17 @@ export default function ChatComposer({
   }, [extras]);
 
   useEffect(() => {
+    if (attachments.length === 0) {
+      setIsWaitingForAttachments(false);
+      return;
+    }
+
+    if (!attachments.some((attachment) => attachment.uploadStatus === 'uploading')) {
+      setIsWaitingForAttachments(false);
+    }
+  }, [attachments]);
+
+  useEffect(() => {
     attachmentsRef.current = attachments;
   }, [attachments]);
 
@@ -141,9 +154,35 @@ export default function ChatComposer({
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  // Vietnamese text averages ~3 chars/token (denser than English's ~4).
+  // Using ÷3.0 gives a conservative (slightly high) estimate — safer than underestimating
+  // and hitting Groq's 12,000-token per-request limit.
   const estimateTokens = (text: string) => {
     if (!text) return 0;
-    return Math.ceil(text.length / 3.5);
+    return Math.ceil(text.length / 3.0);
+  };
+
+  // Safe user-input budget (tokens):
+  //   Groq limit: 12,000 total
+  //   RAG overhead (5 legal chunks + system prompt): ~4,000
+  //   Response allocation (max_tokens):              ~4,096
+  //   ─────────────────────────────────────────────  ──────
+  //   Available for user input (query + extras + files): 3,500  (leaves ~400 buffer)
+  const USER_TOKEN_LIMIT = 3500;
+
+  const buildFinalExtras = (
+    selectedMode: 'qa' | 'generate',
+    manualExtras: string,
+    extractedContent: string,
+  ) => {
+    const normalizedManualExtras = selectedMode === 'generate' ? manualExtras.trim() : '';
+    const normalizedExtracted = extractedContent.trim();
+
+    if (normalizedManualExtras && normalizedExtracted) {
+      return `${normalizedManualExtras}\n\n${normalizedExtracted}`;
+    }
+
+    return normalizedManualExtras || normalizedExtracted;
   };
 
   const getAttachmentInfo = (file: File): { kind: AttachmentKind; typeLabel: AttachmentTypeLabel } => {
@@ -195,65 +234,89 @@ export default function ChatComposer({
       } satisfies PendingAttachment;
     });
 
-    setAttachments((current) => {
-      const existing = new Set(current.map((item) => `${item.file.name}-${item.file.size}-${item.file.lastModified}`));
-      const uniqueNext = nextAttachments.filter((item) => {
-        const key = `${item.file.name}-${item.file.size}-${item.file.lastModified}`;
-        if (existing.has(key)) {
-          if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
-          return false;
-        }
-        existing.add(key);
-        return true;
-      });
+    const currentAttachments = attachmentsRef.current;
+    const existing = new Set(currentAttachments.map((item) => `${item.file.name}-${item.file.size}-${item.file.lastModified}`));
 
-      const combined = [...current, ...uniqueNext];
-
-      if (combined.length > 5) {
-        showToast('Chỉ cho phép tải lên tối đa 5 tệp tin cùng một lúc.', 'warning');
-        for (let i = 5; i < combined.length; i++) {
-          if (combined[i].previewUrl) URL.revokeObjectURL(combined[i].previewUrl!);
-        }
-        return combined.slice(0, 5);
+    const uniqueNext: PendingAttachment[] = [];
+    for (const item of nextAttachments) {
+      const key = `${item.file.name}-${item.file.size}-${item.file.lastModified}`;
+      if (existing.has(key)) {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+        continue;
       }
+      existing.add(key);
+      uniqueNext.push(item);
+    }
 
-      return combined;
-    });
+    const availableSlots = Math.max(0, 5 - currentAttachments.length);
+    const acceptedAttachments = uniqueNext.slice(0, availableSlots);
+    const droppedAttachments = uniqueNext.slice(availableSlots);
+
+    if (droppedAttachments.length > 0) {
+      showToast('Chỉ cho phép tải lên tối đa 5 tệp tin cùng một lúc.', 'warning');
+      for (const item of droppedAttachments) {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      }
+    }
+
+    if (acceptedAttachments.length === 0) {
+      setIsMenuOpen(false);
+      return;
+    }
+
+    setAttachments((current) => [...current, ...acceptedAttachments]);
 
     setIsMenuOpen(false);
 
+    const manualExtrasTokenBase = estimateTokens((valueRef.current || '') + (mode === 'generate' ? (extras || '') : ''));
+    const existingExtractedTokens = attachmentsRef.current
+      .filter((item) => item.extractedText)
+      .reduce((sum, item) => sum + estimateTokens(item.extractedText || ''), 0);
+    let acceptedIncomingExtractedTokens = 0;
+
     // ONLY extract text for in-context RAG usage.
-    for (const attachment of nextAttachments) {
+    for (const attachment of acceptedAttachments) {
       try {
         const res = await api.extractTextFromImage(attachment.file);
-        
-        const fileTokens = estimateTokens(res.text);
-        
-        // Immediate total token check (current text + existing attachments + new extraction)
-        const currentText = (value || '') + (extras || '');
-        const existingAttachmentsTokens = attachments
-          .filter(a => a.id !== attachment.id && a.extractedText)
-          .reduce((sum, a) => sum + estimateTokens(a.extractedText!), 0);
-        
-        const totalEstimatedTokens = estimateTokens(currentText) + existingAttachmentsTokens + fileTokens;
+        const normalizedText = (res.text || '').trim();
 
-        if (totalEstimatedTokens > 5000) {
-          showToast(`Tổng nội dung vượt quá giới hạn (~${totalEstimatedTokens} tokens). Tệp ${attachment.file.name} không được chấp nhận.`, 'error');
-          // Remove from list immediately
-          setAttachments(current => current.filter(item => item.id !== attachment.id));
+        if (!normalizedText) {
+          setAttachments(current => current.map(item =>
+            item.id === attachment.id
+              ? { ...item, uploadStatus: 'failed', extractedText: undefined, errorMessage: 'Không có nội dung' }
+              : item
+          ));
           continue;
         }
 
+        const fileTokens = estimateTokens(normalizedText);
+        const totalEstimatedTokens = manualExtrasTokenBase + existingExtractedTokens + acceptedIncomingExtractedTokens + fileTokens;
+
+        if (totalEstimatedTokens > USER_TOKEN_LIMIT) {
+          setAttachments(current => current.map(item =>
+            item.id === attachment.id
+              ? {
+                ...item,
+                uploadStatus: 'failed',
+                extractedText: undefined,
+                errorMessage: `Quá token (~${totalEstimatedTokens}/${USER_TOKEN_LIMIT})`,
+              }
+              : item
+          ));
+          continue;
+        }
+
+        acceptedIncomingExtractedTokens += fileTokens;
+
         setAttachments(current => current.map(item =>
           item.id === attachment.id
-            ? { ...item, uploadStatus: 'uploaded', extractedText: res.text }
+            ? { ...item, uploadStatus: 'uploaded', extractedText: normalizedText, errorMessage: undefined }
             : item
         ));
       } catch (err) {
-        showToast(`Lỗi khi trích xuất văn bản từ ${attachment.file.name}`, 'error');
         setAttachments(current => current.map(item =>
           item.id === attachment.id
-            ? { ...item, uploadStatus: 'failed' }
+            ? { ...item, uploadStatus: 'failed', extractedText: undefined, errorMessage: 'Lỗi OCR' }
             : item
         ));
       }
@@ -319,22 +382,60 @@ export default function ChatComposer({
     [attachments],
   );
 
+  const hasFailedAttachments = failedAttachments.length > 0;
+
   const uploadSingleAttachment = async (attachment: PendingAttachment) => {
     // Text extraction is already done in addAttachments. This is just a fallback to retry.
     setAttachments((current) =>
       current.map((item) =>
         item.id === attachment.id
-          ? { ...item, uploadStatus: 'uploading' }
+          ? { ...item, uploadStatus: 'uploading', errorMessage: undefined }
           : item,
       ),
     );
 
     try {
       const res = await api.extractTextFromImage(attachment.file);
+      const normalizedText = (res.text || '').trim();
+
+      if (!normalizedText) {
+        setAttachments((current) =>
+          current.map((item) =>
+            item.id === attachment.id
+              ? { ...item, uploadStatus: 'failed', extractedText: undefined, errorMessage: 'Không có nội dung' }
+              : item,
+          ),
+        );
+        return false;
+      }
+
+      const manualExtrasTokenBase = estimateTokens((valueRef.current || '') + (mode === 'generate' ? (extras || '') : ''));
+      const existingExtractedTokens = attachmentsRef.current
+        .filter((item) => item.id !== attachment.id && item.extractedText)
+        .reduce((sum, item) => sum + estimateTokens(item.extractedText || ''), 0);
+      const fileTokens = estimateTokens(normalizedText);
+      const totalEstimatedTokens = manualExtrasTokenBase + existingExtractedTokens + fileTokens;
+
+      if (totalEstimatedTokens > USER_TOKEN_LIMIT) {
+        setAttachments((current) =>
+          current.map((item) =>
+            item.id === attachment.id
+              ? {
+                ...item,
+                uploadStatus: 'failed',
+                extractedText: undefined,
+                errorMessage: `Quá token (~${totalEstimatedTokens}/${USER_TOKEN_LIMIT})`,
+              }
+              : item,
+          ),
+        );
+        return false;
+      }
+
       setAttachments((current) =>
         current.map((item) =>
           item.id === attachment.id
-            ? { ...item, uploadStatus: 'uploaded', extractedText: res.text }
+            ? { ...item, uploadStatus: 'uploaded', extractedText: normalizedText, errorMessage: undefined }
             : item,
         ),
       );
@@ -343,7 +444,7 @@ export default function ChatComposer({
       setAttachments((current) =>
         current.map((item) =>
           item.id === attachment.id
-            ? { ...item, uploadStatus: 'failed' }
+            ? { ...item, uploadStatus: 'failed', extractedText: undefined, errorMessage: 'Lỗi OCR' }
             : item,
         ),
       );
@@ -373,12 +474,15 @@ export default function ChatComposer({
     // Text is always required — files alone cannot be sent
     if (!trimmedValue) return;
     if (hasAttachments && !isReady) {
-      showToast('Vui lòng đợi tệp được xử lý xong.', 'warning');
+      setIsWaitingForAttachments(true);
+      return;
+    }
+    if (hasFailedAttachments) {
+      showToast('Có tệp đang lỗi. Vui lòng xoá hoặc bấm "Lại" để xử lý trước khi gửi.', 'warning');
       return;
     }
 
     setIsMenuOpen(false);
-    setIsUploading(true);
 
     // Snapshot file references BEFORE clearing UI (we need them for Cloudinary upload)
     const filesToUpload = uploadedAttachments.map(a => a.file);
@@ -391,16 +495,27 @@ export default function ChatComposer({
 
     // Build final message and extras for AI
     const finalMessage = trimmedValue;
-    const finalExtras = extras 
-      ? (extractedContent ? extras + '\n\n' + extractedContent : extras)
-      : extractedContent;
+    const finalExtras = buildFinalExtras(mode, extras, extractedContent);
+
+    // In QA mode, append compact [Tệp đính kèm: filename] markers to the message content.
+    // These markers are recognised by parseMessageContent and rendered as file chips.
+    // The full extracted text stays in finalExtras for RAG context only.
+    const attachmentMarkers = uploadedAttachments
+      .filter(a => a.extractedText)
+      .map(a => `[Tệp đính kèm: ${a.file.name}]`)
+      .join('\n');
+    const finalMessageWithAttachments = mode === 'qa' && attachmentMarkers
+      ? `${finalMessage}\n\n${attachmentMarkers}`
+      : finalMessage;
 
     // Token validation
     const totalTokens = estimateTokens(finalMessage + (finalExtras || ''));
-    if (totalTokens > 5000) {
-      showToast(`Nội dung quá dài (~${totalTokens} tokens). Vui lòng giới hạn dưới 5000 tokens.`, 'warning');
+    if (totalTokens > USER_TOKEN_LIMIT) {
+      showToast(`Nội dung quá dài (~${totalTokens} tokens). Vui lòng giới hạn dưới ${USER_TOKEN_LIMIT} tokens.`, 'warning');
       return;
     }
+
+    setIsUploading(true);
 
     // Clear UI immediately - don't make user wait
     onValueChange?.('');
@@ -409,18 +524,24 @@ export default function ChatComposer({
     clearAttachments();
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (imageInputRef.current) imageInputRef.current.value = '';
+    setIsWaitingForAttachments(false);
 
-    // Upload successfully extracted files to Cloudinary.
-    filesToUpload.forEach(file => {
-      api.uploadDocument(file, file.name, chatSessionId).catch(err => {
-        console.warn('Cloudinary upload failed:', err);
-        showToast(`Lỗi lưu trữ tệp "${file.name}": ${err.message || 'Hệ thống bận'}`, 'system-error');
-      });
-    });
-
+    // Upload files to Cloudinary AFTER onSend so we have the resolved session ID
+    // (onSend creates the session if it doesn't exist yet and returns its ID).
     try {
-      await onSend?.(finalMessage, mode, finalExtras);
-      // Mode and basic clear already done above
+      const resolvedSessionId = await onSend?.(finalMessageWithAttachments, mode, finalExtras);
+
+      // Use the session ID returned by onSend (the true session after possible creation),
+      // falling back to the prop value if the session already existed.
+      const uploadSessionId = (resolvedSessionId as string | undefined) || chatSessionId;
+      if (filesToUpload.length > 0) {
+        filesToUpload.forEach(file => {
+          api.uploadDocument(file, file.name, uploadSessionId).catch(err => {
+            console.warn('Cloudinary upload failed:', err);
+            showToast(`Lỗi lưu trữ tệp "${file.name}": ${err.message || 'Hệ thống bận'}`, 'system-error');
+          });
+        });
+      }
     } catch {
       // Send failed - UI already cleared, keep it clean
     } finally {
@@ -620,7 +741,7 @@ export default function ChatComposer({
       <div className="flex items-center gap-2 mb-2 px-1">
         <button
           type="button"
-          onClick={() => { setMode('qa'); setShowExtras(false); }}
+          onClick={() => { setMode('qa'); setShowExtras(false); setExtras(''); }}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${mode === 'qa'
             ? 'bg-primary text-on-primary shadow-sm'
             : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-highest'
@@ -644,6 +765,12 @@ export default function ChatComposer({
 
       {attachments.length > 0 && (
         <div className="mb-3 rounded-[26px] border border-outline-variant/15 bg-surface/72 p-3 shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur-xl">
+          {isWaitingForAttachments && (
+            <div className="mb-3 flex items-center gap-3 rounded-[18px] border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-on-surface-variant">
+              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+              <span>Đang tải tệp lên. Vui lòng đợi hoàn tất trước khi gửi.</span>
+            </div>
+          )}
           <div className="flex items-center justify-between gap-3 px-1 pb-2.5">
             <div className="flex items-center gap-2 text-[13px] text-on-surface-variant">
               <Paperclip className="w-4 h-4" />
@@ -711,7 +838,7 @@ export default function ChatComposer({
                       ) : attachment.uploadStatus === 'uploaded' ? (
                         <span className="text-green-600">Đã đọc xong ✓</span>
                       ) : attachment.uploadStatus === 'failed' ? (
-                        <span className="text-error">Lỗi đọc</span>
+                        <span className="text-error">{attachment.errorMessage || 'Lỗi đọc'}</span>
                       ) : (
                         <span className="text-on-surface-variant">{attachment.kind === 'image' ? 'Ảnh' : attachment.typeLabel} • {formatFileSize(attachment.file.size)}</span>
                       )}
@@ -969,7 +1096,7 @@ export default function ChatComposer({
           <button
             className="ml-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-container text-on-primary-fixed hover:opacity-90 transition-opacity active:scale-95 disabled:grayscale disabled:opacity-50 disabled:pointer-events-none"
             type="submit"
-            disabled={!value.trim() || disabled || isUploading || !!retryingAttachmentId}
+            disabled={!value.trim() || disabled || isUploading || !!retryingAttachmentId || hasFailedAttachments}
           >
             <ArrowRight className="w-5 h-5" />
           </button>
@@ -983,7 +1110,7 @@ export default function ChatComposer({
           </span>
         </div>
       )}
-      {failedAttachments.length > 0 && (
+      {hasFailedAttachments && (
         <div className="mt-2 flex items-center gap-2 px-2 text-[11px] text-error font-medium">
           <span>{failedAttachments.length} tệp tải lỗi. Bấm "Thử lại" ngay trên chip để tải lại.</span>
         </div>

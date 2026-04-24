@@ -222,12 +222,20 @@ def _clean_extras(extras: Optional[str]) -> Optional[str]:
 def estimate_tokens(text: str) -> int:
     """
     Ước lượng số token (rule-of-thumb):
-    1 token ≈ 4 chars (English) / 2–3 chars (Vietnamese)
-    → dùng trung bình 3.5 cho an toàn
+    Tiếng Việt dày hơn tiếng Anh — trung bình ~3 chars/token (so với 4 cho English).
+    Dùng ÷3.0 để an toàn, tránh underestimate và gặp lỗi 413 từ Groq.
     """
     if not text:
         return 0
-    return int(len(text) / 3.5)
+    return int(len(text) / 3.0)
+
+# Safe user-input budget:
+#   Groq limit: 12,000 tokens total
+#   RAG overhead (5 legal chunks + system prompt): ~4,000
+#   Response allocation (max_tokens):              ~4,096
+#   ──────────────────────────────────────────  ──────
+#   Available for user input (query + extras + files):  3,500  (buffer ~400)
+USER_TOKEN_LIMIT = 3500
 class PromptAPI:
     """
     API layer chính. Khởi tạo một lần, dùng nhiều lần.
@@ -326,11 +334,11 @@ class PromptAPI:
         # Token validation (Limit: 5000)
         total_text = query + (resolved_extras or "")
         total_tokens = estimate_tokens(total_text)
-        if total_tokens > 5000:
+        if total_tokens > USER_TOKEN_LIMIT:
             return {
                 "status": "error",
                 "mode": "draft",
-                "error": f"Tổng đầu vào quá dài (~{total_tokens} tokens). Giới hạn tối đa là 5000 tokens.",
+                "error": f"Tổng đầu vào quá dài (~{total_tokens} tokens). Giới hạn tối đa là {USER_TOKEN_LIMIT} tokens.",
                 "meta": {"query": query, "extras": resolved_extras, "elapsed_s": 0}
             }
 
@@ -466,11 +474,11 @@ class PromptAPI:
         # Token validation (Limit: 5000)
         total_text = query + (resolved_extras or "")
         total_tokens = estimate_tokens(total_text)
-        if total_tokens > 5000:
+        if total_tokens > USER_TOKEN_LIMIT:
             return {
                 "status": "error",
                 "mode": "legal_qa",
-                "error": f"Tổng đầu vào quá dài (~{total_tokens} tokens). Giới hạn tối đa là 5000 tokens.",
+                "error": f"Tổng đầu vào quá dài (~{total_tokens} tokens). Giới hạn tối đa là {USER_TOKEN_LIMIT} tokens.",
                 "meta": {"query": query, "extras": resolved_extras, "elapsed_s": 0}
             }
 
@@ -552,10 +560,10 @@ class PromptAPI:
 
         total_text = query + (resolved_extras or "")
         total_tokens = estimate_tokens(total_text)
-        if total_tokens > 5000:
+        if total_tokens > USER_TOKEN_LIMIT:
             yield {
                 "type": "error",
-                "error": f"Tổng đầu vào quá dài (~{total_tokens} tokens). Giới hạn tối đa là 5000 tokens.",
+                "error": f"Tổng đầu vào quá dài (~{total_tokens} tokens). Giới hạn tối đa là {USER_TOKEN_LIMIT} tokens.",
                 "meta": {"query": query, "extras": resolved_extras, "elapsed_s": 0},
             }
             return

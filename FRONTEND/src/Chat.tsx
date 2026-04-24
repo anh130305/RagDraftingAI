@@ -33,6 +33,14 @@ import {
   writeChatProcessingState,
 } from './lib/chatActivityStore';
 
+type PreviewFileState = {
+  name: string;
+  url?: string;
+  fileType?: string | null;
+  isLoading?: boolean;
+  error?: string | null;
+};
+
 export default function Chat() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
@@ -90,8 +98,9 @@ export default function Chat() {
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [statusText, setStatusText] = useState('');
   // File preview state
-  const [previewFile, setPreviewFile] = useState<{ name: string; url: string; fileType?: string | null } | null>(null);
+  const [previewFile, setPreviewFile] = useState<PreviewFileState | null>(null);
   const [lookingUpFile, setLookingUpFile] = useState(false);
+  const lookupAbortRef = useRef<{ aborted: boolean }>({ aborted: false });
   const pollingIntervalRef = useRef<number | null>(null);
   const pollingRetryRef = useRef(0);
   const pollingInFlightRef = useRef(false);
@@ -172,16 +181,19 @@ export default function Chat() {
 
   // Look up file URL from DB and open preview
   const handleFileChipClick = async (fileName: string) => {
-    if (lookingUpFile) return;
     if (!sessionId) {
       showToast('Không xác định được phiên chat hiện tại để tìm tệp.', 'warning');
       return;
     }
 
+    // Cancel any previous in-flight lookup before starting a new one
+    lookupAbortRef.current.aborted = true;
+    const abortToken = { aborted: false };
+    lookupAbortRef.current = abortToken;
+
+    setPreviewFile({ name: fileName, isLoading: true, error: null });
     setLookingUpFile(true);
     try {
-      // Search only documents attached to this chat session.
-      const docs = await api.listDocuments(0, 100, sessionId);
       const normalize = (value: string) => value.trim().toLowerCase();
       const stripExt = (value: string) => value.replace(/\.[^/.]+$/, '');
       const safeDecode = (value: string) => {
@@ -195,38 +207,73 @@ export default function Chat() {
       const target = normalize(fileName);
       const targetWithoutExt = stripExt(target);
 
-      // Find the document whose title or file_path matches the filename
-      const match = docs.items.find((d) => {
-        const title = normalize(d.title);
-        const titleWithoutExt = stripExt(title);
+      // Retry up to 10 times with 2s delay between attempts = ~20s total window.
+      // Covers the Cloudinary upload + DB write time in parallel send flow.
+      const MAX_RETRIES = 10;
+      const RETRY_DELAY_MS = 2000;
 
-        const filePathName = d.file_path.split('/').pop() || d.file_path;
-        const decodedPathName = normalize(safeDecode(filePathName));
-        const pathWithoutExt = stripExt(decodedPathName);
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
+        // Modal was closed — stop silently, do NOT update any state
+        if (abortToken.aborted) return;
 
-        const filePathRaw = normalize(d.file_path);
+        // Search only documents attached to this chat session.
+        const docs = await api.listDocuments(0, 100, sessionId);
 
-        return (
-          title === target ||
-          titleWithoutExt === targetWithoutExt ||
-          decodedPathName === target ||
-          pathWithoutExt === targetWithoutExt ||
-          filePathRaw.includes(target)
-        );
-      });
+        // Re-check after the await: user may have closed the modal while fetching
+        if (abortToken.aborted) return;
 
-      if (match) {
-        const url = api.resolveDocumentFileUrl(match.file_path);
-        setPreviewFile({ name: match.title, url, fileType: match.file_type });
-      } else {
-        showToast('Không tìm thấy tệp để xem trước. Vui lòng thử lại sau vài giây.', 'warning');
-        console.warn('File not found in document store:', fileName);
+        // Find the document whose title or file_path matches the filename
+        const match = docs.items.find((d) => {
+          const title = normalize(d.title);
+          const titleWithoutExt = stripExt(title);
+
+          const filePathName = d.file_path.split('/').pop() || d.file_path;
+          const decodedPathName = normalize(safeDecode(filePathName));
+          const pathWithoutExt = stripExt(decodedPathName);
+
+          const filePathRaw = normalize(d.file_path);
+
+          return (
+            title === target ||
+            titleWithoutExt === targetWithoutExt ||
+            decodedPathName === target ||
+            pathWithoutExt === targetWithoutExt ||
+            filePathRaw.includes(target)
+          );
+        });
+
+        if (match) {
+          const url = api.resolveDocumentFileUrl(match.file_path);
+          if (!abortToken.aborted) {
+            setPreviewFile({ name: match.title, url, fileType: match.file_type, isLoading: false, error: null });
+          }
+          return;
+        }
+
+        // Don't delay after the last attempt
+        if (attempt < MAX_RETRIES - 1) {
+          await new Promise((resolve) => window.setTimeout(resolve, RETRY_DELAY_MS));
+        }
+      }
+
+      // Lookup exhausted — only show error if modal is still open
+      if (!abortToken.aborted) {
+        setPreviewFile({
+          name: fileName,
+          isLoading: false,
+          error: 'Chưa tìm thấy tệp để xem trước. Vui lòng thử lại sau vài giây.',
+        });
       }
     } catch (err) {
-      showToast('Không thể tải liên kết xem trước tệp.', 'error');
+      if (!abortToken.aborted) {
+        setPreviewFile({ name: fileName, isLoading: false, error: 'Không thể tải liên kết xem trước tệp.' });
+        showToast('Không thể tải liên kết xem trước tệp.', 'error');
+      }
       console.error('Failed to look up file:', err);
     } finally {
-      setLookingUpFile(false);
+      if (!abortToken.aborted) {
+        setLookingUpFile(false);
+      }
     }
   };
 
@@ -376,7 +423,7 @@ export default function Chat() {
   };
 
   // ── Handle sending message ──────────────────────────────────
-  const handleSend = async (content: string, mode: 'qa' | 'generate' = 'qa', extras?: string) => {
+  const handleSend = async (content: string, mode: 'qa' | 'generate' = 'qa', extras?: string): Promise<string | undefined> => {
     if (activeBusySessionId) return;
 
     let currentId = sessionId;
@@ -387,7 +434,9 @@ export default function Chat() {
     setSubmittingSessionId(currentSessionKey);
     setStatusText('Đang gửi tin nhắn...');
 
-    const combinedContent = extras ? `${content}\n\n**Thông tin bổ sung:**\n${extras}` : content;
+    const combinedContent = mode === 'generate' && extras
+      ? `${content}\n\n**Thông tin bổ sung:**\n${extras}`
+      : content;
 
     try {
       // Nếu chưa có session, tạo session mới trước
@@ -533,7 +582,9 @@ export default function Chat() {
         }
         clearSendRuntimeState();
       } else {
-        const userMessage = await api.sendMessage(resolvedSessionId, content, mode, extras);
+        // Send combinedContent (includes file blocks & Thông tin bổ sung heading) so the DB
+        // stores the full display content — file chips will appear correctly in history on reload.
+        const userMessage = await api.sendMessage(resolvedSessionId, combinedContent, mode, extras);
         replaceOptimisticMessage(optimisticMessageId, userMessage);
 
         // Mode 'generate' (Drafting)
@@ -556,11 +607,11 @@ export default function Chat() {
               token_count: null,
               created_at: new Date().toISOString(),
             };
-            
+
             if (draftRes.document) {
-                assistantMsg.content += `\n\n[Tệp đính kèm: ${draftRes.document.title}]`;
+              assistantMsg.content += `\n\n[Tệp đính kèm: ${draftRes.document.title}]`;
             }
-            
+
             setMessages((prev) => [...prev, assistantMsg]);
             setStatusText('');
           }
@@ -573,6 +624,7 @@ export default function Chat() {
 
       // Cập nhật sidebar
       window.dispatchEvent(new Event('chat_activity_updated'));
+      return resolvedSessionId;
     } catch (err: any) {
       removeOptimisticMessage(optimisticMessageId);
       clearSendRuntimeState();
@@ -817,8 +869,8 @@ export default function Chat() {
                           <div className={`flex items-center gap-1 mt-2 transition-opacity ${isUser ? 'justify-end' : 'justify-start'}`}>
                             {/* Mode Indicator Badge */}
                             {(msg.mode === 'generate' || msg.mode === 'qa') && (
-                              <div className={`mr-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${msg.mode === 'generate' 
-                                ? 'bg-secondary/10 text-secondary border border-secondary/20' 
+                              <div className={`mr-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${msg.mode === 'generate'
+                                ? 'bg-secondary/10 text-secondary border border-secondary/20'
                                 : 'bg-primary/10 text-primary border border-primary/20'}`}>
                                 {msg.mode === 'generate' ? (
                                   <>
@@ -944,7 +996,12 @@ export default function Chat() {
 
       <DocumentPreviewModal
         file={previewFile}
-        onClose={() => setPreviewFile(null)}
+        onClose={() => {
+          // Cancel any in-flight lookup — prevents the ghost modal re-open after retry exhaustion
+          lookupAbortRef.current.aborted = true;
+          setLookingUpFile(false);
+          setPreviewFile(null);
+        }}
       />
       {/* Mobile BottomNavBar (Visible only on mobile) */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full glass-morphism border-t border-outline-variant/10 flex justify-around items-center h-20 px-4 z-50">
