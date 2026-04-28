@@ -1,6 +1,6 @@
 # RAG CLI — 02_quyet_dinh_bo_nhiem_cong_chuc
-# Run     : 20260429_003941
-# Thời điểm: 2026-04-29 00:41:00
+# Run     : 20260429_004723
+# Thời điểm: 2026-04-29 00:51:22
 # Form    : Form_02 (Quyết định)
 # Reranker: BẬT
 # Query   : Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý.
