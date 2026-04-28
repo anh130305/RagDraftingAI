@@ -1,0 +1,380 @@
+# RAG CLI — 05_bien_ban_hop_ky_luat
+# Run     : 20260428_223436
+# Thời điểm: 2026-04-28 22:35:24
+# Form    : Form_09 (Biên bản)
+# Reranker: BẬT
+# Query   : Soạn biên bản cuộc họp Hội đồng kỷ luật cán bộ, công chức của Sở Y tế tỉnh Phú Thọ. Cuộc họp xét hình thức kỷ luật đối v...
+======================================================================
+
+## [SYSTEM]
+
+# Skill: Chuyên viên Soạn thảo Văn bản Hành chính
+
+## VAI TRÒ
+Bạn là một Chuyên viên Hành chính Cao cấp tại Việt Nam, có chuyên môn sâu về soạn thảo
+và ban hành văn bản hành chính theo đúng quy định của Nghị định số 30/2020/NĐ-CP ngày
+05/3/2020 của Chính phủ về Công tác văn thư.
+
+## PHẠM VI
+- Soạn thảo văn bản hành chính chuẩn mực cho các cơ quan Nhà nước Việt Nam.
+- Am hiểu thể thức, kỹ thuật trình bày văn bản theo Nghị định 30/2020/NĐ-CP (Phụ lục I, II, III).
+- Nắm vững hệ thống văn bản quy phạm pháp luật Việt Nam:
+  Hiến pháp > Luật/Bộ luật > Pháp lệnh > Nghị định > Nghị quyết > Thông tư.
+
+## NGUYÊN TẮC SOẠN THẢO BẮT BUỘC
+
+### 1. Ưu tiên pháp lý
+Khi có sự chồng chéo giữa các văn bản pháp luật, luôn ưu tiên theo thứ bậc hiệu lực:
+Luật > Pháp lệnh > Nghị định > Nghị quyết.
+
+### 2. Kiểm tra hiệu lực
+Trước khi trích dẫn bất kỳ văn bản pháp luật nào từ LEGAL_CONTEXT, PHẢI tự đánh giá
+xem văn bản đó có còn hiệu lực tại thời điểm soạn thảo không (dựa trên ngày ban hành,
+thông tin hết hiệu lực nếu có). Nếu đã hết hiệu lực hoặc bị thay thế bởi văn bản mới
+hơn trong LEGAL_CONTEXT, chỉ trích dẫn văn bản đang có hiệu lực.
+
+### 3. Điền đầy đủ
+Mỗi FIELD_NAME trong danh sách placeholder phải có giá trị. Nếu thiếu thông tin, điền
+giá trị mẫu hợp lý (ví dụ: "[Tên cơ quan]").
+
+### 4. Văn phong hành chính
+Ngôn ngữ trang trọng, chính xác, khách quan; câu ngắn gọn, rõ ràng; đúng thuật ngữ pháp lý.
+
+### 5. Trích dẫn pháp lý
+Viện dẫn căn cứ bằng đúng số hiệu và tên điều khoản từ LEGAL_CONTEXT. Ưu tiên văn bản
+có thứ bậc cao hơn khi chồng chéo. Chỉ trích dẫn nếu thực sự cần thiết và liên quan
+trực tiếp. Nếu LEGAL_CONTEXT không cung cấp điều khoản phù hợp, không thêm căn cứ pháp
+lý ngoài ý muốn. Khi viết phần căn cứ, nếu có trường `effective_date`, bổ sung ngày theo
+dạng "[Tên văn bản] số [Số hiệu] ngày [DD/MM/YYYY]". Nếu không có thông tin ngày và
+không chắc chắn 100%, bỏ qua phần ngày — không được bịa đặt.
+
+### 6. Tính nhất quán
+Số liệu, ngày tháng, chức danh, tên cơ quan phải nhất quán xuyên suốt toàn bộ văn bản.
+
+### 7. Điền Ngày Tháng Năm
+Nếu biểu mẫu yêu cầu các trường NGAY, THANG, NAM thì phải tách riêng từng thành phần
+từ ngày ban hành. NGAY chỉ điền ngày (ví dụ: 05), THANG chỉ điền tháng (ví dụ: 01),
+NAM chỉ điền năm (ví dụ: 2025).
+
+## ĐỊNH DẠNG ĐẦU RA — BẮT BUỘC
+- Trả về DUY NHẤT một JSON object hợp lệ, không kèm bất kỳ text nào khác.
+- Không bọc trong code block markdown (``` ```).
+- Không thêm lời giải thích, tiêu đề, hay chú thích trước/sau JSON.
+- JSON có đúng 1 key ở cấp cao nhất:
+  - `"fields"`: object chứa TẤT CẢ placeholder đã điền, BAO GỒM cả các field
+    NOI_DUNG_* (thân văn bản tự do viết trực tiếp vào value của field tương ứng).
+══════════════════════════════════════════════════════════════════════
+## [USER]
+
+## YÊU CẦU SOẠN THẢO
+Soạn biên bản cuộc họp Hội đồng kỷ luật cán bộ, công chức của Sở Y tế tỉnh Phú Thọ. Cuộc họp xét hình thức kỷ luật đối với 01 chuyên viên vi phạm quy định pháp luật. Nội dung biên bản cần căn cứ theo Luật Cán bộ, công chức và Nghị định của Chính phủ quy định về xử lý kỷ luật cán bộ, công chức, viên chức.
+
+## YÊU CẦU BỔ SUNG
+Thời gian họp: 14h00 ngày 20/03/2025
+Địa điểm: Phòng họp Ban Giám đốc, Sở Y tế Phú Thọ
+Chủ trì: Giám đốc - BS. Nguyễn Đức Thắng
+Thư ký: Trưởng phòng TC-CB - Trần Thị Lan
+Kết luận: Hội đồng thống nhất kiến nghị hình thức Cảnh cáo.
+
+================================================================
+# Skill: Xử lý LEGAL_CONTEXT
+
+## MỤC ĐÍCH
+Block này hướng dẫn LLM cách đọc và sử dụng danh sách điều khoản pháp luật
+được truy xuất từ RAG trước khi soạn thảo hoặc trả lời.
+
+## TIÊU ĐỀ BLOCK
+```
+## LEGAL_CONTEXT — Điều khoản pháp luật liên quan
+(Thứ bậc hiệu lực: Luật > Pháp lệnh > Nghị định > Nghị quyết)
+```
+
+## BƯỚC BẮT BUỘC TRƯỚC KHI SỬ DỤNG
+Với mỗi văn bản trong danh sách dưới đây, hãy tự đánh giá hiệu lực pháp lý
+(còn hiệu lực / hết hiệu lực / không rõ).
+Chỉ trích dẫn những văn bản được đánh giá là CÒN HIỆU LỰC.
+Nếu không xác định được, ghi chú "(cần xác minh hiệu lực)" khi trích dẫn.
+
+## QUY TẮC ƯU TIÊN
+Khi có chồng chéo giữa các điều khoản, ưu tiên theo thứ bậc:
+Luật > Pháp lệnh > Nghị định > Nghị quyết.
+
+
+[1] ⚖️ [LUẬT — Hiệu lực cao nhất]
+    Số hiệu : 172/2025/NĐ-CP
+    Tên VB  : CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+    Điều    : Điều 20. Tổ chức họp Hội đồng kỷ luật công chức có hành vi vi phạm
+    Độ liên quan: 0.924
+
+[Điều 20. Tổ chức họp Hội đồng kỷ luật công chức có hành vi vi phạm]
+1. Chuẩn bị họp a) Chậm nhất là 05 ngày làm việc trước ngày tổ chức cuộc họp của Hội đồng kỷ luật, giấy triệu tập họp phải được gửi tới công chức có hành vi vi phạm. Trường hợp công chức có hành vi vi phạm vắng mặt nhưng có giấy đề nghị tổ chức cuộc họp thì Hội đồng kỷ luật vẫn tiến hành họp. Trường hợp công chức có hành vi vi phạm vắng mặt ở cuộc họp theo giấy triệu tập lần thứ 2 thì Hội đồng kỷ luật vẫn tiến hành họp; b) Hội đồng kỷ luật có thể mời đại diện của tổ chức chính trị, tổ chức chính trị - xã hội của cơ quan, tổ chức, đơn vị nơi công chức có hành vi vi phạm đang công tác; đại diện cơ quan, tổ chức, đơn vị, cá nhân liên quan dự họp. Người được mời dự họp có quyền phát biểu ý kiến và đề xuất hình thức kỷ luật nhưng không được bỏ phiếu về hình thức kỷ luật; c) Công chức được cử ghi biên bản cuộc họp của Hội đồng kỷ luật có nhiệm vụ chuẩn bị tài liệu, hồ sơ liên quan đến việc xử lý kỷ luật, ghi biên bản cuộc họp của Hội đồng kỷ luật; d) Hồ sơ xử lý kỷ luật trình Hội đồng kỷ luật gồm: bản tự kiểm điểm, trích ngang sơ yếu lý lịch của công chức, biên bản cuộc họp kiểm điểm của cơ quan, tổ chức, đơn vị sử dụng công chức và các tài liệu khác có liên quan. 2. Trình tự họp a) Chủ tịch Hội đồng kỷ luật tuyên bố lý do, giới thiệu các thành viên tham dự; b) Công chức được cử ghi biên bản cuộc họp của Hội đồng kỷ luật đọc trích ngang sơ yếu lý lịch của công chức có hành vi vi phạm và các tài liệu khác có liên quan; c) Công chức có hành vi vi phạm đọc bản tự kiểm điểm; Trường hợp công chức có hành vi vi phạm vắng mặt nhưng có bản kiểm điểm thì công chức được cử ghi biên bản cuộc họp của Hội đồng kỷ luật đọc thay; trường hợp có mặt nhưng không làm bản tự kiểm điểm hoặc vắng mặt và không có bản kiểm điểm thì Hội
+hành vi vi phạm vắng mặt nhưng có bản kiểm điểm thì công chức được cử ghi biên bản cuộc họp của Hội đồng kỷ luật đọc thay; trường hợp có mặt nhưng không làm bản tự kiểm điểm hoặc vắng mặt và không có bản kiểm điểm thì Hội đồng kỷ luật tiến hành các trình tự còn lại của cuộc họp quy định tại khoản này; d) Công chức được cử ghi biên bản cuộc họp của Hội đồng kỷ luật đọc biên bản cuộc họp kiểm điểm; đ) Các thành viên Hội đồng kỷ luật và người tham dự cuộc họp thảo luận và phát biểu ý kiến; e) Công chức có hành vi vi phạm phát biểu ý kiến; nếu công chức có hành vi vi phạm không phát biểu ý kiến hoặc vắng mặt thì Hội đồng kỷ luật tiến hành các trình tự còn lại của cuộc họp quy định tại khoản này; g) Hội đồng kỷ luật bỏ phiếu về việc có kỷ luật hay không kỷ luật; trường hợp đa số phiếu kiến nghị kỷ luật [...]
+
+────────────────────────────────────────────────────────────
+
+[2] ⚖️ [LUẬT — Hiệu lực cao nhất]
+    Số hiệu : 172/2025/NĐ-CP
+    Tên VB  : CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+    Điều    : Điều 18. Hội đồng kỷ luật công chức
+    Độ liên quan: 0.891
+
+Điều 18. Hội đồng kỷ luật công chức
+1. Chậm nhất là 05 ngày làm việc kể từ khi nhận được báo cáo và biên bản cuộc họp kiểm điểm, cấp có thẩm quyền xử lý kỷ luật quyết định thành lập Hội đồng kỷ luật để tư vấn về việc áp dụng hình thức kỷ luật đối với công chức có hành vi vi phạm, trừ các trường hợp quy định tại khoản 3 Điều này.
+ 2. Nguyên tắc làm việc của Hội đồng kỷ luật
+ a) Hội đồng kỷ luật họp khi có đủ 03 thành viên tham dự;
+ b) Hội đồng kỷ luật kiến nghị áp dụng hình thức kỷ luật thông qua bỏ phiếu kín;
+ c) Việc họp Hội đồng kỷ luật phải được lập thành biên bản, trong đó thể hiện rõ ý kiến của các thành viên dự họp và kết quả bỏ phiếu kiến nghị hình thức kỷ luật;
+ d) Hội đồng kỷ luật tự giải thể sau khi hoàn thành nhiệm vụ.
+ 3. Không thành lập Hội đồng kỷ luật đối với trường hợp quy định tại khoản 3 Điều 16 Nghị định này.
+
+────────────────────────────────────────────────────────────
+
+[3] ⚖️ [LUẬT — Hiệu lực cao nhất]
+    Số hiệu : 48/2005/QH11
+    Tên VB  : THỰC HÀNH TIẾT KIỆM, CHỐNG LÃNG PHÍ
+    Điều    : Điều 82. Hình thức xử lý kỷ luật và thẩm quyền xử lý kỷ luật
+    Độ liên quan: 0.746
+
+Điều 82. Hình thức xử lý kỷ luật và thẩm quyền xử lý kỷ luật
+1. Cán bộ, công chức, viên chức có hành vi vi phạm quy định của Luật này thì tuỳ theo tính chất, mức độ vi phạm mà bị xử lý kỷ luật bằng một trong các hình thức sau đây: a) Khiển trách; b) Cảnh cáo; c) Hạ bậc lương; d) Hạ ngạch; đ) Cách chức; e) Buộc thôi việc. 2. Thẩm quyền áp dụng hình thức xử lý kỷ luật đối với cán bộ, công chức, viên chức quy định tại khoản 1 Điều này thực hiện theo quy định của pháp luật về cán bộ, công chức.
+
+────────────────────────────────────────────────────────────
+
+[4] ⚖️ [LUẬT — Hiệu lực cao nhất]
+    Số hiệu : 71/2023/NĐ-CP
+    Tên VB  : CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM
+    Điều    : Điều 1. Sửa đổi, bổ sung một số điều của Nghị định số 112/2020/NĐ-CP ngày 18 tháng 9 năm 2020 về xử lý kỷ luật cán bộ, công chức, viên chức
+    Độ liên quan: 0.738
+
+[Điều 1. Sửa đổi, bổ sung một số điều của Nghị định số 112/2020/NĐ-CP ngày 18 tháng 9 năm 2020 về xử lý kỷ luật cán bộ, công chức, viên chức]
+1. Sửa đổi điểm a khoản 2 Điều 1 như sau: "a) Cán bộ trong các cơ quan hành chính nhà nước; Chủ tịch, Phó Chủ tịch Hội đồng nhân dân, Trưởng ban, Phó Trưởng ban của Hội đồng nhân dân (sau đây gọi chung là cán bộ);". 2. Sửa đổi khoản 1, khoản 2, khoản 4 và khoản 6; bổ sung khoản 9, khoản 10 và khoản 11 vào sau khoản 8 Điều 2 như sau: "1. Bảo đảm khách quan, công bằng; công khai, nghiêm minh; chính xác, kịp thời; đúng thẩm quyền, trình tự, thủ tục. 2. Mỗi hành vi vi phạm chỉ bị xử lý một lần bằng một hình thức kỷ luật. Trong cùng một thời điểm xem xét xử lý kỷ luật, nếu cán bộ, công chức, viên chức có từ 02 hành vi vi phạm trở lên thì xem xét, kết luận về từng hành vi vi phạm và quyết định chung bằng một hình thức cao nhất tương ứng với hành vi vi phạm. 4. Khi xem xét xử lý kỷ luật phải căn cứ vào nội dung, động cơ, tính chất, mức độ, hậu quả, nguyên nhân vi phạm, hoàn cảnh cụ thể; các tình tiết tăng nặng, giảm nhẹ; thái độ tiếp thu và sửa chữa; việc khắc phục khuyết điểm, vi phạm, hậu quả; các trường hợp khác theo quy định của Đảng và của pháp luật được tính là căn cứ để xem xét miễn kỷ luật hoặc giảm nhẹ trách nhiệm. 6. Cán bộ, công chức, viên chức bị xử lý kỷ luật về đảng thì trong thời hạn 30 ngày, kể từ ngày công bố quyết định kỷ luật về đảng, cơ quan, tổ chức, đơn vị phải thực hiện quy trình xử lý kỷ luật hành chính (nếu có), trừ trường hợp chưa xem xét xử lý kỷ luật quy định tại Điều 3 Nghị định này. Hình thức kỷ luật hành chính phải bảo đảm tương xứng với kỷ luật về đảng. Trường hợp bị xử lý kỷ luật về đảng bằng hình thức cao nhất thì cơ quan tham mưu về tổ chức, cán bộ báo cáo cấp có thẩm quyền xử lý kỷ luật xem xét, quyết định xử lý kỷ luật hành chính bằng hình thức cao nhất nếu thuộc một trong các trường hợp quy định tại Điều 13, Điều
+cao nhất thì cơ quan tham mưu về tổ chức, cán bộ báo cáo cấp có thẩm quyền xử lý kỷ luật xem xét, quyết định xử lý kỷ luật hành chính bằng hình thức cao nhất nếu thuộc một trong các trường hợp quy định tại Điều 13, Điều 14, Điều 19 Nghị định này; nếu không thuộc một trong các trường hợp nêu trên thì báo cáo cấp có thẩm quyền quyết định xử lý kỷ luật bằng hình thức cách chức đối với cán bộ, công chức, viên chức giữ chức vụ lãnh đạo, quản lý; hạ bậc lương đối với công chức không giữ chức vụ lãnh đạo, quản lý hoặc cảnh cáo đối với viên chức không giữ chức vụ quản lý. Trường hợp còn có ý kiến khác nhau về việc xác định hình thức kỷ luật hành chính tương xứng với hình thức xử lý kỷ luật về đảng cao nhất thì cấp có thẩm quyền quyết định việc thành lập Hội [...]
+
+================================================================
+## FORM_TEMPLATE — Biểu mẫu và danh sách FIELD_NAME
+Form ID   : Form_09
+Loại VB   : Biên bản
+Mục đích  : Ghi chép nội dung cuộc họp/hội nghị
+
+Field metadata (điền vào "fields"):
+    - CHU_VIET_TAT_CQ_BAN_HANH
+    - CO_QUAN_NHAN_1
+    - DIA_DIEM
+    - NGUOI_CHU_TRI
+    - SO_BIEN_BAN
+    - TEN_CQ_BAN_HANH
+    - TEN_CQ_CHU_QUAN
+    - TEN_CUOC_HOP
+    - THANH_PHAN_THAM_DU
+    - THOI_GIAN_BAT_DAU
+    - THOI_GIAN_KET_THUC
+    - THU_KY
+
+Field thân văn bản — CŨNG điền vào "fields" (KHÔNG tạo key riêng):
+    - NOI_DUNG_DIEN_BIEN
+
+────────────────────────────────────────────────────────────
+
+{{TEN_CQ_CHU_QUAN}} 
+**{{TEN_CQ_BAN_HANH}}**
+
+---
+
+Số: {{SO_BIEN_BAN}}/BB-{{CHU_VIET_TAT_CQ_BAN_HANH}}
+
+**CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM** 
+**Độc lập - Tự do - Hạnh phúc**
+
+---
+
+# BIÊN BẢN
+**{{TEN_CUOC_HOP}}**
+
+Thời gian bắt đầu: {{THOI_GIAN_BAT_DAU}} 
+
+Địa điểm: {{DIA_DIEM}} 
+
+Thành phần tham dự: {{THANH_PHAN_THAM_DU}} 
+
+Chủ trì (chủ tọa): {{NGUOI_CHU_TRI}} 
+
+Thư ký (người ghi biên bản): {{THU_KY}}
+
+---
+
+## Nội dung cuộc họp
+
+{{NOI_DUNG_DIEN_BIEN}}
+
+---
+
+Cuộc họp kết thúc vào {{THOI_GIAN_KET_THUC}} cùng ngày.
+
+---
+
+**THƯ KÝ**
+
+*(Ký, ghi rõ họ tên)*
+
+**{{THU_KY}}**
+
+---
+
+**CHỦ TỌA**
+
+*(Ký, đóng dấu)*
+
+**{{NGUOI_CHU_TRI}}**
+
+---
+
+**Nơi nhận:**
+
+- {{CO_QUAN_NHAN_1}} 
+- Lưu: VT, Hồ sơ
+
+================================================================
+## FEW_SHOT_EXAMPLES — Ví dụ tham khảo văn phong và cách điền
+
+
+[Ví dụ 1]
+Tình huống: Biên bản họp thống nhất phương án tổ chức tiêm chủng lưu động tại bệnh viện tuyến tỉnh ở Cần Thơ năm 2021.
+
+SỞ Y TẾ THÀNH PHỐ CẦN THƠ 
+**BỆNH VIỆN ĐA KHOA THÀNH PHỐ CẦN THƠ**
+
+---
+
+Số: 21/BB-BVĐKCT
+
+**CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM** 
+**Độc lập - Tự do - Hạnh phúc**
+
+---
+
+# BIÊN BẢN
+**Họp thống nhất phương án tổ chức tiêm chủng lưu động phòng COVID-19 tại các khu công nghiệp**
+
+Thời gian bắt đầu: 09 giờ 00 phút, ngày 08 tháng 11 năm 2021 
+
+Địa điểm: Phòng giao ban tầng 3, Bệnh viện Đa khoa thành phố Cần Thơ, số 04 Châu Văn Liêm, quận Ninh Kiều, thành phố Cần Thơ 
+
+Thành phần tham dự: Ban Giám đốc bệnh viện; lãnh đạo các khoa Khám bệnh, Kiểm soát nhiễm khuẩn, Dược, Điều dưỡng; đại diện Trung tâm Kiểm soát bệnh tật thành phố; tổng số 17 người 
+
+Chủ trì (chủ tọa): BSCKII Trần Quốc Bảo, Giám đốc Bệnh viện 
+
+Thư ký (người ghi biên bản): Nguyễn Thị Kim Ngân, Chuyên viên Phòng Kế hoạch tổng hợp
+
+---
+
+## Nội dung cuộc họp
+
+1. BSCKII Trần Quốc Bảo phát biểu khai mạc, nêu yêu cầu triển khai nhanh các đội tiêm lưu động để hỗ trợ công nhân tại Khu công nghiệp Trà Nóc và Hưng Phú.
+
+2. Khoa Dược báo cáo số lượng vắc xin được phân bổ trong đợt 1 là 12.000 liều, đủ đáp ứng 06 ngày tiêm; đề nghị bố trí tủ lạnh bảo quản chuyên dụng và phương tiện vận chuyển đạt chuẩn.
+
+3. Phòng Điều dưỡng đề xuất thành lập 04 đội tiêm lưu động, mỗi đội gồm 01 bác sĩ, 02 điều dưỡng, 01 nhân viên nhập liệu và 01 lái xe; thời gian triển khai từ ngày 10 đến ngày 15 tháng 11 năm 2021.
+
+4. Khoa Kiểm soát nhiễm khuẩn thống nhất phương án phân luồng, khu vực theo dõi sau tiêm 30 phút và chuẩn bị đầy đủ thuốc, trang thiết bị xử trí phản vệ theo quy định của Bộ Y tế.
+
+5. Kết luận: Giao Phòng Kế hoạch tổng hợp ban hành lịch tiêm chi tiết trong ngày 08 tháng 11 năm 2021; các khoa, phòng chuẩn bị nhân lực và vật tư hoàn thành trước 16 giờ ngày 09 tháng 11 năm 2021.
+
+---
+
+Cuộc họp kết thúc vào 11 giờ 10 phút cùng ngày.
+
+---
+
+**THƯ KÝ**
+
+*(Ký, ghi rõ họ tên)*
+
+**Nguyễn Thị Kim Ngân, Chuyên viên Phòng Kế hoạch tổng hợp**
+
+---
+
+**CHỦ TỌA**
+
+*(Ký, đóng dấu)*
+
+**BSCKII Trần Quốc Bảo, Giám đốc Bệnh viện**
+
+---
+
+**Nơi nhận:**
+
+- Sở Y tế thành phố Cần Thơ 
+- Lưu: VT, Hồ sơ
+
+================================================================
+# Skill: Yêu cầu JSON Đầu ra (Soạn thảo)
+
+## MỤC ĐÍCH
+Hướng dẫn LLM trả về đúng schema JSON cho chế độ soạn thảo văn bản hành chính.
+
+## TIÊU ĐỀ BLOCK
+```
+## YÊU CẦU JSON ĐẦU RA
+```
+
+## NỘI DUNG HƯỚNG DẪN
+Phân tích yêu cầu và trả về JSON theo schema sau.
+KHÔNG thêm bất kỳ text nào ngoài JSON:
+
+{
+  "fields": {
+    "CHU_VIET_TAT_CQ_BAN_HANH": "...",
+    "CO_QUAN_NHAN_1": "...",
+    "DIA_DIEM": "...",
+    "NGUOI_CHU_TRI": "...",
+    "SO_BIEN_BAN": "...",
+    "TEN_CQ_BAN_HANH": "...",
+    "TEN_CQ_CHU_QUAN": "...",
+    "TEN_CUOC_HOP": "...",
+    "THANH_PHAN_THAM_DU": "...",
+    "THOI_GIAN_BAT_DAU": "...",
+    "THOI_GIAN_KET_THUC": "...",
+    "THU_KY": "...",
+    "NOI_DUNG_DIEN_BIEN": "(nội dung thân văn bản — xem hướng dẫn cấu trúc quy tắc 2)"
+  }
+}
+
+## QUY TẮC BẮT BUỘC
+
+### Quy tắc 1 — Đủ fields
+`"fields"` phải chứa TẤT CẢ field đã liệt kê ở FORM_TEMPLATE, bao gồm cả field
+NOI_DUNG_*. KHÔNG tạo key nào khác ngoài `"fields"`.
+
+2. CÁC FIELD THÂN VĂN BẢN — điền trực tiếp vào key "fields":
+   • NOI_DUNG_DIEN_BIEN
+   Viết nội dung theo cấu trúc sau:
+   **Cấu trúc:**
+   1. Thành phần tham dự (chủ trì, thư ký, đại biểu).
+   2. Nội dung diễn biến / ý kiến các bên.
+   3. Kết luận / thống nhất / cam kết.
+   4. Chữ ký các bên (nếu cần).
+   Ghi theo thứ tự thời gian, khách quan, trung thực.
+   ---
+   KHÔNG tạo key riêng ngoài "fields" cho các field này.
+
+### Quy tắc 3 — Kiểu dữ liệu
+Mỗi value trong `"fields"` là string đơn — không lồng object/array.
+
+### Quy tắc 4 — Không để null
+Không để value là null — dùng chuỗi rỗng `""` nếu không có thông tin.
+
+### Quy tắc 5 — Trích dẫn pháp lý trong NOI_DUNG_*
+Chỉ được dùng văn bản CÒN HIỆU LỰC từ LEGAL_CONTEXT.
+Ưu tiên: Luật > Pháp lệnh > Nghị định > Nghị quyết.
+
+### Quy tắc 6 — JSON hợp lệ
+JSON phải hợp lệ (RFC 8259): dấu phẩy và ngoặc kép đúng chuẩn.
+
+## CHECKLIST TỰ KIỂM TRA TRƯỚC KHI TRẢ VỀ
+- Đã đánh giá hiệu lực từng văn bản pháp luật trong LEGAL_CONTEXT chưa?
+- Có đủ tất cả field (kể cả NOI_DUNG_*) trong `"fields"` chưa?
+- Có key nào khác ngoài `"fields"` không? (Nếu có → xóa đi)
+- JSON có hợp lệ không?
+
+Nếu chưa đúng → sửa lại trước khi trả về.
+Trả về JSON ngay bây giờ:
