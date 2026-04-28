@@ -1,0 +1,39 @@
+RAG CLI SUMMARY — Run 20260428_223436
+Thời điểm     : 2026-04-28 22:35:40
+Reranker      : BẬT
+Legal top-k   : 4
+Examples top-k: 1
+Số run        : 1
+======================================================================
+
+[05_bien_ban_hop_ky_luat]
+  Form   : Form_09 (Biên bản)
+  Elapsed: 18.9s
+  Legal  : 4 điều khoản
+    - ? — Điều 20. Tổ chức họp Hội đồng kỷ luật công chức có hành vi vi phạm (score=0.924)
+    - ? — Điều 18. Hội đồng kỷ luật công chức (score=0.891)
+    - ? — Điều 82. Hình thức xử lý kỷ luật và thẩm quyền xử lý kỷ luật (score=0.746)
+    - ? — Điều 1. Sửa đổi, bổ sung một số điều của Nghị định số 112/2020/NĐ-CP ngày 18 tháng 9 năm 2020 về xử lý kỷ luật cán bộ, công chức, viên chức (score=0.738)
+  Examples: 1
+    - Biên bản họp thống nhất phương án tổ chức tiêm chủng lưu động tại bệnh viện tuyến tỉnh ở Cần Thơ năm 2021.
+  Files:
+    ✅ 05_bien_ban_hop_ky_luat__FULL.txt  (23.2 KB)
+    ✅ 05_bien_ban_hop_ky_luat__USER.txt  (19.7 KB)
+    ✅ 05_bien_ban_hop_ky_luat__SYSTEM.txt  (3.7 KB)
+    ✅ 05_bien_ban_hop_ky_luat__RAW.json  (1.3 KB)
+    ✅ 05_bien_ban_hop_ky_luat__PARSED.json  (1.3 KB)
+    ✅ 05_bien_ban_hop_ky_luat__NOI_DUNG.md  (0.0 KB)
+
+======================================================================
+HƯỚNG DẪN SỬ DỤNG FILE OUTPUT:
+
+Cách 1 — ChatGPT / Gemini (web chat thông thường):
+  → Mở __FULL.txt → Copy toàn bộ → Paste vào ô chat → Gửi
+
+Cách 2 — Gemini Advanced (System Instruction):
+  → Dán __SYSTEM.txt vào 'System Instructions'
+  → Dán __USER.txt vào ô chat → Gửi
+
+Cách 3 — ChatGPT (Custom Instructions):
+  → Settings → Custom Instructions → dán __SYSTEM.txt
+  → Dán __USER.txt vào ô chat → Gửi

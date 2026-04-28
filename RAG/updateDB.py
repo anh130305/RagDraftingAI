@@ -1073,7 +1073,7 @@ def get_updater(**kwargs) -> DocumentUpdater:
 # ============================================================
 # CLI
 # ============================================================
-def _run_ingest_interactive(updater: "DocumentUpdater", file_path: str, ministry: str) -> None:
+def _run_ingest_interactive(updater: "DocumentUpdater", file_path: str, ministry: str, rebuild_bm25: bool = False) -> None:
     """
     Ingest văn bản OCR từ file với flow giữ nguyên logic notebook Cell 2b + Cell 10:
       1. Load file → hiển thị preview
@@ -1203,6 +1203,9 @@ def _run_ingest_interactive(updater: "DocumentUpdater", file_path: str, ministry
         return
 
     # ── BƯỚC 6: Rebuild BM25 ─────────────────────────────────────────────────
+    if not rebuild_bm25:
+        print("\nℹ️  ingest thành công, nhưng rebuild_bm25=False — bạn cần gọi rebuild_bm25() thủ công sau.")
+        return
     upserted = report["upsert_result"].get("upserted", 0)
     if upserted == 0 and deleted_total == 0:
         print("\nℹ️  Không có thay đổi thực sự — bỏ qua rebuild BM25.")
