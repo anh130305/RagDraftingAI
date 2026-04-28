@@ -30,6 +30,7 @@ load_dotenv()
 _USE_COLOR = sys.stdout.isatty() and os.name != "nt" or (
     os.name == "nt" and os.environ.get("WT_SESSION")  # Windows Terminal
 )
+disable_llm = False
 
 def _c(code: str, text: str) -> str:
     return f"\033[{code}m{text}\033[0m" if _USE_COLOR else text
@@ -89,7 +90,7 @@ W            = 64   # độ rộng box
 LLM_CONFIG = {
     "groq_model"      : os.environ.get("LLM_MODEL", "llama-3.3-70b-versatile"),
     "openai_model"    : os.environ.get("LLM_MODEL", "gpt-4o-mini"),
-    "max_tokens"      : 4096,
+    "max_tokens"      : 9012,
     "temperature"     : 0.1,   # thấp để JSON ổn định
 }
 
@@ -103,6 +104,7 @@ _groq_session: Dict[str, List[Dict[str, str]]] = {}
 def _call_llm_api(
     messages: List[Dict[str, str]],
     state: "SessionState",
+    disabled = disable_llm
 ) -> Optional[str]:
     """
     Gọi LLM API và trả về raw text response (JSON string từ LLM).
@@ -120,6 +122,11 @@ def _call_llm_api(
         Raw string từ LLM, hoặc None nếu bỏ qua
     """
     import hashlib
+
+    if disabled:
+        warn("LLM API calls are currently DISABLED (for testing prompt generation without hitting API).")
+        warn("Set disabled=False in _call_llm_api() to enable actual API calls.")
+        return None
 
     groq_key      = os.environ.get("GROQ_API_KEY", "")
     openai_key    = os.environ.get("OPENAI_API_KEY", "")
@@ -229,7 +236,7 @@ TEST_QUERIES: List[Dict] = [
             "đúng quy định của Luật và các Nghị định hướng dẫn thi hành."
         ),
         "extra": (
-            "Ngày ký: 05/01/2025\n"
+            "Ngày ký: 05/01/2026\n"
             "Người ký: Cục trưởng Đặng Thanh Tùng\n"
             "Số công văn: 12/VTLT-NV"
         ),
@@ -239,15 +246,14 @@ TEST_QUERIES: List[Dict] = [
         "label": "Quyết định — Bổ nhiệm công chức (theo Nghị định)",
         "form" : "Form_02",
         "query": (
-            "Soạn quyết định bổ nhiệm ông Nguyễn Văn Hùng giữ chức vụ Trưởng phòng Hành chính "
-            "- Tổng hợp thuộc Sở Nội vụ tỉnh Bình Dương. Trong phần căn cứ pháp lý, yêu cầu "
-            "viện dẫn Luật Cán bộ, công chức và Nghị định của Chính phủ quy định về tuyển dụng, "
-            "sử dụng và quản lý công chức."
+            "Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý."
         ),
         "extra": (
-            "Ngày ký quyết định: 20/01/2025\n"
-            "Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai\n"
-            "Số quyết định: 45/QĐ-SNV"
+            "Cơ quan ban hành: Sở Nội vụ tỉnh Bình Dương.\n"
+            "Số quyết định: 45/QĐ-SNV. Ngày ký: 20/01/2026.\n"
+            "Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai.\n"
+            "Đối tượng bổ nhiệm: Ông Nguyễn Văn Hùng.\n"
+            "Chức vụ bổ nhiệm: Trưởng phòng Hành chính - Tổng hợp."
         ),
     },
     {
@@ -257,10 +263,10 @@ TEST_QUERIES: List[Dict] = [
         "query": (
             "Soạn giấy mời họp Ban Giám đốc và Trưởng các phòng ban tham dự Hội nghị phổ biến, "
             "quán triệt các điểm mới của Luật Đất đai và các Nghị định hướng dẫn thi hành "
-            "do Sở Tài nguyên và Môi trường tổ chức. Cuộc họp diễn ra lúc 8h00 ngày 15/07/2025."
+            "do Sở Tài nguyên và Môi trường tổ chức. Cuộc họp diễn ra lúc 8h00 ngày 15/07/2026."
         ),
         "extra": (
-            "Ngày phát hành giấy mời: 10/07/2025\n"
+            "Ngày phát hành giấy mời: 10/07/2026\n"
             "Người ký: Giám đốc Phạm Quốc Bảo\n"
             "Số giấy mời: 32/GM-STNMT\n"
             "Địa điểm: Phòng họp tầng 3, Sở TNMT"
@@ -277,7 +283,7 @@ TEST_QUERIES: List[Dict] = [
             "Nghị quyết của Ủy ban Thường vụ Quốc hội và pháp luật hiện hành."
         ),
         "extra": (
-            "Ngày trình: 15/03/2025\n"
+            "Ngày trình: 15/03/2026\n"
             "Người ký: Chủ tịch UBND tỉnh - Lê Văn A\n"
             "Số tờ trình: 18/TTr-UBND"
         ),
@@ -287,17 +293,21 @@ TEST_QUERIES: List[Dict] = [
         "label": "Biên bản — Họp xét kỷ luật công chức",
         "form" : "Form_09",
         "query": (
-            "Soạn biên bản cuộc họp Hội đồng kỷ luật cán bộ, công chức của Sở Y tế tỉnh Phú Thọ. "
-            "Cuộc họp xét hình thức kỷ luật đối với 01 chuyên viên vi phạm quy định pháp luật. "
-            "Nội dung biên bản cần căn cứ theo Luật Cán bộ, công chức và Nghị định của Chính phủ "
-            "quy định về xử lý kỷ luật cán bộ, công chức, viên chức."
+            "Soạn thảo biên bản họp Hội đồng kỷ luật công chức."
         ),
         "extra": (
-            "Thời gian họp: 14h00 ngày 20/03/2025\n"
-            "Địa điểm: Phòng họp Ban Giám đốc, Sở Y tế Phú Thọ\n"
-            "Chủ trì: Giám đốc - BS. Nguyễn Đức Thắng\n"
-            "Thư ký: Trưởng phòng TC-CB - Trần Thị Lan\n"
-            "Kết luận: Hội đồng thống nhất kiến nghị hình thức Cảnh cáo."
+            "Cơ quan: Sở Y tế tỉnh Phú Thọ.\n"
+            "Đối tượng bị xem xét: Ông Nguyễn Văn Hải, chức vụ Chuyên viên phòng Tổ chức cán bộ.\n"
+            "Hành vi vi phạm: Vi phạm quy định về thời giờ làm việc, tự ý nghỉ việc không có lý do chính đáng "
+            "tổng cộng 05 ngày làm việc trong một tháng, gây ảnh hưởng đến tiến độ giải quyết hồ sơ công vụ.\n"
+            "Thời gian: 14h00 ngày 20/03/2026. Địa điểm: Phòng họp Ban Giám đốc Sở Y tế Phú Thọ.\n"
+            "Hội đồng kỷ luật: \n"
+            "1. BS. Nguyễn Đức Thắng (Chủ tịch Hội đồng - Giám đốc Sở)\n"
+            "2. Bà Trần Thị Lan (Thư ký Hội đồng - Trưởng phòng TC-CB)\n"
+            "3. Và 03 thành viên khác theo Quyết định số 45/QĐ-SYT ngày 10/03/2026.\n"
+            "Diễn biến chính: Hội đồng xác định hành vi của ông Hải là tái phạm sau khi đã bị nhắc nhở bằng văn bản. "
+            "Ông Hải thừa nhận khuyết điểm và hứa sửa chữa. \n"
+            "Kết quả: Hội đồng tiến hành bỏ phiếu kín. Kết quả 05/05 phiếu (100%) thống nhất kiến nghị hình thức Cảnh cáo."
         ),
     },
     {
@@ -311,7 +321,7 @@ TEST_QUERIES: List[Dict] = [
             "những tồn tại, hạn chế và đề xuất, kiến nghị."
         ),
         "extra": (
-            "Ngày báo cáo: 20/12/2024\n"
+            "Ngày báo cáo: 20/12/2025d\n"
             "Người ký: Chủ tịch UBND huyện - Đặng Văn Cường\n"
             "Số báo cáo: 156/BC-UBND"
         ),

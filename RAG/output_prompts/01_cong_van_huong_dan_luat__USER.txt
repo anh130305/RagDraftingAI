@@ -1,0 +1,307 @@
+# RAG CLI — 01_cong_van_huong_dan_luat
+# Run     : 20260428_235022
+# Thời điểm: 2026-04-28 23:51:14
+# Form    : Form_05 (Công văn)
+# Reranker: BẬT
+# Query   : Soạn công văn của Cục Văn thư và Lưu trữ Nhà nước gửi các Bộ, cơ quan ngang Bộ về việc hướng dẫn triển khai thi hành Luậ...
+======================================================================
+
+## YÊU CẦU SOẠN THẢO
+Soạn công văn của Cục Văn thư và Lưu trữ Nhà nước gửi các Bộ, cơ quan ngang Bộ về việc hướng dẫn triển khai thi hành Luật Lưu trữ mới. Yêu cầu các cơ quan, tổ chức khẩn trương rà soát, cập nhật quy chế công tác văn thư, lưu trữ nội bộ đảm bảo đúng quy định của Luật và các Nghị định hướng dẫn thi hành.
+
+## YÊU CẦU BỔ SUNG
+Ngày ký: 05/01/2026
+Người ký: Cục trưởng Đặng Thanh Tùng
+Số công văn: 12/VTLT-NV
+
+================================================================
+# Skill: Xử lý LEGAL_CONTEXT
+
+## MỤC ĐÍCH
+Block này hướng dẫn LLM cách đọc và sử dụng danh sách điều khoản pháp luật
+được truy xuất từ RAG trước khi soạn thảo hoặc trả lời.
+
+## TIÊU ĐỀ BLOCK
+```
+## LEGAL_CONTEXT — Điều khoản pháp luật liên quan
+(Thứ bậc hiệu lực: Luật > Pháp lệnh > Nghị định > Nghị quyết)
+```
+
+## BƯỚC BẮT BUỘC TRƯỚC KHI SỬ DỤNG
+Với mỗi văn bản trong danh sách dưới đây, hãy tự đánh giá hiệu lực pháp lý
+(còn hiệu lực / hết hiệu lực / không rõ).
+Chỉ trích dẫn những văn bản được đánh giá là CÒN HIỆU LỰC.
+Nếu không xác định được, ghi chú "(cần xác minh hiệu lực)" khi trích dẫn.
+
+## QUY TẮC ƯU TIÊN
+Khi có chồng chéo giữa các điều khoản, ưu tiên theo thứ bậc:
+Luật > Pháp lệnh > Nghị định > Nghị quyết.
+
+
+[1] 
+    Số hiệu : 01/2011/QH13
+    Tên VB  : LƯU TRỮ
+    Điều    : Điều 1. Phạm vi điều chỉnh và đối tượng áp dụng
+    Độ liên quan: 0.842
+
+Điều 1. Phạm vi điều chỉnh và đối tượng áp dụng
+1. Luật này quy định về hoạt động lưu trữ; quyền và nghĩa vụ của cơ quan, tổ chức, cá nhân trong hoạt động lưu trữ; đào tạo, bồi dưỡng nghiệp vụ lưu trữ; hoạt động dịch vụ lưu trữ và quản lý về lưu trữ. 2. Luật này áp dụng đối với cơ quan nhà nước, tổ chức chính trị, tổ chức chính trị - xã hội, tổ chức chính trị xã hội - nghề nghiệp, tổ chức xã hội, tổ chức xã hội - nghề nghiệp, tổ chức kinh tế, đơn vị sự nghiệp, đơn vị vũ trang nhân dân (sau đây gọi chung là cơ quan, tổ chức) và cá nhân.
+
+────────────────────────────────────────────────────────────
+
+[2] 
+    Số hiệu : 111/2004/NĐ-CP
+    Tên VB  : CỦA CHÍNH PHỦ SỐ 111/2004/NĐ-CP NGÀY 08 THÁNG 4 NĂM 2004
+    Điều    : Điều 23. Trách nhiệm quản lý nhà nước về lưu trữ
+    Độ liên quan: 0.638
+
+[Điều 23. Trách nhiệm quản lý nhà nước về lưu trữ]
+1. Bộ Nội vụ chịu trách nhiệm trước Chính phủ thực hiện quản lý nhà nước về lưu trữ. Cục Văn thư và Lưu trữ nhà nước có trách nhiệm giúp Bộ trưởng Bộ Nội vụ thực hiện quản lý nhà nước về lưu trữ. 2. Các Bộ, cơ quan ngang Bộ, cơ quan thuộc Chính phủ thực hiện quản lý về lưu trữ đối với các cơ quan, tổ chức trực thuộc theo những nội dung sau: a) Xây dựng và chỉ đạo thực hiện kế hoạch phát triển lưu trữ của Bộ, ngành; b) Căn cứ quy định của pháp luật, ban hành, hướng dẫn và kiểm tra việc thực hiện các chế độ, quy định về lưu trữ đối với các cơ quan, tổ chức trực thuộc; c) Thực hiện thống kê về lưu trữ theo quy định; d) Quản lý thống nhất chuyên môn, nghiệp vụ lưu trữ đối với các cơ quan, tổ chức trực thuộc; đ) Tổ chức, chỉ đạo việc nghiên cứu, ứng dụng khoa học và công nghệ vào hoạt động lưu trữ; e) Tổ chức đào tạo, bồi dưỡng công chức, viên chức lưu trữ; quản lý công tác thi đua, khen thưởng trong hoạt động lưu trữ; g) Trực tiếp thu thập, bảo quản và tổ chức sử dụng tài liệu lưu trữ hình thành trong quá trình hoạt động của cơ quan; h) Tổ chức sơ kết, tổng kết về hoạt động lưu trữ. 3. Ủy ban nhân dân cấp tỉnh, cấp huyện thực hiện quản lý về lưu trữ trong phạm vi địa phương mình theo những nội dung sau: a) Xây dựng và chỉ đạo thực hiện kế hoạch phát triển lưu trữ ở địa phương; b) Căn cứ quy định của pháp luật, ban hành, hướng dẫn và kiểm tra việc thực hiện các chế độ, quy định về lưu trữ đối với các cơ quan, tổ chức ở địa phương; c) Thực hiện thống kê về lưu trữ theo quy định; d) Quản lý thống nhất chuyên môn, nghiệp vụ lưu trữ đối với các cơ quan, tổ chức ở địa phương; đ) Tổ chức, chỉ đạo việc nghiên cứu, ứng dụng khoa học và công nghệ trong hoạt động lưu trữ; e) Tổ chức đào tạo, bồi dưỡng công chức, viên chức lưu trữ; quản lý công tác thi đua, khen thưởng trong hoạt
+cơ quan, tổ chức ở địa phương; đ) Tổ chức, chỉ đạo việc nghiên cứu, ứng dụng khoa học và công nghệ trong hoạt động lưu trữ; e) Tổ chức đào tạo, bồi dưỡng công chức, viên chức lưu trữ; quản lý công tác thi đua, khen thưởng trong hoạt động lưu trữ; g) Trực tiếp thu thập, bảo quản và tổ chức sử dụng tài liệu lưu trữ hình thành trong quá trình hoạt động của các cơ quan, tổ chức thuộc nguồn nộp lưu tài liệu vào lưu trữ lịch sử của địa phương; h) Tổ chức sơ kết, tổng kết về hoạt động lưu trữ. 4. Mỗi cơ quan, tổ chức phải có lưu trữ hiện hành để quản lý hồ sơ, tài liệu lưu trữ của mình. Lưu trữ hiện hành có nhiệm vụ: a) Hướng dẫn cán bộ, công chức, viên chức trong cơ quan, tổ chức lập hồ sơ và chuẩn bị hồ sơ, tài liệu giao nộp vào lưu trữ hiện hành; b) Thu thập hồ sơ, tài liệu đến hạn nộp lưu vào lưu trữ hiện hành; c) Phân loại, chỉnh [...]
+
+────────────────────────────────────────────────────────────
+
+[3] 
+    Số hiệu : 111/2004/NĐ-CP
+    Tên VB  : CỦA CHÍNH PHỦ SỐ 111/2004/NĐ-CP NGÀY 08 THÁNG 4 NĂM 2004
+    Điều    : Điều 14. Bảo quản tài liệu lưu trữ
+    Độ liên quan: 0.582
+
+Điều 14. Bảo quản tài liệu lưu trữ
+1. Tài liệu lưu trữ của cơ quan, tổ chức phải được bảo vệ, bảo quản an toàn trong kho lưu trữ. 2. Người đứng đầu cơ quan, tổ chức có trách nhiệm chỉ đạo thực hiện các quy định sau đây về bảo quản tài liệu lưu trữ: a) Xây dựng hoặc bố trí kho lưu trữ theo đúng tiêu chuẩn quy định; b) Thực hiện các biện pháp phòng, chống cháy, nổ; phòng, chống thiên tai; phòng gian, bảo mật đối với kho lưu trữ và tài liệu lưu trữ; c) Trang bị đầy đủ các thiết bị kỹ thuật, phương tiện bảo quản tài liệu lưu trữ; d) Duy trì nhiệt độ, độ ẩm, ánh sáng phù hợp với từng loại hình tài liệu lưu trữ; đ) Thực hiện các biện pháp phòng, chống côn trùng, nấm mốc, khử a-xít và các tác nhân khác gây hư hỏng tài liệu; e) Tu bổ, phục chế tài liệu lưu trữ bị hư hỏng hoặc có nguy cơ bị hư hỏng; g) Thực hiện chế độ bảo hiểm tài liệu lưu trữ đối với tài liệu lưu trữ đặc biệt quý, hiếm. 3. Tiêu chuẩn các loại kho lưu trữ do Bộ trưởng Bộ Nội vụ quy định. 4. Kỹ thuật bảo quản tài liệu lưu trữ được thực hiện theo hướng dẫn của Cục trưởng Cục Văn thư và Lưu trữ nhà nước.
+
+────────────────────────────────────────────────────────────
+
+[4] 
+    Số hiệu : 58/2014/NĐ-CP
+    Tên VB  : QUY ĐỊNH CHỨC NĂNG, NHIỆM VỤ, QUYỀN HẠN VÀ CƠ CẤU TỔ CHỨC CỦA BỘ NỘI VỤ
+    Điều    : Điều 2. Nhiệm vụ và quyền hạn
+    Độ liên quan: 0.510
+
+[Điều 2. Nhiệm vụ và quyền hạn]
+Bộ Nội vụ thực hiện các nhiệm vụ, quyền hạn theo quy định tại Nghị định số 36/2012/NĐ-CP ngày 18 tháng 4 năm 2012 của Chính phủ quy định chức năng, nhiệm vụ, quyền hạn và cơ cấu tổ chức của Bộ, cơ quan ngang Bộ và những nhiệm vụ, quyền hạn cụ thể sau đây: 1. Trình Chính phủ dự án luật, dự thảo nghị quyết của Quốc hội, dự án pháp lệnh, dự thảo nghị quyết của Ủy ban Thường vụ Quốc hội, dự thảo nghị quyết, nghị định của Chính phủ theo chương trình, kế hoạch xây dựng pháp luật hàng năm của Bộ đã được phê duyệt và các dự án, đề án theo sự phân công của Chính phủ, Thủ tướng Chính phủ; chiến lược, quy hoạch, kế hoạch phát triển dài hạn, năm năm, hàng năm và các dự án, công trình quan trọng quốc gia thuộc ngành, lĩnh vực do Bộ Nội vụ quản lý. 2. Trình Thủ tướng Chính phủ dự thảo quyết định, chỉ thị và các văn bản khác thuộc ngành, lĩnh vực do Bộ Nội vụ quản lý hoặc theo phân công. 3. Ban hành thông tư; quyết định, chỉ thị và các văn bản khác thuộc phạm vi quản lý nhà nước của Bộ; hướng dẫn, kiểm tra việc thực hiện các văn bản đó. 4. Chỉ đạo, hướng dẫn, kiểm tra và chịu trách nhiệm tổ chức thực hiện các văn bản quy phạm pháp luật, chiến lược, quy hoạch, kế hoạch phát triển dài hạn, năm năm, hàng năm và các dự án, công trình quan trọng quốc gia đã được ban hành hoặc phê duyệt thuộc phạm vi quản lý nhà nước của Bộ; thông tin, tuyên truyền, phổ biến, giáo dục pháp luật thuộc phạm vi quản lý nhà nước của Bộ. 5. Về tổ chức hành chính, sự nghiệp nhà nước: a) Trình Chính phủ đề án cơ cấu tổ chức của Chính phủ theo nhiệm kỳ Quốc hội; đề án, dự thảo nghị định của Chính phủ về thành lập mới, sáp nhập, hợp nhất, chia, tách, giải thể Bộ, cơ quan ngang Bộ, cơ quan thuộc Chính phủ; dự thảo nghị định quy định tổ chức các cơ quan chuyên môn thuộc Ủy ban nhân dân; dự thảo nghị định quy định việc phân cấp quản lý tổ chức bộ máy
+nhập, hợp nhất, chia, tách, giải thể Bộ, cơ quan ngang Bộ, cơ quan thuộc Chính phủ; dự thảo nghị định quy định tổ chức các cơ quan chuyên môn thuộc Ủy ban nhân dân; dự thảo nghị định quy định việc phân cấp quản lý tổ chức bộ máy hành chính, sự nghiệp nhà nước; b) Thẩm định các dự thảo nghị định của Chính phủ quy định chức năng, nhiệm vụ, quyền hạn và cơ cấu tổ chức của các Bộ, cơ quan ngang Bộ, cơ quan thuộc Chính phủ; thẩm định đề án thành lập, sáp nhập, giải thể, tổ chức lại tổng cục và tương đương do Bộ, cơ quan ngang Bộ trình Chính phủ; thẩm định dự thảo quyết định của Thủ tướng Chính phủ quy định chức năng, nhiệm vụ, quyền hạn và cơ cấu tổ chức của tổng cục và tương đương thuộc Bộ, cơ quan ngang Bộ; thẩm định đề án và dự thảo quyết định của Thủ tướng Chính phủ về việc thành lập, sáp nhập, giải thể, tổ chức lại các tổ chức hành chính, sự nghiệp nhà nước và các tổ chức [...]
+
+================================================================
+## FORM_TEMPLATE — Biểu mẫu và danh sách FIELD_NAME
+Form ID   : Form_05
+Loại VB   : Công văn
+Mục đích  : Giao dịch, trao đổi công việc hành chính
+
+Field metadata (điền vào "fields"):
+    - CHU_VIET_TAT_CQ_BAN_HANH
+    - CHU_VIET_TAT_DON_VI_SOAN_THAO
+    - CO_QUAN_CA_NHAN_NHAN_1
+    - CO_QUAN_CA_NHAN_NHAN_2
+    - DIA_CHI_CO_QUAN
+    - DIA_DANH
+    - HO_VA_TEN_NGUOI_KY
+    - NAM
+    - NGAY
+    - NOI_NHAN_KHAC
+    - QUYEN_HAN_CHUC_VU_NGUOI_KY
+    - SO_BAN_LUU
+    - SO_CONG_VAN
+    - SO_DIEN_THOAI
+    - SO_FAX
+    - TEN_CQ_BAN_HANH
+    - TEN_CQ_CHU_QUAN
+    - THANG
+    - THU_DIEN_TU
+    - TRANG_THONG_TIN_DIEN_TU
+    - TRICH_YEU_CONG_VAN
+
+Field thân văn bản — CŨNG điền vào "fields" (KHÔNG tạo key riêng):
+    - NOI_DUNG_CONG_VAN
+
+────────────────────────────────────────────────────────────
+
+{{TEN_CQ_CHU_QUAN}} 
+**{{TEN_CQ_BAN_HANH}}**
+
+---
+
+Số: {{SO_CONG_VAN}}/{{CHU_VIET_TAT_CQ_BAN_HANH}}-{{CHU_VIET_TAT_DON_VI_SOAN_THAO}} 
+V/v: {{TRICH_YEU_CONG_VAN}}
+
+**CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM** 
+**Độc lập - Tự do - Hạnh phúc**
+
+---
+
+{{DIA_DANH}}, ngày {{NGAY}} tháng {{THANG}} năm {{NAM}}
+
+**Kính gửi:**
+
+- {{CO_QUAN_CA_NHAN_NHAN_1}} 
+- {{CO_QUAN_CA_NHAN_NHAN_2}}
+
+{{NOI_DUNG_CONG_VAN}}
+
+---
+
+**Nơi nhận:**
+
+- Như trên 
+- {{NOI_NHAN_KHAC}} 
+- Lưu: VT, {{CHU_VIET_TAT_DON_VI_SOAN_THAO}} ({{SO_BAN_LUU}})
+
+**{{QUYEN_HAN_CHUC_VU_NGUOI_KY}}**
+
+*(Ký, đóng dấu)*
+
+**{{HO_VA_TEN_NGUOI_KY}}**
+
+---
+
+{{DIA_CHI_CO_QUAN}} 
+Email: {{THU_DIEN_TU}} 
+Website: {{TRANG_THONG_TIN_DIEN_TU}} 
+Điện thoại: {{SO_DIEN_THOAI}} 
+Fax: {{SO_FAX}}
+
+================================================================
+## FEW_SHOT_EXAMPLES — Ví dụ tham khảo văn phong và cách điền
+
+
+[Ví dụ 1]
+Tình huống: Sở Thông tin và Truyền thông Thừa Thiên Huế đề nghị các cơ quan nhà nước cập nhật danh mục dữ liệu mở năm 2022.
+
+ỦY BAN NHÂN DÂN TỈNH THỪA THIÊN HUẾ 
+**SỞ THÔNG TIN VÀ TRUYỀN THÔNG**
+
+---
+
+Số: 889/STTTT-CĐS 
+V/v: cập nhật danh mục dữ liệu mở của cơ quan nhà nước năm 2022
+
+**CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM** 
+**Độc lập - Tự do - Hạnh phúc**
+
+---
+
+Huế, ngày 25 tháng 7 năm 2022
+
+**Kính gửi:**
+
+- Các sở, ban, ngành thuộc Ủy ban nhân dân tỉnh Thừa Thiên Huế 
+- Ủy ban nhân dân các huyện, thị xã và thành phố Huế
+
+Thực hiện định hướng phát triển chính quyền số và tăng cường công khai, minh bạch dữ liệu phục vụ người dân, doanh nghiệp, Sở Thông tin và Truyền thông tỉnh Thừa Thiên Huế đề nghị các cơ quan, đơn vị rà soát, cập nhật danh mục dữ liệu mở thuộc phạm vi quản lý.
+
+Đề nghị thực hiện các nội dung sau:
+
+1. Rà soát các bộ dữ liệu hiện có, xác định dữ liệu đủ điều kiện công bố theo quy định của Nghị định số 47/2020/NĐ-CP ngày 09 tháng 4 năm 2020 của Chính phủ về quản lý, kết nối và chia sẻ dữ liệu số của cơ quan nhà nước.
+
+2. Cập nhật mô tả bộ dữ liệu, đơn vị quản lý, tần suất cập nhật, định dạng dữ liệu, mức độ sẵn sàng chia sẻ và phương thức khai thác.
+
+3. Ưu tiên công bố các dữ liệu liên quan đến thủ tục hành chính, quy hoạch, giáo dục, y tế, du lịch, giao thông, môi trường và các lĩnh vực có nhu cầu khai thác cao.
+
+4. Gửi danh mục dữ liệu mở cập nhật về Sở Thông tin và Truyền thông (qua Phòng Chuyển đổi số) trước ngày 10 tháng 8 năm 2022 để tổng hợp, tham mưu UBND tỉnh công bố.
+
+Trong quá trình thực hiện, nếu có khó khăn về chuẩn dữ liệu hoặc hạ tầng tích hợp, đề nghị liên hệ Phòng Chuyển đổi số để được hỗ trợ.
+
+---
+
+**Nơi nhận:**
+
+- Như trên 
+- UBND tỉnh Thừa Thiên Huế; Văn phòng UBND tỉnh 
+- Lưu: VT, CĐS (02)
+
+**GIÁM ĐỐC**
+
+*(Ký, đóng dấu)*
+
+**Nguyễn Xuân Sơn**
+
+---
+
+06 Lê Lợi, phường Vĩnh Ninh, thành phố Huế, tỉnh Thừa Thiên Huế 
+Email: [stttt@thuathienhue.gov.vn](mailto:stttt@thuathienhue.gov.vn) 
+Website: [https://stttt.thuathienhue.gov.vn](https://stttt.thuathienhue.gov.vn) 
+Điện thoại: 0234.3822655 
+Fax: 0234.3822788
+
+================================================================
+# Skill: Yêu cầu JSON Đầu ra (Soạn thảo)
+
+## MỤC ĐÍCH
+Hướng dẫn LLM trả về đúng schema JSON cho chế độ soạn thảo văn bản hành chính.
+
+## TIÊU ĐỀ BLOCK
+```
+## YÊU CẦU JSON ĐẦU RA
+```
+
+## NỘI DUNG HƯỚNG DẪN
+Phân tích yêu cầu và trả về JSON theo schema sau.
+KHÔNG thêm bất kỳ text nào ngoài JSON:
+
+{
+  "fields": {
+    "CHU_VIET_TAT_CQ_BAN_HANH": "...",
+    "CHU_VIET_TAT_DON_VI_SOAN_THAO": "...",
+    "CO_QUAN_CA_NHAN_NHAN_1": "...",
+    "CO_QUAN_CA_NHAN_NHAN_2": "...",
+    "DIA_CHI_CO_QUAN": "...",
+    "DIA_DANH": "...",
+    "HO_VA_TEN_NGUOI_KY": "...",
+    "NAM": "...",
+    "NGAY": "...",
+    "NOI_NHAN_KHAC": "...",
+    "QUYEN_HAN_CHUC_VU_NGUOI_KY": "...",
+    "SO_BAN_LUU": "...",
+    "SO_CONG_VAN": "...",
+    "SO_DIEN_THOAI": "...",
+    "SO_FAX": "...",
+    "TEN_CQ_BAN_HANH": "...",
+    "TEN_CQ_CHU_QUAN": "...",
+    "THANG": "...",
+    "THU_DIEN_TU": "...",
+    "TRANG_THONG_TIN_DIEN_TU": "...",
+    "TRICH_YEU_CONG_VAN": "...",
+    "NOI_DUNG_CONG_VAN": "(nội dung thân văn bản — xem hướng dẫn cấu trúc quy tắc 2)"
+  }
+}
+
+## QUY TẮC BẮT BUỘC
+
+### Quy tắc 1 — Đủ fields
+`"fields"` phải chứa TẤT CẢ field đã liệt kê ở FORM_TEMPLATE, bao gồm cả field
+NOI_DUNG_*. KHÔNG tạo key nào khác ngoài `"fields"`.
+
+2. CÁC FIELD THÂN VĂN BẢN — điền trực tiếp vào key "fields":
+   • NOI_DUNG_CONG_VAN
+   Viết nội dung theo cấu trúc sau:
+   **Cấu trúc:**
+   1. Căn cứ pháp lý (nếu có): trích đúng số hiệu từ LEGAL_CONTEXT —
+      chỉ trích dẫn văn bản còn hiệu lực.
+   2. Lý do / mục đích gửi văn bản.
+   3. Nội dung đề nghị / thông báo / báo cáo cụ thể (số liệu, thời gian, địa điểm...).
+   4. Đề nghị cơ quan nhận phối hợp / xem xét / giải quyết.
+   Kết thúc bằng: "[Tên CQ] trân trọng./." hoặc tương đương.
+   ---
+   KHÔNG tạo key riêng ngoài "fields" cho các field này.
+
+### Quy tắc 3 — Kiểu dữ liệu
+Mỗi value trong `"fields"` là string đơn — không lồng object/array.
+
+### Quy tắc 4 — Không để null
+Không để value là null — dùng chuỗi rỗng `""` nếu không có thông tin.
+
+### Quy tắc 5 — Trích dẫn pháp lý trong NOI_DUNG_*
+Chỉ được dùng văn bản CÒN HIỆU LỰC từ LEGAL_CONTEXT.
+Ưu tiên: Luật > Pháp lệnh > Nghị định > Nghị quyết.
+
+### Quy tắc 6 — JSON hợp lệ
+JSON phải hợp lệ (RFC 8259): dấu phẩy và ngoặc kép đúng chuẩn.
+
+## CHECKLIST TỰ KIỂM TRA TRƯỚC KHI TRẢ VỀ
+- Đã đánh giá hiệu lực từng văn bản pháp luật trong LEGAL_CONTEXT chưa?
+- Có đủ tất cả field (kể cả NOI_DUNG_*) trong `"fields"` chưa?
+- Có key nào khác ngoài `"fields"` không? (Nếu có → xóa đi)
+- JSON có hợp lệ không?
+
+Nếu chưa đúng → sửa lại trước khi trả về.
+Trả về JSON ngay bây giờ:
