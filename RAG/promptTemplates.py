@@ -122,7 +122,7 @@ def _format_legal_context(legal_chunks: List[Dict]) -> str:
         doc_name = meta.get("doc_name", meta.get("name", "N/A"))
         article  = meta.get("article", "")
         text     = chunk.get("text", "").strip()
-        badge    = _PRIORITY_BADGE.get(doc_type, f"[{doc_type}]")
+        # badge    = _PRIORITY_BADGE.get(doc_type, f"[{doc_type}]")
         score    = chunk.get("rerank_score", 0.0)
         eff_date = meta.get("effective_date", "")
         exp_date = meta.get("expiry_date", "")
@@ -134,7 +134,8 @@ def _format_legal_context(legal_chunks: List[Dict]) -> str:
             validity_note = f"\n    Có hiệu lực từ: {eff_date}"
 
         header = (
-            f"[{idx}] {badge}\n"
+            # f"[{idx}] {badge} \n"
+            f"[{idx}] \n"
             f"    Số hiệu : {doc_no}\n"
             f"    Tên VB  : {doc_name}\n"
             f"    Điều    : {article}"

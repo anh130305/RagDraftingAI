@@ -92,7 +92,7 @@ PARQUET_META_COLS = LEGAL_META_COLS  # giống nhau
 # Văn bản không được xoá tự động
 NEVER_REMOVE = {
     "30/2020/NĐ-CP", "01/2011/QH13", "80/2015/QH13", "15/2020/QH14",
-    "34/2016/NĐ-CP", "45/2019/QH14", "58/2014/QH13", "22/2008/QH12",
+    "34/2016/NĐ-CP", "45/2019/QH14", "58/2014/QH13",
     "58/2010/QH12", "138/2020/NĐ-CP", "115/2020/NĐ-CP", "61/2018/NĐ-CP",
     "34/2019/NĐ-CP", "76/2015/QH13", "77/2015/QH13", "36/2018/QH14",
     "02/2011/QH13", "03/2011/QH13",
@@ -1248,7 +1248,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--file", type=str, default="",
-        help="Đường dẫn tới file .txt chứa nội dung OCR (dùng cho --mode ingest)",
+        help="Đường dẫn file .txt (chứa văn bản OCR cho ingest, hoặc danh sách số hiệu cho delete)",
     )
     parser.add_argument(
         "--ministry", type=str, default="",
@@ -1292,13 +1292,53 @@ if __name__ == "__main__":
             print(f"   Chunks: {info['chunk_count']:,} | Điều: {info['article_count']}")
 
     elif args.mode == "delete":
-        if not args.so_hieu:
-            print("❌ Cần --so-hieu")
+        # TH1: Xoá hàng loạt từ file txt
+        if args.file:
+            file_path = Path(args.file)
+            if not file_path.exists():
+                print(f"❌ Không tìm thấy file: {args.file}")
+                sys.exit(1)
+            
+            # Đọc danh sách số hiệu từ file txt (mỗi dòng 1 số hiệu)
+            with open(file_path, "r", encoding="utf-8") as f:
+                so_hieu_list = [line.strip() for line in f if line.strip()]
+                
+            if not so_hieu_list:
+                print("❌ File rỗng hoặc không có dữ liệu hợp lệ.")
+                sys.exit(1)
+
+            print(f"\n🗑️ Chuẩn bị xoá {len(so_hieu_list)} văn bản từ file '{args.file}'...")
+            
+            # Gọi hàm batch_delete đã có sẵn trong class
+            df_result = updater.batch_delete(so_hieu_list, dry_run=args.dry_run)
+            prefix = "[DRY RUN] " if args.dry_run else ""
+            
+            # Tính toán tổng quan kết quả
+            total_found = df_result["found_chunks"].sum()
+            total_deleted = df_result["deleted"].sum()
+            protected_count = df_result["protected"].sum()
+            
+            print(f"\n{prefix}Hoàn tất xoá hàng loạt:")
+            print(f"  - Tổng số chunk tìm thấy: {total_found:,}")
+            print(f"  - Tổng số chunk đã xoá  : {total_deleted:,}")
+            if protected_count > 0:
+                print(f"  - Có {protected_count} văn bản nằm trong danh sách NEVER_REMOVE (được bảo vệ).")
+            
+            # In bảng chi tiết (tuỳ chọn)
+            print("\nChi tiết từng văn bản:")
+            print(df_result.to_string(index=False))
+
+        # TH2: Xoá 1 văn bản truyền trực tiếp
+        elif args.so_hieu:
+            result = updater.delete_doc(args.so_hieu, dry_run=args.dry_run)
+            prefix = "[DRY RUN] " if args.dry_run else ""
+            print(f"\n{prefix}Xoá '{args.so_hieu}': {len(result['found_ids'])} chunks tìm thấy, "
+                  f"{result['deleted_count']} đã xoá")
+        
+        # TH3: Không cung cấp input
+        else:
+            print("❌ Cần cung cấp --so-hieu (để xoá 1 VB) hoặc --file (để xoá nhiều VB từ danh sách)")
             sys.exit(1)
-        result = updater.delete_doc(args.so_hieu, dry_run=args.dry_run)
-        prefix = "[DRY RUN] " if args.dry_run else ""
-        print(f"\n{prefix}Xoá '{args.so_hieu}': {len(result['found_ids'])} chunks tìm thấy, "
-              f"{result['deleted_count']} đã xoá")
 
     elif args.mode == "rebuild":
         print("\n🔄 Rebuild BM25...")
