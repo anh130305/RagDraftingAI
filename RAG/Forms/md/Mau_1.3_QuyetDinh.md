@@ -46,7 +46,7 @@ Theo đề nghị của {{TEN_DON_VI_DE_NGHI}}.
 
 **Điều 1.** Ban hành kèm theo Quyết định này **{{TEN_VAN_BAN_KEM_THEO}}**.
 
-**Điều 2.** {{NOI_SUNG_TO_CHUC_THUC_HIEN}}.
+**Điều 2.** {{NOI_DUNG_TO_CHUC_THUC_HIEN}}.
 
 **Điều 3.** Quyết định này có hiệu lực kể từ ngày ký.
 

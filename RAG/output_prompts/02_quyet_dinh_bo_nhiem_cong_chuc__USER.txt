@@ -1,6 +1,6 @@
 # RAG CLI — 02_quyet_dinh_bo_nhiem_cong_chuc
-# Run     : 20260415_194821
-# Thời điểm: 2026-04-15 19:50:41
+# Run     : 20260428_210053
+# Thời điểm: 2026-04-28 21:03:06
 # Form    : Form_03 (Quyết định)
 # Reranker: BẬT
 # Query   : Soạn quyết định bổ nhiệm ông Nguyễn Văn Hùng giữ chức vụ Trưởng phòng Hành chính - Tổng hợp thuộc Sở Nội vụ tỉnh Bình Dư...
@@ -15,12 +15,27 @@ Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai
 Số quyết định: 45/QĐ-SNV
 
 ================================================================
+# Skill: Xử lý LEGAL_CONTEXT
+
+## MỤC ĐÍCH
+Block này hướng dẫn LLM cách đọc và sử dụng danh sách điều khoản pháp luật
+được truy xuất từ RAG trước khi soạn thảo hoặc trả lời.
+
+## TIÊU ĐỀ BLOCK
+```
 ## LEGAL_CONTEXT — Điều khoản pháp luật liên quan
 (Thứ bậc hiệu lực: Luật > Pháp lệnh > Nghị định > Nghị quyết)
-⚠️ BƯỚC BẮT BUỘC TRƯỚC KHI SOẠN THẢO: Với mỗi văn bản trong danh sách dưới đây,
-hãy tự đánh giá hiệu lực pháp lý (còn hiệu lực / hết hiệu lực / không rõ).
+```
+
+## BƯỚC BẮT BUỘC TRƯỚC KHI SỬ DỤNG
+Với mỗi văn bản trong danh sách dưới đây, hãy tự đánh giá hiệu lực pháp lý
+(còn hiệu lực / hết hiệu lực / không rõ).
 Chỉ trích dẫn những văn bản được đánh giá là CÒN HIỆU LỰC.
-Nếu không xác định được, ghi chú '(cần xác minh hiệu lực)' khi trích dẫn.
+Nếu không xác định được, ghi chú "(cần xác minh hiệu lực)" khi trích dẫn.
+
+## QUY TẮC ƯU TIÊN
+Khi có chồng chéo giữa các điều khoản, ưu tiên theo thứ bậc:
+Luật > Pháp lệnh > Nghị định > Nghị quyết.
 
 
 [1] 📋 [NGHỊ ĐỊNH]
@@ -54,6 +69,17 @@ Nếu không xác định được, ghi chú '(cần xác minh hiệu lực)' kh
 Điều 1. Sửa đổi một số điều của Nghị định số 24/2010/NĐ-CP ngày 15 tháng 3 năm 2010 của Chính phủ quy định về tuyển dụng, sử dụng và quản lý công chức, như sau:
 1. Sửa đổi Điều 26: “Điều 26. Thẩm quyền xét chuyển cán bộ, công chức cấp xã thành công chức từ cấp huyện trở lên Người đứng đầu cơ quan quản lý công chức quy định tại khoản 2 Điều 2 Nghị định này xét chuyển cán bộ, công chức cấp xã thành công chức từ cấp huyện trở lên làm việc tại các cơ quan, tổ chức, đơn vị trong phạm vi thuộc thẩm quyền quản lý”. 2. Sửa đổi khoản 3 và khoản 5 Điều 30: “Điều 30. Phân công tổ chức thi nâng ngạch công chức 3. Cơ quan quản lý công chức theo quy định tại khoản 2 Điều 2 Nghị định này chủ trì, phối hợp với Bộ Nội vụ tổ chức thi nâng ngạch công chức từ ngạch nhân viên lên ngạch cán sự và tương đương; từ ngạch nhân viên, cán sự và tương đương lên ngạch chuyên viên và tương đương đối với công chức thuộc phạm vi quản lý. 5. Bộ Nội vụ hướng dẫn cụ thể hình thức, nội dung các môn thi, các bài thi và quy chế tổ chức thi nâng ngạch công chức”. 3. Sửa đổi khoản 1 Điều 36: “Điều 36. Luân chuyển công chức 1. Việc luân chuyển công chức chỉ thực hiện đối với công chức giữ chức vụ lãnh đạo, quản lý trong quy hoạch”. 4. Sửa đổi khoản 1 Điều 39: “Điều 39. Chế độ, chính sách đối với công chức được điều động, luân chuyển, biệt phái 1. Trường hợp công chức được điều động, luân chuyển đến vị trí công tác khác không phù hợp với ngạch công chức hiện giữ thì phải chuyển ngạch theo quy định tại Điều 28 Nghị định này và thôi giữ chức vụ lãnh đạo, quản lý đang đảm nhiệm kể từ ngày có quyết định điều động, luân chuyển”.
 
+────────────────────────────────────────────────────────────
+
+[4] 📋 [NGHỊ ĐỊNH]
+    Số hiệu : 115/2020/NĐ-CP
+    Tên VB  : QUY ĐỊNH VỀ TUYỂN DỤNG, SỬ DỤNG VÀ QUẢN LÝ VIÊN CHỨC
+    Điều    : Điều 1. Phạm vi điều chỉnh và đối tượng áp dụng
+    Độ liên quan: 0.258
+
+Điều 1. Phạm vi điều chỉnh và đối tượng áp dụng
+1. Nghị định này quy định về tuyển dụng, sử dụng và quản lý đối với viên chức làm việc trong đơn vị sự nghiệp công lập do cơ quan có thẩm quyền của Nhà nước, tổ chức chính trị, tổ chức chính trị - xã hội ở Trung ương, cấp tỉnh, cấp huyện thành lập theo quy định của pháp luật. 2. Việc tuyển dụng, sử dụng và quản lý đối với người làm việc trong tổ chức cơ yếu được thực hiện theo quy định của pháp luật về cơ yếu. 3. Đơn vị sự nghiệp thuộc tổ chức chính trị xã hội - nghề nghiệp, tổ chức xã hội, tổ chức xã hội - nghề nghiệp; đơn vị sự nghiệp thuộc đơn vị sự nghiệp công lập; đơn vị sự nghiệp thuộc doanh nghiệp do Nhà nước nắm giữ 100% vốn điều lệ hoặc doanh nghiệp do Nhà nước nắm giữ trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết được áp dụng các quy định tại Nghị định này để thực hiện việc tuyển dụng, sử dụng và quản lý đối với những người làm việc trong đơn vị sự nghiệp.
+
 ================================================================
 ## FORM_TEMPLATE — Biểu mẫu và danh sách FIELD_NAME
 Form ID   : Form_03
@@ -80,7 +106,7 @@ Field metadata (điền vào "fields"):
     - THANG
     - TRICH_YEU
 
-Field thân văn bản — CũNG điền vào "fields" (KHÔNG tạo key riêng):
+Field thân văn bản — CŨNG điền vào "fields" (KHÔNG tạo key riêng):
     - NOI_DUNG_TO_CHUC_THUC_HIEN
 
 ────────────────────────────────────────────────────────────
@@ -185,8 +211,17 @@ Theo đề nghị của Trưởng phòng Công chức, viên chức, Sở Nội 
 **Nguyễn Khắc Thận**
 
 ================================================================
-## YÊU CẦU JSON ĐẦU RA
+# Skill: Yêu cầu JSON Đầu ra (Soạn thảo)
 
+## MỤC ĐÍCH
+Hướng dẫn LLM trả về đúng schema JSON cho chế độ soạn thảo văn bản hành chính.
+
+## TIÊU ĐỀ BLOCK
+```
+## YÊU CẦU JSON ĐẦU RA
+```
+
+## NỘI DUNG HƯỚNG DẪN
 Phân tích yêu cầu và trả về JSON theo schema sau.
 KHÔNG thêm bất kỳ text nào ngoài JSON:
 
@@ -214,28 +249,40 @@ KHÔNG thêm bất kỳ text nào ngoài JSON:
   }
 }
 
-Quy tắc bắt buộc:
-1. "fields" phải chứa TẤT CẢ field đã liệt kê ở FORM_TEMPLATE, bao gồm
-   cả field NOI_DUNG_*. KHÔNG tạo key nào khác ngoài "fields".
+## QUY TẮC BẮT BUỘC
+
+### Quy tắc 1 — Đủ fields
+`"fields"` phải chứa TẤT CẢ field đã liệt kê ở FORM_TEMPLATE, bao gồm cả field
+NOI_DUNG_*. KHÔNG tạo key nào khác ngoài `"fields"`.
+
 2. CÁC FIELD THÂN VĂN BẢN — điền trực tiếp vào key "fields":
    • NOI_DUNG_TO_CHUC_THUC_HIEN
    Viết nội dung theo cấu trúc sau:
-   Cấu trúc:
-     Điều 1: Nội dung quyết định chính (bổ nhiệm / phê duyệt / ban hành...).
-     Điều 2: Trách nhiệm thi hành (cơ quan, cá nhân liên quan).
-     Điều 3: Hiệu lực thi hành (ngày có hiệu lực).
-     Mỗi điều khoản viết thành một đoạn riêng, bắt đầu bằng **Điều N.**
+   **Cấu trúc:**
+   - Điều 1: Nội dung quyết định chính (bổ nhiệm / phê duyệt / ban hành...).
+   - Điều 2: Trách nhiệm thi hành (cơ quan, cá nhân liên quan).
+   - Điều 3: Hiệu lực thi hành (ngày có hiệu lực).
+   Mỗi điều khoản viết thành một đoạn riêng, bắt đầu bằng **Điều N.**
+   ---
    KHÔNG tạo key riêng ngoài "fields" cho các field này.
-3. Mỗi value trong "fields" là string đơn — không lồng object/array.
-4. Không để value là null — dùng chuỗi rỗng "" nếu không có thông tin.
-5. Trích dẫn pháp lý trong NOI_DUNG_* chỉ được dùng văn bản CÒN HIỆU LỰC
-   từ LEGAL_CONTEXT. Ưu tiên: Luật > Pháp lệnh > Nghị định > Nghị quyết.
-6. JSON phải hợp lệ (RFC 8259): dấu phẩy và ngoặc kép đúng chuẩn.
 
-Trước khi trả JSON, hãy tự kiểm tra:
+### Quy tắc 3 — Kiểu dữ liệu
+Mỗi value trong `"fields"` là string đơn — không lồng object/array.
+
+### Quy tắc 4 — Không để null
+Không để value là null — dùng chuỗi rỗng `""` nếu không có thông tin.
+
+### Quy tắc 5 — Trích dẫn pháp lý trong NOI_DUNG_*
+Chỉ được dùng văn bản CÒN HIỆU LỰC từ LEGAL_CONTEXT.
+Ưu tiên: Luật > Pháp lệnh > Nghị định > Nghị quyết.
+
+### Quy tắc 6 — JSON hợp lệ
+JSON phải hợp lệ (RFC 8259): dấu phẩy và ngoặc kép đúng chuẩn.
+
+## CHECKLIST TỰ KIỂM TRA TRƯỚC KHI TRẢ VỀ
 - Đã đánh giá hiệu lực từng văn bản pháp luật trong LEGAL_CONTEXT chưa?
-- Có đủ tất cả field (kể cả NOI_DUNG_*) trong "fields" chưa?
-- Có key nào khác ngoài "fields" không? (Nếu có → xóa đi)
+- Có đủ tất cả field (kể cả NOI_DUNG_*) trong `"fields"` chưa?
+- Có key nào khác ngoài `"fields"` không? (Nếu có → xóa đi)
 - JSON có hợp lệ không?
 
 Nếu chưa đúng → sửa lại trước khi trả về.

@@ -475,10 +475,18 @@ def init_retriever(
     """
     Khởi tạo toàn bộ pipeline: load model, BM25, ChromaDB, build ID map.
     Gọi 1 lần khi start application.
+
+    Idempotent: nếu retriever đã được khởi tạo và force_rebuild_bm25=False,
+    hàm sẽ skip toàn bộ để tránh load lại BM25/ChromaDB không cần thiết.
     """
     global _retriever_legal, _retriever_forms, _retriever_examples
     global _col_forms, _reranker, _embed_model, _expand_index
     global _COMPILED_FORM_PATTERNS
+
+    # Guard tổng: nếu đã init đầy đủ và không yêu cầu rebuild BM25 → skip
+    if _retriever_legal is not None and not force_rebuild_bm25:
+        print("init_retriever: Đã khởi tạo trước đó — bỏ qua.")
+        return
 
     _dev = device or DEVICE
 
@@ -533,11 +541,14 @@ def init_retriever(
         _expand_index[key].sort(key=lambda x: x[0])
     print(f"  {len(_expand_index):,} (doc_id, article) pairs")
 
-    # Embedding model
-    print(f"Loading embedding model ({_dev})...")
-    _embed_model = SentenceTransformer(
-        EMBED_MODEL_NAME, device=_dev, cache_folder=str(MODEL_EMBED), local_files_only=True
-    )
+    # Embedding model — chỉ load nếu chưa được inject từ app_state
+    if _embed_model is None:
+        print(f"Loading embedding model ({_dev})...")
+        _embed_model = SentenceTransformer(
+            EMBED_MODEL_NAME, device=_dev, cache_folder=str(MODEL_EMBED), local_files_only=True
+        )
+    else:
+        print("init_retriever: Dùng embed model đã inject từ app_state, bỏ qua load.")
 
     # ChromaDB
     print("Connecting to ChromaDB...")
