@@ -1,6 +1,6 @@
 # RAG CLI — 02_quyet_dinh_bo_nhiem_cong_chuc
-# Run     : 20260429_003941
-# Thời điểm: 2026-04-29 00:41:00
+# Run     : 20260429_004723
+# Thời điểm: 2026-04-29 00:51:22
 # Form    : Form_02 (Quyết định)
 # Reranker: BẬT
 # Query   : Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý.
@@ -138,17 +138,6 @@ tổng số người được triệu tập giới thiệu thì được lựa c
 [Điều 49. Thời điểm, thời hạn và nguyên tắc thực hiện bổ nhiệm lại hoặc kéo dài thời gian giữ chức vụ lãnh đạo, quản lý]
 1. Công chức lãnh đạo, quản lý khi hết thời hạn giữ chức vụ bổ nhiệm theo quy định thì cơ quan, tổ chức có thẩm quyền phải tiến hành quy trình xem xét bổ nhiệm lại hoặc kéo dài thời gian giữ chức vụ lãnh đạo, quản lý. Trường hợp chưa thực hiện quy trình bổ nhiệm lại hoặc kéo dài thời gian giữ chức vụ lãnh đạo, quản lý theo quy định tại khoản 5 Điều này thì cấp có thẩm quyền bổ nhiệm phải có văn bản thông báo để cơ quan, tổ chức và công chức biết. 2. Công chức lãnh đạo, quản lý khi hết thời hạn bổ nhiệm, tính đến tháng đủ tuổi nghỉ hưu còn dưới 05 năm công tác mà được bổ nhiệm lại thì thời hạn bổ nhiệm được tính đến thời điểm đủ tuổi nghỉ hưu theo quy định. Trường hợp tính đến tháng đủ tuổi nghỉ hưu còn dưới 02 năm công tác, cấp có thẩm quyền bổ nhiệm xem xét, nếu đáp ứng đủ tiêu chuẩn, điều kiện thì quyết định kéo dài thời gian giữ chức vụ lãnh đạo, quản lý cho đến thời điểm đủ tuổi nghỉ hưu theo quy định. 3. Quyết định bổ nhiệm lại hoặc quyết định kéo dài thời gian giữ chức vụ lãnh đạo, quản lý phải được ban hành trước ngày hết thời hạn bổ nhiệm ít nhất 01 ngày làm việc. 4. Trường hợp công chức lãnh đạo, quản lý khi hết thời hạn bổ nhiệm mà chưa có quyết định bổ nhiệm lại hoặc kéo dài thời gian giữ chức vụ lãnh đạo, quản lý của cấp có thẩm quyền thì không được thực hiện chức trách, nhiệm vụ, thẩm quyền của chức vụ lãnh đạo, quản lý hiện giữ. Việc thực hiện chức trách, nhiệm vụ, thẩm quyền của chức vụ lãnh đạo, quản lý đó do cấp có thẩm quyền bổ nhiệm xem xét, quyết định. 5. Các trường hợp chưa thực hiện quy trình bổ nhiệm lại hoặc kéo dài thời gian giữ chức vụ lãnh đạo, quản lý: a) Công chức lãnh đạo, quản lý đang trong thời hạn xử lý kỷ luật, đang bị điều tra, truy tố, xét xử; b) Công chức lãnh đạo, quản lý đang trong thời gian được cơ quan, tổ chức có thẩm quyền cử đi học tập,
 lãnh đạo, quản lý: a) Công chức lãnh đạo, quản lý đang trong thời hạn xử lý kỷ luật, đang bị điều tra, truy tố, xét xử; b) Công chức lãnh đạo, quản lý đang trong thời gian được cơ quan, tổ chức có thẩm quyền cử đi học tập, công tác ở nước ngoài từ 03 tháng trở lên; c) Công chức lãnh đạo, quản lý đang trong thời gian điều trị nội trú từ 03 tháng trở lên tại các cơ sở y tế hoặc đang trong thời gian nghỉ chế độ thai sản.
-
-────────────────────────────────────────────────────────────
-
-[4] 
-    Số hiệu : 138/2020/NĐ-CP
-    Tên VB  : QUY ĐỊNH VỀ TUYỂN DỤNG, SỬ DỤNG VÀ QUẢN LÝ CÔNG CHỨC
-    Điều    : Điều 40. Bổ nhiệm vào ngạch công chức
-    Độ liên quan: 0.904
-
-Điều 40. Bổ nhiệm vào ngạch công chức
-1. Chậm nhất 15 ngày kể từ ngày nhận được danh sách công chức trúng tuyển trong kỳ thi nâng ngạch, người đứng đầu cơ quan quản lý công chức ra quyết định bổ nhiệm ngạch và xếp lương đối với công chức trúng tuyển theo quy định: a) Đối với ngạch chuyên viên cao cấp hoặc tương đương: Người đứng đầu cơ quan quản lý công chức ra quyết định bổ nhiệm ngạch và xếp lương đối với công chức trúng tuyển sau khi có ý kiến thống nhất của Bộ Nội vụ (đối với các cơ quan nhà nước) hoặc Ban Tổ chức Trung ương (đối với các cơ quan của Đảng Cộng sản Việt Nam, Mặt trận Tổ quốc Việt Nam và các tổ chức chính trị - xã hội). b) Đối với ngạch chuyên viên chính hoặc tương đương, ngạch chuyên viên hoặc tương đương, ngạch cán sự hoặc tương đương: Người đứng đầu cơ quan quản lý công chức quyết định theo thẩm quyền hoặc phân cấp việc quyết định bổ nhiệm ngạch và xếp lương đối với công chức trúng tuyển kỳ nâng ngạch. 2. Việc xếp lương ở ngạch mới bổ nhiệm thực hiện theo quy định hiện hành. Mục 3. BỔ NHIỆM CÔNG CHỨC LÃNH ĐẠO, QUẢN LÝ
 
 ================================================================
 ## FORM_TEMPLATE — Biểu mẫu và danh sách FIELD_NAME

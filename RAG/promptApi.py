@@ -73,7 +73,7 @@ except ImportError as e:
 # LLM CONFIG
 # ═══════════════════════════════════════════════════════════════
 _LLM_CONFIG = {
-    "groq_model"  : os.environ.get("LLM_MODEL", "llama-3.3-70b-versatile"),
+    "groq_model"  : os.environ.get("LLM_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct"),
     "openai_model": os.environ.get("LLM_MODEL", "gpt-4o-mini"),
     "max_tokens"  : 4096,
     "temperature" : 0.1,

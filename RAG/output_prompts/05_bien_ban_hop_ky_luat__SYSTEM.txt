@@ -1,6 +1,6 @@
 # RAG CLI — 05_bien_ban_hop_ky_luat
-# Run     : 20260429_003941
-# Thời điểm: 2026-04-29 00:40:19
+# Run     : 20260429_010529
+# Thời điểm: 2026-04-29 01:06:32
 # Form    : Form_09 (Biên bản)
 # Reranker: BẬT
 # Query   : Soạn thảo biên bản họp Hội đồng kỷ luật công chức.

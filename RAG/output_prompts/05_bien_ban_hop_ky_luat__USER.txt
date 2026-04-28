@@ -1,6 +1,6 @@
 # RAG CLI — 05_bien_ban_hop_ky_luat
-# Run     : 20260429_003941
-# Thời điểm: 2026-04-29 00:40:19
+# Run     : 20260429_010529
+# Thời điểm: 2026-04-29 01:06:32
 # Form    : Form_09 (Biên bản)
 # Reranker: BẬT
 # Query   : Soạn thảo biên bản họp Hội đồng kỷ luật công chức.
@@ -91,18 +91,6 @@ hành vi vi phạm vắng mặt nhưng có bản kiểm điểm thì công chứ
 Mục 3
 THẨM QUYỀN VÀ TRÌNH TỰ, THỦ TỤC XỬ LÝ KỶ LUẬT
  ĐỐI VỚI NGƯỜI ĐÃ THÔI VIỆC, NGHỈ HƯU
-
-────────────────────────────────────────────────────────────
-
-[4] 
-    Số hiệu : 172/2025/NĐ-CP
-    Tên VB  : CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
-    Điều    : Điều 17. Tổ chức họp kiểm điểm công chức
-    Độ liên quan: 0.846
-
-[Điều 17. Tổ chức họp kiểm điểm công chức]
-1. Trách nhiệm tổ chức cuộc họp kiểm điểm a) Trường hợp người bị kiểm điểm là công chức không giữ chức vụ lãnh đạo, quản lý thì người đứng đầu cơ quan, tổ chức, đơn vị sử dụng công chức chủ trì cuộc họp kiểm điểm. Trường hợp người đứng đầu, tất cả cấp phó của người đứng đầu cơ quan, tổ chức, đơn vị sử dụng công chức thuộc một trong các trường hợp quy định tại khoản 11 Điều 2 Nghị định này hoặc trong cùng vụ việc bị xem xét kỷ luật thì lãnh đạo cơ quan cấp trên trực tiếp của cơ quan, tổ chức, đơn vị sử dụng công chức chủ trì cuộc họp; b) Trường hợp người bị kiểm điểm là người đứng đầu hoặc cấp phó của người đứng đầu thì lãnh đạo cơ quan cấp trên trực tiếp của cơ quan, tổ chức, đơn vị nơi công chức công tác có trách nhiệm tổ chức cuộc họp kiểm điểm và quyết định thành phần dự họp. 2. Thành phần tham dự cuộc họp kiểm điểm a) Trường hợp cơ quan, tổ chức, đơn vị nơi công chức công tác là đơn vị cấu thành thì thành phần dự họp là toàn thể công chức của đơn vị cấu thành; đại diện lãnh đạo, cấp ủy cơ quan tham mưu về công tác tổ chức cán bộ của cơ quan, tổ chức, đơn vị sử dụng công chức; b) Trường hợp cơ quan, tổ chức, đơn vị sử dụng công chức không có đơn vị cấu thành thì thành phần dự họp kiểm điểm là toàn thể công chức của cơ quan, tổ chức, đơn vị sử dụng công chức; c) Trường hợp người bị kiểm điểm là công chức được cử biệt phái thì ngoài thành phần quy định tại điểm a, điểm b khoản này còn phải có đại diện lãnh đạo của cơ quan cử công chức biệt phái. 3. Việc tổ chức cuộc họp kiểm điểm được tiến hành như sau: a) Người chủ trì cuộc họp tuyên bố lý do cuộc họp, thông báo hoặc ủy quyền cho cơ quan tham mưu về công tác tổ chức cán bộ thông báo các nội dung: tóm tắt về quá trình công tác; hành vi vi phạm; các hình thức xử lý đã ban hành (nêu có); thời điểm
-bố lý do cuộc họp, thông báo hoặc ủy quyền cho cơ quan tham mưu về công tác tổ chức cán bộ thông báo các nội dung: tóm tắt về quá trình công tác; hành vi vi phạm; các hình thức xử lý đã ban hành (nêu có); thời điểm xảy ra hành vi vi phạm, thời điểm phát hiện hành vi vi phạm; các tình tiết tăng nặng, giảm nhẹ của người có hành vi vi phạm; thời hiệu và thời hạn xử lý theo quy định của pháp luật; b) Người có hành vi vi phạm trình bày bản kiểm điểm, trong đó nêu rõ hành vi vi phạm và tự nhận hình thức kỷ luật. Trường hợp người có hành vi vi phạm có mặt tại cuộc họp nhưng không làm bản kiểm điểm hoặc vắng mặt nhưng có giấy đề nghị tổ chức cuộc họp vắng mặt thì cuộc họp kiểm điểm vẫn được tiến hành. Trường hợp người có hành vi vi phạm vắng mặt ở cuộc họp theo thông báo triệu tập lần thứ 2 thì cuộc họp kiểm điểm vẫn được tiến hành. c) [...]
 
 ================================================================
 ## FORM_TEMPLATE — Biểu mẫu và danh sách FIELD_NAME

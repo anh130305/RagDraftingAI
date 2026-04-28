@@ -88,9 +88,9 @@ W            = 64   # độ rộng box
 #   LLM_MODEL        → tên model (mặc định bên dưới)
 # ════════════════════════════════════════════════════════════════
 LLM_CONFIG = {
-    "groq_model"      : os.environ.get("LLM_MODEL", "llama-3.3-70b-versatile"),
+    "groq_model"      : os.environ.get("LLM_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct"),
     "openai_model"    : os.environ.get("LLM_MODEL", "gpt-4o-mini"),
-    "max_tokens"      : 9012,
+    "max_tokens"      : 4096,
     "temperature"     : 0.1,   # thấp để JSON ổn định
 }
 
@@ -335,7 +335,7 @@ TEST_QUERIES: List[Dict] = [
 class SessionState:
     def __init__(self, use_reranker: bool = True):
         self.use_reranker    : bool          = use_reranker
-        self.legal_top_k     : int           = 4
+        self.legal_top_k     : int           = 3
         self.examples_top_k  : int           = 1
         self.expand_legal    : bool          = True
         self.mode            : str           = "draft"   # "draft" | "legal_qa"
