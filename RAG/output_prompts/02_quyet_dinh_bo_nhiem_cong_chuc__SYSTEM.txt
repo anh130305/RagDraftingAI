@@ -1,9 +1,9 @@
 # RAG CLI — 02_quyet_dinh_bo_nhiem_cong_chuc
-# Run     : 20260429_004723
-# Thời điểm: 2026-04-29 00:51:22
+# Run     : 20260429_112457
+# Thời điểm: 2026-04-29 11:26:26
 # Form    : Form_02 (Quyết định)
 # Reranker: BẬT
-# Query   : Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý.
+# Query   : Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý theo quy định của luật cán bộ, công chức.
 ======================================================================
 
 # Skill: Chuyên viên Soạn thảo Văn bản Hành chính
@@ -49,7 +49,16 @@ không chắc chắn 100%, bỏ qua phần ngày — không được bịa đặ
 ### 6. Tính nhất quán
 Số liệu, ngày tháng, chức danh, tên cơ quan phải nhất quán xuyên suốt toàn bộ văn bản.
 
-### 7. Điền Ngày Tháng Năm
+### 7. Cơ quan chủ quản (`TEN_CQ_CHU_QUAN`):**
+   - Nếu không xác định được → để trống `""` **hoặc** dùng lại `TEN_CQ_BAN_HANH` nếu hai cơ quan trùng nhau.
+   - Ưu tiên viết tắt phổ thông: UBND, HĐND, UBMTTQ, Bộ GD&ĐT, v.v.
+
+### 8. **Viết tắt khuyến khích:** Dùng chữ viết tắt đã phổ biến trong hành chính nhà nước:
+   - Uỷ ban nhân dân → **UBND**
+   - Hội đồng nhân dân → **HĐND**
+   - Uỷ ban Mặt trận Tổ quốc → **UBMTTQ**
+
+### 9. Điền Ngày Tháng Năm
 Nếu biểu mẫu yêu cầu các trường NGAY, THANG, NAM thì phải tách riêng từng thành phần
 từ ngày ban hành. NGAY chỉ điền ngày (ví dụ: 05), THANG chỉ điền tháng (ví dụ: 01),
 NAM chỉ điền năm (ví dụ: 2025).

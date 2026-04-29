@@ -1,9 +1,9 @@
 # RAG CLI — 02_quyet_dinh_bo_nhiem_cong_chuc
-# Run     : 20260429_004723
-# Thời điểm: 2026-04-29 00:51:22
+# Run     : 20260429_112457
+# Thời điểm: 2026-04-29 11:26:26
 # Form    : Form_02 (Quyết định)
 # Reranker: BẬT
-# Query   : Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý.
+# Query   : Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý theo quy định của luật cán bộ, công chức.
 ======================================================================
 
 ## [SYSTEM]
@@ -51,7 +51,16 @@ không chắc chắn 100%, bỏ qua phần ngày — không được bịa đặ
 ### 6. Tính nhất quán
 Số liệu, ngày tháng, chức danh, tên cơ quan phải nhất quán xuyên suốt toàn bộ văn bản.
 
-### 7. Điền Ngày Tháng Năm
+### 7. Cơ quan chủ quản (`TEN_CQ_CHU_QUAN`):**
+   - Nếu không xác định được → để trống `""` **hoặc** dùng lại `TEN_CQ_BAN_HANH` nếu hai cơ quan trùng nhau.
+   - Ưu tiên viết tắt phổ thông: UBND, HĐND, UBMTTQ, Bộ GD&ĐT, v.v.
+
+### 8. **Viết tắt khuyến khích:** Dùng chữ viết tắt đã phổ biến trong hành chính nhà nước:
+   - Uỷ ban nhân dân → **UBND**
+   - Hội đồng nhân dân → **HĐND**
+   - Uỷ ban Mặt trận Tổ quốc → **UBMTTQ**
+
+### 9. Điền Ngày Tháng Năm
 Nếu biểu mẫu yêu cầu các trường NGAY, THANG, NAM thì phải tách riêng từng thành phần
 từ ngày ban hành. NGAY chỉ điền ngày (ví dụ: 05), THANG chỉ điền tháng (ví dụ: 01),
 NAM chỉ điền năm (ví dụ: 2025).
@@ -67,7 +76,7 @@ NAM chỉ điền năm (ví dụ: 2025).
 ## [USER]
 
 ## YÊU CẦU SOẠN THẢO
-Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý.
+Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý theo quy định của luật cán bộ, công chức.
 
 ## YÊU CẦU BỔ SUNG
 Cơ quan ban hành: Sở Nội vụ tỉnh Bình Dương.
@@ -104,7 +113,7 @@ Luật > Pháp lệnh > Nghị định > Nghị quyết.
     Số hiệu : 80/2025/QH15
     Tên VB  : Luật số: 80/2025/QH15
     Điều    : Điều 31. Bổ nhiệm, từ chức, miễn nhiệm, cho thôi giữ chức vụ đối với công chức lãnh đạo, quản lý
-    Độ liên quan: 0.960
+    Độ liên quan: 0.961
 
 Điều 31. Bổ nhiệm, từ chức, miễn nhiệm, cho thôi giữ chức vụ đối với công chức lãnh đạo, quản lý
 1. Công chức được bổ nhiệm giữ chức vụ lãnh đạo, quản lý được thực hiện bằng quyết định bổ nhiệm của cấp có thẩm quyền. Trường hợp được bổ nhiệm chức vụ lãnh đạo, quản lý mới thì đương nhiên thôi giữ chức vụ lãnh đạo, quản lý đang đảm nhiệm, trừ trường hợp kiêm nhiệm.
@@ -121,23 +130,31 @@ THÔI VIỆC, NGHỈ HƯU ĐỐI VỚI CÔNG CHỨC
     Số hiệu : 138/2020/NĐ-CP
     Tên VB  : QUY ĐỊNH VỀ TUYỂN DỤNG, SỬ DỤNG VÀ QUẢN LÝ CÔNG CHỨC
     Điều    : Điều 46. Trình tự, thủ tục bổ nhiệm công chức giữ chức vụ lãnh đạo, quản lý thuộc thẩm quyền quản lý của Bộ, ngành, địa phương
-    Độ liên quan: 0.968
+    Độ liên quan: 0.972
 
-[Điều 46. Trình tự, thủ tục bổ nhiệm công chức giữ chức vụ lãnh đạo, quản lý thuộc thẩm quyền quản lý của Bộ, ngành, địa phương]
-1. Xin chủ trương bổ nhiệm: a) Cơ quan, tổ chức có nhu cầu bổ nhiệm công chức lãnh đạo, quản lý phải trình cơ quan có thẩm quyền bổ nhiệm bằng văn bản về chủ trương, số lượng, nguồn nhân sự và dự kiến phân công công tác đối với nhân sự được dự kiến bổ nhiệm; b) Cấp có thẩm quyền xem xét, quyết định về chủ trương bổ nhiệm chậm nhất sau 10 ngày kể từ ngày nhận được đề nghị của cơ quan, tổ chức; c) Chậm nhất sau 15 ngày kể từ ngày có văn bản đồng ý về chủ trương bổ nhiệm của cấp có thẩm quyền, người đứng đầu cơ quan, tổ chức phải tiến hành quy trình lựa chọn nhân sự theo quy định. 2. Thực hiện quy trình bổ nhiệm đối với nguồn nhân sự tại chỗ: a) Bước 1: Trên cơ sở chủ trương, yêu cầu nhiệm vụ của cơ quan, tổ chức và nguồn nhân sự trong quy hoạch, tập thể lãnh đạo thảo luận và đề xuất về cơ cấu, tiêu chuẩn, điều kiện, quy trình giới thiệu nhân sự. Thành phần: Người đứng đầu, cấp phó của người đứng đầu cơ quan, tổ chức và người đứng đầu cơ quan tham mưu về tổ chức cán bộ. Kết quả thảo luận và đề xuất được ghi thành biên bản. b) Bước 2: Tập thể lãnh đạo mở rộng thảo luận và thống nhất về cơ cấu, tiêu chuẩn, điều kiện, quy trình giới thiệu nhân sự và tiến hành giới thiệu nhân sự bằng phiếu kín. Thành phần: Người đứng đầu, cấp phó của người đứng đầu cơ quan, tổ chức; thường vụ cấp ủy cùng cấp; người đứng đầu các cơ quan, tổ chức, đơn vị thuộc và trực thuộc. Hội nghị phải có tối thiểu 2/3 số người được triệu tập tham dự. Nguyên tắc giới thiệu và lựa chọn: Mỗi thành viên giới thiệu 01 người cho một chức vụ; người nào có số phiếu cao nhất, đạt tỷ lệ trên 50% tính trên tổng số người được triệu tập giới thiệu thì được lựa chọn. Trường hợp không có người nào đạt trên 50% thì chọn 02 người có số phiếu giới thiệu cao nhất từ trên xuống để giới thiệu ở các bước tiếp theo. Phiếu giới thiệu nhân sự bổ nhiệm
-tổng số người được triệu tập giới thiệu thì được lựa chọn. Trường hợp không có người nào đạt trên 50% thì chọn 02 người có số phiếu giới thiệu cao nhất từ trên xuống để giới thiệu ở các bước tiếp theo. Phiếu giới thiệu nhân sự bổ nhiệm do Ban tổ chức hội nghị phát hành, có đóng dấu treo của cơ quan, tổ chức. Kết quả kiểm phiếu được ghi thành biên bản, không công bố tại hội nghị này. c) Bước 3: Tập thể lãnh đạo, căn cứ vào cơ cấu, tiêu chuẩn, điều kiện, yêu cầu nhiệm vụ và khả năng đáp ứng của công chức; trên cơ sở kết quả giới thiệu nhân sự ở bước 2, tiến hành thảo luận và giới thiệu nhân sự bằng phiếu kín. Thành phần: Thực hiện như quy định ở bước 1. Nguyên tắc giới thiệu và lựa chọn: Mỗi thành viên lãnh đạo giới thiệu 01 người cho một chức vụ trong số nhân sự được giới thiệu ở [...]
+[Điều 46. Trình tự, thủ tục bổ nhiệm công chức giữ chức vụ lãnh đạo, quản lý thuộc thẩm quyền quản lý của Bộ, ngành, địa phương] 1. Xin chủ trương bổ nhiệm: a) Cơ quan, tổ chức có nhu cầu bổ nhiệm công chức lãnh đạo, quản lý phải trình cơ quan có thẩm quyền bổ nhiệm bằng văn bản về chủ trương, số lượng, nguồn nhân sự và dự kiến phân công công tác đối với nhân sự được dự kiến bổ nhiệm; b) Cấp có thẩm quyền xem xét, quyết định về chủ trương bổ nhiệm chậm nhất sau 10 ngày kể từ ngày nhận được đề nghị của cơ quan, tổ chức; c) Chậm nhất sau 15 ngày kể từ ngày có văn bản đồng ý về chủ trương bổ nhiệm của cấp có thẩm quyền, người đứng đầu cơ quan, tổ chức phải tiến hành quy trình lựa chọn nhân sự theo quy định. 2. Thực hiện quy trình bổ nhiệm đối với nguồn nhân sự tại chỗ: a) Bước 1: Trên cơ sở chủ trương, yêu cầu nhiệm vụ của cơ quan, tổ chức và nguồn nhân sự trong quy hoạch, tập thể lãnh đạo thảo luận và đề xuất về cơ cấu, tiêu chuẩn, điều kiện, quy trình giới thiệu nhân sự. Thành phần: Người đứng đầu, cấp phó của người đứng đầu cơ quan, tổ chức và người đứng đầu cơ quan tham mưu về tổ chức cán bộ. Kết quả thảo luận và đề xuất được ghi thành biên bản. b) Bước 2: Tập thể lãnh đạo mở rộng thảo luận và thống nhất về cơ cấu, tiêu chuẩn, điều kiện, quy trình giới thiệu nhân sự và tiến hành giới thiệu nhân sự bằng phiếu kín. Thành phần: Người đứng đầu, cấp phó của người đứng đầu cơ quan, tổ chức; thường vụ cấp ủy cùng cấp; người đứng đầu các cơ quan, tổ chức, đơn vị thuộc và trực thuộc. Hội nghị phải có tối thiểu 2/3 số người được triệu tập tham dự. Nguyên tắc giới thiệu và lựa chọn: Mỗi thành viên giới thiệu 01 người cho một chức vụ; người nào có số phiếu cao nhất, đạt tỷ lệ trên 50% tính trên tổng số người được triệu tập giới thiệu thì được lựa chọn. Trường hợp không có người nào đạt trên 50% thì chọn [...]
 
 ────────────────────────────────────────────────────────────
 
 [3] 
     Số hiệu : 138/2020/NĐ-CP
     Tên VB  : QUY ĐỊNH VỀ TUYỂN DỤNG, SỬ DỤNG VÀ QUẢN LÝ CÔNG CHỨC
-    Điều    : Điều 49. Thời điểm, thời hạn và nguyên tắc thực hiện bổ nhiệm lại hoặc kéo dài thời gian giữ chức vụ lãnh đạo, quản lý
-    Độ liên quan: 0.931
+    Điều    : Điều 42. Tiêu chuẩn, điều kiện bổ nhiệm
+    Độ liên quan: 0.929
 
-[Điều 49. Thời điểm, thời hạn và nguyên tắc thực hiện bổ nhiệm lại hoặc kéo dài thời gian giữ chức vụ lãnh đạo, quản lý]
-1. Công chức lãnh đạo, quản lý khi hết thời hạn giữ chức vụ bổ nhiệm theo quy định thì cơ quan, tổ chức có thẩm quyền phải tiến hành quy trình xem xét bổ nhiệm lại hoặc kéo dài thời gian giữ chức vụ lãnh đạo, quản lý. Trường hợp chưa thực hiện quy trình bổ nhiệm lại hoặc kéo dài thời gian giữ chức vụ lãnh đạo, quản lý theo quy định tại khoản 5 Điều này thì cấp có thẩm quyền bổ nhiệm phải có văn bản thông báo để cơ quan, tổ chức và công chức biết. 2. Công chức lãnh đạo, quản lý khi hết thời hạn bổ nhiệm, tính đến tháng đủ tuổi nghỉ hưu còn dưới 05 năm công tác mà được bổ nhiệm lại thì thời hạn bổ nhiệm được tính đến thời điểm đủ tuổi nghỉ hưu theo quy định. Trường hợp tính đến tháng đủ tuổi nghỉ hưu còn dưới 02 năm công tác, cấp có thẩm quyền bổ nhiệm xem xét, nếu đáp ứng đủ tiêu chuẩn, điều kiện thì quyết định kéo dài thời gian giữ chức vụ lãnh đạo, quản lý cho đến thời điểm đủ tuổi nghỉ hưu theo quy định. 3. Quyết định bổ nhiệm lại hoặc quyết định kéo dài thời gian giữ chức vụ lãnh đạo, quản lý phải được ban hành trước ngày hết thời hạn bổ nhiệm ít nhất 01 ngày làm việc. 4. Trường hợp công chức lãnh đạo, quản lý khi hết thời hạn bổ nhiệm mà chưa có quyết định bổ nhiệm lại hoặc kéo dài thời gian giữ chức vụ lãnh đạo, quản lý của cấp có thẩm quyền thì không được thực hiện chức trách, nhiệm vụ, thẩm quyền của chức vụ lãnh đạo, quản lý hiện giữ. Việc thực hiện chức trách, nhiệm vụ, thẩm quyền của chức vụ lãnh đạo, quản lý đó do cấp có thẩm quyền bổ nhiệm xem xét, quyết định. 5. Các trường hợp chưa thực hiện quy trình bổ nhiệm lại hoặc kéo dài thời gian giữ chức vụ lãnh đạo, quản lý: a) Công chức lãnh đạo, quản lý đang trong thời hạn xử lý kỷ luật, đang bị điều tra, truy tố, xét xử; b) Công chức lãnh đạo, quản lý đang trong thời gian được cơ quan, tổ chức có thẩm quyền cử đi học tập,
-lãnh đạo, quản lý: a) Công chức lãnh đạo, quản lý đang trong thời hạn xử lý kỷ luật, đang bị điều tra, truy tố, xét xử; b) Công chức lãnh đạo, quản lý đang trong thời gian được cơ quan, tổ chức có thẩm quyền cử đi học tập, công tác ở nước ngoài từ 03 tháng trở lên; c) Công chức lãnh đạo, quản lý đang trong thời gian điều trị nội trú từ 03 tháng trở lên tại các cơ sở y tế hoặc đang trong thời gian nghỉ chế độ thai sản.
+Điều 42. Tiêu chuẩn, điều kiện bổ nhiệm
+1. Bảo đảm tiêu chuẩn chung, tiêu chuẩn chức danh theo quy định của Đảng, Nhà nước và tiêu chuẩn cụ thể của chức vụ bổ nhiệm theo quy định của cơ quan có thẩm quyền. 2. Phải được quy hoạch chức vụ bổ nhiệm nếu là nguồn nhân sự tại chỗ hoặc được quy hoạch chức vụ tương đương nếu là nguồn nhân sự từ nơi khác. Trường hợp cơ quan, tổ chức mới thành lập chưa thực hiện việc phê duyệt quy hoạch thì do cấp có thẩm quyền xem xét, quyết định. 3. Có hồ sơ, lý lịch cá nhân được xác minh, có bản kê khai tài sản, thu nhập theo quy định. 4. Điều kiện về độ tuổi bổ nhiệm: a) Công chức được đề nghị bổ nhiệm lần đầu giữ chức vụ lãnh đạo, quản lý hoặc đề nghị bổ nhiệm giữ chức vụ lãnh đạo, quản lý cao hơn thì tuổi bổ nhiệm phải còn đủ 05 năm công tác tính từ khi thực hiện quy trình bổ nhiệm; trường hợp đặc biệt báo cáo cấp có thẩm quyền xem xét, quyết định; b) Công chức được đề nghị bổ nhiệm vào chức vụ lãnh đạo, quản lý mà thời hạn mỗi lần bổ nhiệm dưới 05 năm theo quy định của pháp luật chuyên ngành và của cơ quan có thẩm quyền thì tuổi bổ nhiệm phải đủ một nhiệm kỳ; c) Công chức được điều động, bổ nhiệm giữ chức vụ mới tương đương hoặc thấp hơn chức vụ đang giữ thì không tính tuổi bổ nhiệm theo quy định tại điểm a khoản này. 5. Có đủ sức khoẻ để hoàn thành nhiệm vụ và chức trách được giao. 6. Không thuộc các trường hợp bị cấm đảm nhiệm chức vụ theo quy định của Đảng và của pháp luật; không đang trong thời hạn xử lý kỷ luật, không trong thời gian thực hiện các quy định liên quan đến kỷ luật quy định tại Điều 82 của Luật Cán bộ, công chức được sửa đổi, bổ sung tại khoản 17 Điều 1 Luật sửa đổi, bổ sung một số điều của Luật Cán bộ, công chức và Luật Viên chức.
+
+────────────────────────────────────────────────────────────
+
+[4] 
+    Số hiệu : 138/2020/NĐ-CP
+    Tên VB  : QUY ĐỊNH VỀ TUYỂN DỤNG, SỬ DỤNG VÀ QUẢN LÝ CÔNG CHỨC
+    Điều    : Điều 43. Trách nhiệm trong công tác bổ nhiệm công chức giữ chức vụ lãnh đạo, quản lý
+    Độ liên quan: 0.925
+
+Điều 43. Trách nhiệm trong công tác bổ nhiệm công chức giữ chức vụ lãnh đạo, quản lý
+1. Người đứng đầu, các thành viên trong cấp ủy, lãnh đạo cơ quan, tổ chức có trách nhiệm đề xuất nhân sự và nhận xét, đánh giá đối với nhân sự được đề xuất. 2. Tập thể cấp ủy, tập thể lãnh đạo cơ quan, tổ chức thảo luận, nhận xét, đánh giá, quyết định hoặc đề nghị cấp có thẩm quyền xem xét, quyết định. 3. Cá nhân, tập thể đề xuất bổ nhiệm phải chịu trách nhiệm trước cấp có thẩm quyền về ý kiến đề xuất, nhận xét, đánh giá, kết luận tiêu chuẩn chính trị, phẩm chất đạo đức, lối sống; năng lực công tác, ưu, khuyết điểm đối với nhân sự được đề xuất bổ nhiệm. 4. Cơ quan tham mưu về tổ chức cán bộ và các cơ quan liên quan chịu trách nhiệm về kết quả thẩm định, đề xuất nhân sự theo chức năng, nhiệm vụ và quyền hạn của mình. 5. Tập thể lãnh đạo, người đứng đầu quyết định bổ nhiệm chịu trách nhiệm đối với quyết định của mình; lãnh đạo, chỉ đạo công tác kiểm tra, giám sát và xử lý vi phạm về công tác cán bộ. 6. Công chức được đề xuất, xem xét bổ nhiệm phải chịu trách nhiệm việc kê khai lý lịch, hồ sơ cá nhân, kê khai tài sản, thu nhập của mình, giải trình các nội dung liên quan.
 
 ================================================================
 ## FORM_TEMPLATE — Biểu mẫu và danh sách FIELD_NAME
@@ -328,7 +345,6 @@ NOI_DUNG_*. KHÔNG tạo key nào khác ngoài `"fields"`.
    - Điều 1: Nội dung quyết định chính (bổ nhiệm / phê duyệt / ban hành...).
    - Điều 2: Trách nhiệm thi hành (cơ quan, cá nhân liên quan).
    - Điều 3: Hiệu lực thi hành (ngày có hiệu lực).
-   Mỗi điều khoản viết thành một đoạn riêng, bắt đầu bằng **Điều N.**
    ---
    KHÔNG tạo key riêng ngoài "fields" cho các field này.
 

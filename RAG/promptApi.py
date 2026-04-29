@@ -738,11 +738,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     DEFAULT_QUERIES = {
-        "draft"   : "Soạn công văn của Cục Văn thư và Lưu trữ Nhà nước gửi các Bộ về hướng dẫn thi hành Luật Lưu trữ",
+        "draft"   : "Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý theo quy định của luật cán bộ, công chức.",
         "legal_qa": "Trình bày điều kiện cấp giấy phép kinh doanh?",
     }
     DEFAULT_EXTRAS = {
-        "draft"   : "Ngày ký: 05/01/2025\nNgười ký: Cục trưởng Đặng Thanh Tùng\nSố CV: 12/VTLT-NV",
+        "draft"   : "Cơ quan ban hành: Sở Nội vụ tỉnh Bình Dương.\nViết tắt cơ quan ban hành: SNV.\n;Cơ quan chủ quản: UBND tỉnh Bình Dương.\nSố quyết định: 45. Ngày ký: 20/01/2026.\nNgười ký: Giám đốc Sở Nội vụ - Trần Thị Mai.\nĐối tượng bổ nhiệm: Ông Nguyễn Văn Hùng.\nChức vụ bổ nhiệm: Trưởng phòng Hành chính - Tổng hợp.\n",
         "legal_qa": "",
     }
     query  = args.query  or DEFAULT_QUERIES[args.mode]
