@@ -47,6 +47,9 @@ Trong form đã có sẵn tiền tố "Điều x." ở trước các field {{NOI
 3. Kết luận / thống nhất / cam kết.
 4. Chữ ký các bên (nếu cần).
 
+Trình bày các thành viên tham dự theo dạng liệt kê, ngăn cách bởi dấu ";"
+Trình bày nội dung diễn biến (NOI_DUNG_DIEN_BIEN) như ví dụ được cung cấp: "NOI_DUNG_DIEN_BIEN": "1. BSCKII Trần Quốc Bảo phát biểu khai mạc, nêu yêu cầu triển khai nhanh các đội tiêm lưu động để hỗ trợ công nhân tại Khu công nghiệp Trà Nóc và Hưng Phú.\n\n2. Khoa Dược ...
+
 Ghi theo thứ tự thời gian, khách quan, trung thực.
 
 ---
