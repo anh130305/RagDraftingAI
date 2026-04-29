@@ -25,6 +25,8 @@ vào field NOI_DUNG_* trong JSON output.
 - Điều 2: Trách nhiệm thi hành (cơ quan, cá nhân liên quan).
 - Điều 3: Hiệu lực thi hành (ngày có hiệu lực).
 
+Trong form đã có sẵn tiền tố "Điều x." ở trước các field {{NOI_DUNG_DIEU_1}}, {{NOI_DUNG_DIEU_2}}, ... nên trong json trả về đừng ghi lại, ví dụ thay vì ghi "Điều 1. Quy định về ..." thì chỉ cân trả về như sau: "Quy định về ..."
+
 ---
 
 ## TỜ TRÌNH (`to_trinh`)
