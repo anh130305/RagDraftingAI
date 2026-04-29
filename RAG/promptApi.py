@@ -235,7 +235,7 @@ def estimate_tokens(text: str) -> int:
 #   Response allocation (max_tokens):              ~4,096
 #   ──────────────────────────────────────────  ──────
 #   Available for user input (query + extras + files):  3,500  (buffer ~400)
-USER_TOKEN_LIMIT = 3500
+USER_TOKEN_LIMIT = 5000
 class PromptAPI:
     """
     API layer chính. Khởi tạo một lần, dùng nhiều lần.

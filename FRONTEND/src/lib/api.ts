@@ -1,5 +1,5 @@
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-const DEFAULT_TIMEOUT = 15000; // 15 seconds
+const DEFAULT_TIMEOUT = 60000; // 15 seconds
 const ABSOLUTE_HTTP_URL_REGEX = /^https?:\/\//i;
 
 export type DocumentPreviewKind = 'pdf' | 'word' | 'image' | 'other';
