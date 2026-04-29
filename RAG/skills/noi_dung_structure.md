@@ -15,7 +15,6 @@ vào field NOI_DUNG_* trong JSON output.
 3. Nội dung đề nghị / thông báo / báo cáo cụ thể (số liệu, thời gian, địa điểm...).
 4. Đề nghị cơ quan nhận phối hợp / xem xét / giải quyết.
 
-Kết thúc bằng: "[Tên CQ] trân trọng./." hoặc tương đương.
 
 ---
 
@@ -26,8 +25,6 @@ Kết thúc bằng: "[Tên CQ] trân trọng./." hoặc tương đương.
 - Điều 2: Trách nhiệm thi hành (cơ quan, cá nhân liên quan).
 - Điều 3: Hiệu lực thi hành (ngày có hiệu lực).
 
-Mỗi điều khoản viết thành một đoạn riêng, bắt đầu bằng **Điều N.**
-
 ---
 
 ## TỜ TRÌNH (`to_trinh`)
@@ -37,8 +34,6 @@ Mỗi điều khoản viết thành một đoạn riêng, bắt đầu bằng **
 2. Sự cần thiết / lý do trình.
 3. Nội dung đề xuất (phương án, chỉ tiêu, nguồn lực, tiến độ...).
 4. Kiến nghị phê duyệt.
-
-Kết thúc: "[Tên CQ] kính trình [Cấp trên] xem xét, phê duyệt./."
 
 ---
 
@@ -60,7 +55,7 @@ Ghi theo thứ tự thời gian, khách quan, trung thực.
 Nêu rõ: họ tên người nghỉ, chức vụ, thời gian nghỉ (từ ngày... đến ngày...),
 nơi nghỉ phép, chế độ nghỉ được hưởng.
 
-Văn phong ngắn gọn, đủ ý, không cần căn cứ pháp lý dài.
+Văn phong ngắn gọn, đủ ý, có thể không cần căn cứ pháp lý.
 
 ---
 
