@@ -321,9 +321,8 @@ class DocxFiller:
                 return
 
             # Bước 3: Xây dựng danh sách segments
-            # Mỗi segment = (text, source_run_for_rpr)
-            # source_run_for_rpr = run mà segment kế thừa formatting từ đó
-            segments: List[Tuple[str, etree._Element]] = []
+            # Mỗi segment = (text, source_run_for_rpr, is_multiline)
+            segments: List[Tuple[str, etree._Element, bool]] = []
             cursor = 0
 
             for m in matches:
@@ -331,28 +330,29 @@ class DocxFiller:
                 ph_start = m.start()
                 ph_end   = m.end()
 
-                # Text trước placeholder — chia theo run để giữ đúng formatting
                 if cursor < ph_start:
                     _append_text_segments(
                         segments, full_text[cursor:ph_start],
                         char_map[cursor:ph_start], runs
                     )
 
-                # Giá trị thay thế: kế thừa formatting từ run chứa {{ của placeholder
-                # (ký tự đầu tiên của {{) — đây là "donor run"
                 donor_run = char_map[ph_start] if ph_start < len(char_map) else runs[-1]
 
                 if ph_key in normalized:
                     value = normalized[ph_key]
                     filled_set.add(ph_key)
-                    segments.append((value, donor_run))
+
+                    # ── Logic đặc biệt cho NOI_DUNG_DIEN_BIEN ──────────────
+                    if ph_key == "NOI_DUNG_DIEN_BIEN":
+                        value = _normalize_dien_bien(value)
+                    # ────────────────────────────────────────────────────────
+
+                    segments.append((value, donor_run, "\n" in value))
                 else:
-                    # Giữ nguyên placeholder nếu không có trong fields
-                    segments.append((m.group(0), donor_run))
+                    segments.append((m.group(0), donor_run, False))
 
                 cursor = ph_end
 
-            # Phần text còn lại sau placeholder cuối
             if cursor < len(full_text):
                 _append_text_segments(
                     segments, full_text[cursor:],
@@ -363,19 +363,46 @@ class DocxFiller:
                 return
 
             # Bước 4: Rebuild w:r elements
-            # Xóa toàn bộ w:r cũ, thêm w:r mới theo segments
+            # is_multiline=True → tách thành nhiều <w:p>, mỗi \n = 1 paragraph mới
             first_run_idx = list(p_elem).index(runs[0])
             for r in runs:
                 p_elem.remove(r)
 
-            insert_pos = first_run_idx
-            for seg_text, src_run in segments:
+            parent_elem  = p_elem.getparent()
+            p_insert_idx = list(parent_elem).index(p_elem)
+
+            insert_pos  = first_run_idx
+            extra_paras: List[etree._Element] = []
+
+            for seg_text, src_run, is_multiline in segments:
                 if not seg_text:
                     continue
                 rpr = _clone_rpr(src_run)
-                new_r = _make_run_with_rpr(rpr, seg_text)
-                p_elem.insert(insert_pos, new_r)
-                insert_pos += 1
+
+                if not is_multiline:
+                    new_r = _make_run_with_rpr(rpr, seg_text)
+                    p_elem.insert(insert_pos, new_r)
+                    insert_pos += 1
+                else:
+                    lines = seg_text.split("\n")
+                    for line_idx, line in enumerate(lines):
+                        if line_idx == 0:
+                            if line:
+                                new_r = _make_run_with_rpr(rpr, line)
+                                p_elem.insert(insert_pos, new_r)
+                                insert_pos += 1
+                        else:
+                            new_p = etree.Element(qn('w:p'))
+                            pPr   = p_elem.find(qn('w:pPr'))
+                            if pPr is not None:
+                                new_p.append(copy.deepcopy(pPr))
+                            if line:
+                                new_r = _make_run_with_rpr(rpr, line)
+                                new_p.append(new_r)
+                            extra_paras.append(new_p)
+
+            for offset, new_p in enumerate(extra_paras, start=1):
+                parent_elem.insert(p_insert_idx + offset, new_p)
 
         def _append_text_segments(
             segments: List[Tuple[str, etree._Element]],
@@ -395,7 +422,7 @@ class DocxFiller:
                 j = i + 1
                 while j < len(text) and run_map[j] is src:
                     j += 1
-                segments.append((text[i:j], src))
+                segments.append((text[i:j], src, False))
                 i = j
 
         def process_paragraphs(paragraphs) -> None:
@@ -462,6 +489,49 @@ class DocxFiller:
                 f"⚠️  {len(unfilled)} placeholder chưa có giá trị: "
                 + ", ".join(unfilled)
             )
+
+
+# ═══════════════════════════════════════════════════════════════
+# HELPER: chuẩn hóa NOI_DUNG_DIEN_BIEN — tự nhận biết "1.", "2."...
+# và chèn xuống 1 dòng giữa các mục nếu chưa có
+# ═══════════════════════════════════════════════════════════════
+def _normalize_dien_bien(text: str) -> str:
+    """
+    Nhận diện các mục đánh số "1.", "2.", ... trong text và đảm bảo
+    mỗi mục bắt đầu trên một dòng mới (xuống 1 dòng, không tạo dòng trống).
+
+    Ví dụ input (không có \\n):
+        "1. Báo cáo tình hình. 2. Thảo luận. 3. Kết luận."
+    Output:
+        "1. Báo cáo tình hình.\\n2. Thảo luận.\\n3. Kết luận."
+
+    Ví dụ input (đã có \\n\\n — thu gọn lại thành 1 lần):
+        "1. Báo cáo\\n\\n2. Thảo luận\\n\\n3. Kết luận"
+    Output:
+        "1. Báo cáo\\n2. Thảo luận\\n3. Kết luận"
+    """
+    ITEM_PATTERN = re.compile(r'(\d+\.\s)')
+
+    parts = ITEM_PATTERN.split(text)
+    if len(parts) <= 1:
+        return text
+
+    items = []
+    prefix = parts[0].strip()
+    i = 1
+    while i < len(parts) - 1:
+        bullet  = parts[i]
+        content = parts[i + 1]
+        items.append(bullet + content.strip())
+        i += 2
+
+    result_parts = []
+    if prefix:
+        result_parts.append(prefix)
+    result_parts.extend(items)
+
+    # Nối bằng "\n" — mỗi mục xuống đúng 1 dòng
+    return "\n".join(result_parts)
 
 
 # ═══════════════════════════════════════════════════════════════

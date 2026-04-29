@@ -42,7 +42,7 @@ không chắc chắn 100%, bỏ qua phần ngày — không được bịa đặ
 Số liệu, ngày tháng, chức danh, tên cơ quan phải nhất quán xuyên suốt toàn bộ văn bản.
 
 ### 7. Cơ quan chủ quản (`TEN_CQ_CHU_QUAN`):**
-   - Nếu không xác định được → để trống `""` **hoặc** dùng lại `TEN_CQ_BAN_HANH` nếu hai cơ quan trùng nhau.
+   - Nếu không xác định được → để trống `""` **hoặc** dùng lại `TEN_CQ_BAN_HANH` nếu hai cơ quan trùng nhau, ưu tiên dùng lại hơn, tránh bỏ trống.
    - Ưu tiên viết tắt phổ thông: UBND, HĐND, UBMTTQ, Bộ GD&ĐT, v.v.
 
 ### 8. **Viết tắt khuyến khích:** Dùng chữ viết tắt đã phổ biến trong hành chính nhà nước:

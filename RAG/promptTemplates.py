@@ -569,6 +569,11 @@ def parse_llm_json(raw: str) -> Dict:
     Parse JSON từ LLM response. Xử lý các trường hợp LLM bọc code fence
     hoặc thêm text thừa trước/sau JSON.
 
+    Thứ tự thử:
+    1. Extract nội dung trong ```json ... ``` hoặc ``` ... ```
+    2. Parse trực tiếp toàn bộ text (sau khi strip)
+    3. Tìm JSON object lớn nhất trong text (từ { đầu đến } cuối)
+
     Args:
         raw: Toàn bộ string trả về từ LLM
 
@@ -580,22 +585,29 @@ def parse_llm_json(raw: str) -> Dict:
     """
     text = raw.strip()
 
-    # Bỏ code fence nếu LLM vẫn thêm vào dù đã dặn
-    text = re.sub(r"^```(?:json)?\s*\n?", "", text, flags=re.MULTILINE)
-    text = re.sub(r"\n?\s*```\s*$",       "", text, flags=re.MULTILINE)
-    text = text.strip()
+    # ── Bước 1: Extract content bên trong code fence (```json ... ``` hoặc ``` ... ```) ──
+    # Dùng re.DOTALL để . khớp cả newline; non-greedy để lấy fence đầu tiên
+    fence_match = re.search(r"```(?:json)?\s*\n?([\s\S]+?)\n?\s*```", text)
+    if fence_match:
+        candidate = fence_match.group(1).strip()
+        try:
+            return _validate_structure(json.loads(candidate))
+        except json.JSONDecodeError:
+            pass  # tiếp tục fallback
 
-    # Thử parse trực tiếp (happy path)
+    # ── Bước 2: Parse trực tiếp (LLM trả JSON thuần, không có fence) ──
     try:
         return _validate_structure(json.loads(text))
     except json.JSONDecodeError:
         pass
 
-    # Fallback: trích JSON object đầu tiên trong text
-    match = re.search(r"\{[\s\S]+\}", text)
-    if match:
+    # ── Bước 3: Tìm JSON object lớn nhất — từ { đầu tiên đến } cuối cùng ──
+    # Dùng rfind('}') thay vì greedy regex để tránh cắt sót khi value có ngoặc lồng
+    start = text.find("{")
+    end   = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
         try:
-            return _validate_structure(json.loads(match.group(0)))
+            return _validate_structure(json.loads(text[start : end + 1]))
         except json.JSONDecodeError:
             pass
 
