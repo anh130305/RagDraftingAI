@@ -49,7 +49,6 @@ Số liệu, ngày tháng, chức danh, tên cơ quan phải nhất quán xuyên
    - Uỷ ban nhân dân → **UBND**
    - Hội đồng nhân dân → **HĐND**
    - Uỷ ban Mặt trận Tổ quốc → **UBMTTQ**
-   - Sở/Phòng/Ban → giữ nguyên tên đầy đủ nếu chưa có viết tắt chuẩn.
 
 ### 9. Điền Ngày Tháng Năm
 Nếu biểu mẫu yêu cầu các trường NGAY, THANG, NAM thì phải tách riêng từng thành phần
