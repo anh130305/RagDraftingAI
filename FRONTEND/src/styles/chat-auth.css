@@ -160,3 +160,12 @@
 .animate-shimmer {
   animation: shimmer 5s linear infinite;
 }
+
+@keyframes upload-pulse {
+  0%, 100% { width: 30%; }
+  50% { width: 80%; }
+}
+
+.animate-upload-pulse {
+  animation: upload-pulse 1.5s ease-in-out infinite;
+}

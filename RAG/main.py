@@ -35,7 +35,7 @@ async def startup_event():
     logger.info("RAG Service: Khởi động...")
 
     # BƯỚC 1: Shared resources (embed model + ChromaDB client)
-    from app_state import init_shared_state, get_updater as _get_updater
+    from app_state import init_shared_state, get_updater as _get_updater, get_embed_model
     init_shared_state()
 
     # BƯỚC 2: Inject embed model vào hybrid_retrieval TRƯỚC khi init_retriever chạy.
@@ -84,14 +84,12 @@ def _get_updater():
 class DraftRequest(BaseModel):
     query: str
     extras: Optional[str] = None
-    legal_type_filter: Optional[str] = None
     call_llm: bool = True
 
 class LegalQARequest(BaseModel):
     query: str
     extras: Optional[str] = None
     legal_top_k: Optional[int] = None
-    legal_type_filter: Optional[str] = None
     call_llm: bool = True
 
 class IngestRequest(BaseModel):
@@ -143,7 +141,6 @@ async def draft(request: DraftRequest):
         result = _get_prompt_api().draft(
             query=request.query,
             extras=request.extras,
-            legal_type_filter=request.legal_type_filter,
             call_llm=request.call_llm,
         )
         return result
@@ -158,7 +155,6 @@ async def legal_qa(request: LegalQARequest):
             query=request.query,
             extras=request.extras,
             legal_top_k=request.legal_top_k,
-            legal_type_filter=request.legal_type_filter,
             call_llm=request.call_llm,
         )
         return result

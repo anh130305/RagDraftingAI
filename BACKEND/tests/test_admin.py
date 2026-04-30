@@ -2,12 +2,15 @@
 test_admin.py – Tests for admin-only endpoints.
 
 Covers:
-  GET /admin/users
-  PUT /admin/users/{id}
-  GET /admin/audit-logs
+    GET /admin/users
+    PUT /admin/users/{id}
+    GET /admin/audit-logs
+    POST /admin/knowledge-base/upload
 """
 
+import io
 import pytest
+from unittest.mock import patch
 from uuid import uuid4
 
 
@@ -104,3 +107,36 @@ class TestAdminAuditLogs:
             params={"action": "login", "skip": 0, "limit": 10},
         )
         assert resp.status_code == 200
+
+
+class TestAdminKnowledgeBaseUpload:
+    """POST /api/v1/admin/knowledge-base/upload"""
+
+    @patch("app.api.v1.routes.admin.audit_service.log_action")
+    @patch("app.api.v1.routes.admin.cloudinary_service.upload_to_cloudinary")
+    def test_admin_can_upload_knowledge_base_document(
+        self,
+        mock_upload_to_cloudinary,
+        _mock_log_action,
+        client,
+        admin_auth,
+        admin_user,
+    ):
+        mock_upload_to_cloudinary.return_value = {
+            "url": "https://res.cloudinary.com/demo/raw/upload/v1/RagDraftingAI/example.pdf",
+            "public_id": f"RagDraftingAI/{admin_user.id}/general/example.pdf",
+            "bytes": 12345,
+        }
+
+        resp = client.post(
+            "/api/v1/admin/knowledge-base/upload",
+            headers=admin_auth,
+            files={"file": ("example.pdf", io.BytesIO(b"pdf bytes"), "application/pdf")},
+            data={"title": "Example KB Doc"},
+        )
+
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["title"] == "Example KB Doc"
+        assert data["file_path"].startswith("https://res.cloudinary.com/")
+        assert data["cloudinary_public_id"] == f"RagDraftingAI/{admin_user.id}/general/example.pdf"

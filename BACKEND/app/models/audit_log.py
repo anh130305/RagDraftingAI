@@ -34,6 +34,11 @@ class AuditAction(str, enum.Enum):
     delete_template = "delete_template"
     use_template = "use_template"
 
+    # RAG ChromaDB Operations
+    rag_ingest = "rag_ingest"
+    rag_delete = "rag_delete"
+    rag_rebuild = "rag_rebuild"
+
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"

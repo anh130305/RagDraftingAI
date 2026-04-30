@@ -536,10 +536,14 @@ export default function ChatComposer({
       const uploadSessionId = (resolvedSessionId as string | undefined) || chatSessionId;
       if (filesToUpload.length > 0) {
         filesToUpload.forEach(file => {
-          api.uploadDocument(file, file.name, uploadSessionId).catch(err => {
-            console.warn('Cloudinary upload failed:', err);
-            showToast(`Lỗi lưu trữ tệp "${file.name}": ${err.message || 'Hệ thống bận'}`, 'system-error');
-          });
+          api.uploadDocument(file, file.name, uploadSessionId)
+            .then((doc) => {
+              console.debug('uploadDocument complete', { file: file.name, session: uploadSessionId, doc });
+            })
+            .catch(err => {
+              console.warn('Cloudinary upload failed:', err);
+              showToast(`Lỗi lưu trữ tệp "${file.name}": ${err.message || 'Hệ thống bận'}`, 'system-error');
+            });
         });
       }
     } catch {

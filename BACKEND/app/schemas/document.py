@@ -37,6 +37,7 @@ class DocumentResponse(BaseModel):
     session_id: Optional[UUID] = None
     cloudinary_public_id: Optional[str] = None
     chunk_count: int
+    rag_ingested: bool = False
     error_message: Optional[str] = None
     created_at: datetime
     updated_at: datetime

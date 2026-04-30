@@ -20,6 +20,7 @@ from app.db.session import get_engine
 from app.core.rate_limit import init_rate_limiting
 from app.db.init_db import initialize_system
 from app.services.rag_service import rag_service
+from app.services.rag_client import rag_client
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
@@ -37,8 +38,9 @@ async def lifespan(app: FastAPI):
         logger.error(f"Failed to initialize RAG service during startup: {e}")
     
     yield
-    # Shutdown: Cleanup if needed
+    # Shutdown: Cleanup shared HTTP clients
     await rag_service.aclose()
+    await rag_client.aclose()
     logger.info("Lifespan: Shutting down...")
 
 # ── Config Logging ──────────────────────────────────────────

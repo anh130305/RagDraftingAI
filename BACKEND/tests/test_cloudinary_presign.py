@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock, MagicMock
 
 
 class TestCloudinaryPresignUpload:
@@ -43,7 +43,7 @@ class TestCloudinaryPresignUpload:
 
 class TestCloudinaryUploadComplete:
     @patch("app.api.v1.routes.documents.settings.CLOUDINARY_CLOUD_NAME", "demo")
-    @patch("app.api.v1.routes.documents._extract_text_from_cloudinary_url", return_value="OCR TEXT")
+    @patch("app.api.v1.routes.documents._extract_text_from_bytes", return_value="OCR TEXT")
     @patch("app.api.v1.routes.documents.audit_service.log_action")
     def test_complete_upload_creates_document_and_runs_ocr(
         self,
@@ -54,19 +54,32 @@ class TestCloudinaryUploadComplete:
         normal_user,
     ):
         user_id = str(normal_user.id)
-        resp = client.post(
-            "/api/v1/documents/upload/complete",
-            headers=normal_auth,
-            json={
-                "title": "Cloudinary Contract",
-                "file_path": f"https://res.cloudinary.com/demo/raw/upload/v1/RagDraftingAI/{user_id}/general/cloudinary_contract.pdf",
-                "file_type": "application/pdf",
-                "file_size": 12345,
-                "cloudinary_public_id": f"RagDraftingAI/{user_id}/general/cloudinary_contract.pdf",
-                "chat_session_id": "general",
-                "resource_type": "raw",
-            },
-        )
+
+        # Mock the async httpx download inside complete_document_upload
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = b"fake-pdf-bytes"
+        mock_response.raise_for_status = MagicMock()
+
+        mock_async_client = AsyncMock()
+        mock_async_client.get = AsyncMock(return_value=mock_response)
+        mock_async_client.__aenter__ = AsyncMock(return_value=mock_async_client)
+        mock_async_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("app.api.v1.routes.documents._httpx.AsyncClient", return_value=mock_async_client):
+            resp = client.post(
+                "/api/v1/documents/upload/complete",
+                headers=normal_auth,
+                json={
+                    "title": "Cloudinary Contract",
+                    "file_path": f"https://res.cloudinary.com/demo/raw/upload/v1/RagDraftingAI/{user_id}/general/cloudinary_contract.pdf",
+                    "file_type": "application/pdf",
+                    "file_size": 12345,
+                    "cloudinary_public_id": f"RagDraftingAI/{user_id}/general/cloudinary_contract.pdf",
+                    "chat_session_id": "general",
+                    "resource_type": "raw",
+                },
+            )
 
         assert resp.status_code == 201
         data = resp.json()

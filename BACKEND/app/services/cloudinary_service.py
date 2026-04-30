@@ -180,6 +180,7 @@ def upload_to_cloudinary(file: UploadFile, user_id: str, session_id: str = "gene
         "public_id": public_id,
         "resource_type": resource_type,
         "type": delivery_type,
+        "bytes": response.get("bytes", 0),
     }
 
 def upload_local_file_to_cloudinary(
