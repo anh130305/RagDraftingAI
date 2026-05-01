@@ -1,18 +1,20 @@
 # RAG CLI — 02_quyet_dinh_bo_nhiem_cong_chuc
-# Run     : 20260428_210053
-# Thời điểm: 2026-04-28 21:03:06
-# Form    : Form_03 (Quyết định)
+# Run     : 20260429_112457
+# Thời điểm: 2026-04-29 11:26:26
+# Form    : Form_02 (Quyết định)
 # Reranker: BẬT
-# Query   : Soạn quyết định bổ nhiệm ông Nguyễn Văn Hùng giữ chức vụ Trưởng phòng Hành chính - Tổng hợp thuộc Sở Nội vụ tỉnh Bình Dư...
+# Query   : Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý theo quy định của luật cán bộ, công chức.
 ======================================================================
 
 ## YÊU CẦU SOẠN THẢO
-Soạn quyết định bổ nhiệm ông Nguyễn Văn Hùng giữ chức vụ Trưởng phòng Hành chính - Tổng hợp thuộc Sở Nội vụ tỉnh Bình Dương. Trong phần căn cứ pháp lý, yêu cầu viện dẫn Luật Cán bộ, công chức và Nghị định của Chính phủ quy định về tuyển dụng, sử dụng và quản lý công chức.
+Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý theo quy định của luật cán bộ, công chức.
 
 ## YÊU CẦU BỔ SUNG
-Ngày ký quyết định: 20/01/2025
-Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai
-Số quyết định: 45/QĐ-SNV
+Cơ quan ban hành: Sở Nội vụ tỉnh Bình Dương.
+Số quyết định: 45/QĐ-SNV. Ngày ký: 20/01/2026.
+Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai.
+Đối tượng bổ nhiệm: Ông Nguyễn Văn Hùng.
+Chức vụ bổ nhiệm: Trưởng phòng Hành chính - Tổng hợp.
 
 ================================================================
 # Skill: Xử lý LEGAL_CONTEXT
@@ -38,53 +40,58 @@ Khi có chồng chéo giữa các điều khoản, ưu tiên theo thứ bậc:
 Luật > Pháp lệnh > Nghị định > Nghị quyết.
 
 
-[1] 📋 [NGHỊ ĐỊNH]
+[1] 
+    Số hiệu : 80/2025/QH15
+    Tên VB  : Luật số: 80/2025/QH15
+    Điều    : Điều 31. Bổ nhiệm, từ chức, miễn nhiệm, cho thôi giữ chức vụ đối với công chức lãnh đạo, quản lý
+    Độ liên quan: 0.961
+
+Điều 31. Bổ nhiệm, từ chức, miễn nhiệm, cho thôi giữ chức vụ đối với công chức lãnh đạo, quản lý
+1. Công chức được bổ nhiệm giữ chức vụ lãnh đạo, quản lý được thực hiện bằng quyết định bổ nhiệm của cấp có thẩm quyền. Trường hợp được bổ nhiệm chức vụ lãnh đạo, quản lý mới thì đương nhiên thôi giữ chức vụ lãnh đạo, quản lý đang đảm nhiệm, trừ trường hợp kiêm nhiệm.
+ 2. Thời hạn bổ nhiệm công chức giữ chức vụ lãnh đạo, quản lý là 05 năm. Thời hạn bổ nhiệm dưới 05 năm áp dụng đối với một số chức danh đặc thù theo quy định của pháp luật có liên quan hoặc quy định của cấp có thẩm quyền.
+ Khi hết thời hạn bổ nhiệm, cấp có thẩm quyền phải xem xét bổ nhiệm lại hoặc không bổ nhiệm lại, trừ trường hợp chưa được xem xét, bổ nhiệm lại theo quy định của pháp luật và quy định của cấp có thẩm quyền.
+ 3. Việc từ chức, miễn nhiệm, cho thôi giữ chức vụ và các nội dung khác có liên quan đối với công chức lãnh đạo, quản lý được thực hiện theo quy định của cấp có thẩm quyền và của Chính phủ.
+
+Mục 6
+THÔI VIỆC, NGHỈ HƯU ĐỐI VỚI CÔNG CHỨC
+
+────────────────────────────────────────────────────────────
+
+[2] 
     Số hiệu : 138/2020/NĐ-CP
     Tên VB  : QUY ĐỊNH VỀ TUYỂN DỤNG, SỬ DỤNG VÀ QUẢN LÝ CÔNG CHỨC
-    Điều    : Điều 78. Hiệu lực thi hành
-    Độ liên quan: 0.408
+    Điều    : Điều 46. Trình tự, thủ tục bổ nhiệm công chức giữ chức vụ lãnh đạo, quản lý thuộc thẩm quyền quản lý của Bộ, ngành, địa phương
+    Độ liên quan: 0.972
 
-Điều 78. Hiệu lực thi hành
-1. Nghị định này có hiệu lực thi hành kể từ ngày 01 tháng 12 năm 2020. 2. Đối với cơ quan, tổ chức đã được cấp có thẩm quyền phê duyệt đề án, kế hoạch tuyển dụng công chức (thi tuyển, xét tuyển, tiếp nhận vào công chức), thi nâng ngạch công chức trước ngày ban hành Nghị định này thì tiếp tục thực hiện theo đề án, kế hoạch đã được phê duyệt trong thời hạn 06 tháng kể từ ngày Nghị định này có hiệu lực thi hành. Sau thời hạn này nếu không hoàn thành thì thực hiện theo quy định tại Nghị định này. 3. Bãi bỏ toàn bộ các văn bản quy phạm pháp luật sau: a) Nghị định số 24/2010/NĐ-CP ngày 15 tháng 3 năm 2010 của Chính phủ quy định về tuyển dụng, sử dụng và quản lý công chức; b) Nghị định số 93/2010/NĐ-CP ngày 31 tháng 8 năm 2010 của Chính phủ sửa đổi một số điều của Nghị định số 24/2010/NĐ-CP ngày 15 tháng 3 năm 2010 của Chính phủ quy định về tuyển dụng, sử dụng và quản lý công chức; c) Quyết định số 27/2003/QĐ-TTg ngày 19 tháng 02 năm 2003 của Thủ tướng Chính phủ về việc ban hành quy chế bổ nhiệm, bổ nhiệm lại, luân chuyển, từ chức, miễn nhiệm, cán bộ công chức lãnh đạo. 4. Bãi bỏ một phần các văn bản quy phạm pháp luật sau: a) Điều 1 Nghị định số 161/2018/NĐ-CP ngày 29 tháng 11 năm 2018 của Chính phủ sửa đổi, bổ sung một số quy định về tuyển dụng công chức, viên chức, nâng ngạch công chức, thăng hạng viên chức và thực hiện chế độ hợp đồng một số loại công việc trong cơ quan hành chính nhà nước, đơn vị sự nghiệp công lập; b) Điều 11 Nghị định số 06/2010/NĐ-CP ngày 25 tháng 01 năm 2010 của Chính phủ quy định những người là công chức.
+[Điều 46. Trình tự, thủ tục bổ nhiệm công chức giữ chức vụ lãnh đạo, quản lý thuộc thẩm quyền quản lý của Bộ, ngành, địa phương] 1. Xin chủ trương bổ nhiệm: a) Cơ quan, tổ chức có nhu cầu bổ nhiệm công chức lãnh đạo, quản lý phải trình cơ quan có thẩm quyền bổ nhiệm bằng văn bản về chủ trương, số lượng, nguồn nhân sự và dự kiến phân công công tác đối với nhân sự được dự kiến bổ nhiệm; b) Cấp có thẩm quyền xem xét, quyết định về chủ trương bổ nhiệm chậm nhất sau 10 ngày kể từ ngày nhận được đề nghị của cơ quan, tổ chức; c) Chậm nhất sau 15 ngày kể từ ngày có văn bản đồng ý về chủ trương bổ nhiệm của cấp có thẩm quyền, người đứng đầu cơ quan, tổ chức phải tiến hành quy trình lựa chọn nhân sự theo quy định. 2. Thực hiện quy trình bổ nhiệm đối với nguồn nhân sự tại chỗ: a) Bước 1: Trên cơ sở chủ trương, yêu cầu nhiệm vụ của cơ quan, tổ chức và nguồn nhân sự trong quy hoạch, tập thể lãnh đạo thảo luận và đề xuất về cơ cấu, tiêu chuẩn, điều kiện, quy trình giới thiệu nhân sự. Thành phần: Người đứng đầu, cấp phó của người đứng đầu cơ quan, tổ chức và người đứng đầu cơ quan tham mưu về tổ chức cán bộ. Kết quả thảo luận và đề xuất được ghi thành biên bản. b) Bước 2: Tập thể lãnh đạo mở rộng thảo luận và thống nhất về cơ cấu, tiêu chuẩn, điều kiện, quy trình giới thiệu nhân sự và tiến hành giới thiệu nhân sự bằng phiếu kín. Thành phần: Người đứng đầu, cấp phó của người đứng đầu cơ quan, tổ chức; thường vụ cấp ủy cùng cấp; người đứng đầu các cơ quan, tổ chức, đơn vị thuộc và trực thuộc. Hội nghị phải có tối thiểu 2/3 số người được triệu tập tham dự. Nguyên tắc giới thiệu và lựa chọn: Mỗi thành viên giới thiệu 01 người cho một chức vụ; người nào có số phiếu cao nhất, đạt tỷ lệ trên 50% tính trên tổng số người được triệu tập giới thiệu thì được lựa chọn. Trường hợp không có người nào đạt trên 50% thì chọn [...]
 
 ────────────────────────────────────────────────────────────
 
-[2] 📋 [NGHỊ ĐỊNH]
+[3] 
     Số hiệu : 138/2020/NĐ-CP
     Tên VB  : QUY ĐỊNH VỀ TUYỂN DỤNG, SỬ DỤNG VÀ QUẢN LÝ CÔNG CHỨC
-    Điều    : Điều 79. Trách nhiệm tổ chức thực hiện
-    Độ liên quan: 0.374
+    Điều    : Điều 42. Tiêu chuẩn, điều kiện bổ nhiệm
+    Độ liên quan: 0.929
 
-Điều 79. Trách nhiệm tổ chức thực hiện
-1. Bộ trưởng, Thủ trưởng cơ quan ngang Bộ, người đứng đầu tổ chức do Chính phủ, Thủ tướng Chính phủ thành lập mà không phải là đơn vị sự nghiệp công lập, Chủ tịch Ủy ban nhân dân tỉnh, thành phố trực thuộc trung ương có trách nhiệm chỉ đạo người đứng đầu các cơ quan, tổ chức thuộc phạm vi quản lý khi tuyển dụng, sử dụng, quản lý công chức phải thực hiện đúng quy định tại Nghị định này và các quy định khác có liên quan. 2. Trường hợp cơ quan, tổ chức, cá nhân có vi phạm trong công tác tuyển dụng, sử dụng và quản lý công chức thì tùy theo tính chất, mức độ của hành vi vi phạm, cấp có thẩm quyền có trách nhiệm xem xét, xử lý vi phạm theo quy định của Đảng và của pháp luật.
-
-────────────────────────────────────────────────────────────
-
-[3] 📋 [NGHỊ ĐỊNH]
-    Số hiệu : 93/2010/NĐ-CP
-    Tên VB  : SỬA ĐỔI MỘT SỐ ĐIỀU CỦA NGHỊ ĐỊNH SỐ 24/2010/NĐ-CP NGÀY 15 THÁNG 3 NĂM 2010 CỦA CHÍNH PHỦ QUY ĐỊNH VỀ TUYỂN DỤNG, SỬ DỤNG VÀ QUẢN LÝ CÔNG CHỨC
-    Điều    : Điều 1. Sửa đổi một số điều của Nghị định số 24/2010/NĐ-CP ngày 15 tháng 3 năm 2010 của Chính phủ quy định về tuyển dụng, sử dụng và quản lý công chức, như sau:
-    Độ liên quan: 0.331
-
-Điều 1. Sửa đổi một số điều của Nghị định số 24/2010/NĐ-CP ngày 15 tháng 3 năm 2010 của Chính phủ quy định về tuyển dụng, sử dụng và quản lý công chức, như sau:
-1. Sửa đổi Điều 26: “Điều 26. Thẩm quyền xét chuyển cán bộ, công chức cấp xã thành công chức từ cấp huyện trở lên Người đứng đầu cơ quan quản lý công chức quy định tại khoản 2 Điều 2 Nghị định này xét chuyển cán bộ, công chức cấp xã thành công chức từ cấp huyện trở lên làm việc tại các cơ quan, tổ chức, đơn vị trong phạm vi thuộc thẩm quyền quản lý”. 2. Sửa đổi khoản 3 và khoản 5 Điều 30: “Điều 30. Phân công tổ chức thi nâng ngạch công chức 3. Cơ quan quản lý công chức theo quy định tại khoản 2 Điều 2 Nghị định này chủ trì, phối hợp với Bộ Nội vụ tổ chức thi nâng ngạch công chức từ ngạch nhân viên lên ngạch cán sự và tương đương; từ ngạch nhân viên, cán sự và tương đương lên ngạch chuyên viên và tương đương đối với công chức thuộc phạm vi quản lý. 5. Bộ Nội vụ hướng dẫn cụ thể hình thức, nội dung các môn thi, các bài thi và quy chế tổ chức thi nâng ngạch công chức”. 3. Sửa đổi khoản 1 Điều 36: “Điều 36. Luân chuyển công chức 1. Việc luân chuyển công chức chỉ thực hiện đối với công chức giữ chức vụ lãnh đạo, quản lý trong quy hoạch”. 4. Sửa đổi khoản 1 Điều 39: “Điều 39. Chế độ, chính sách đối với công chức được điều động, luân chuyển, biệt phái 1. Trường hợp công chức được điều động, luân chuyển đến vị trí công tác khác không phù hợp với ngạch công chức hiện giữ thì phải chuyển ngạch theo quy định tại Điều 28 Nghị định này và thôi giữ chức vụ lãnh đạo, quản lý đang đảm nhiệm kể từ ngày có quyết định điều động, luân chuyển”.
+Điều 42. Tiêu chuẩn, điều kiện bổ nhiệm
+1. Bảo đảm tiêu chuẩn chung, tiêu chuẩn chức danh theo quy định của Đảng, Nhà nước và tiêu chuẩn cụ thể của chức vụ bổ nhiệm theo quy định của cơ quan có thẩm quyền. 2. Phải được quy hoạch chức vụ bổ nhiệm nếu là nguồn nhân sự tại chỗ hoặc được quy hoạch chức vụ tương đương nếu là nguồn nhân sự từ nơi khác. Trường hợp cơ quan, tổ chức mới thành lập chưa thực hiện việc phê duyệt quy hoạch thì do cấp có thẩm quyền xem xét, quyết định. 3. Có hồ sơ, lý lịch cá nhân được xác minh, có bản kê khai tài sản, thu nhập theo quy định. 4. Điều kiện về độ tuổi bổ nhiệm: a) Công chức được đề nghị bổ nhiệm lần đầu giữ chức vụ lãnh đạo, quản lý hoặc đề nghị bổ nhiệm giữ chức vụ lãnh đạo, quản lý cao hơn thì tuổi bổ nhiệm phải còn đủ 05 năm công tác tính từ khi thực hiện quy trình bổ nhiệm; trường hợp đặc biệt báo cáo cấp có thẩm quyền xem xét, quyết định; b) Công chức được đề nghị bổ nhiệm vào chức vụ lãnh đạo, quản lý mà thời hạn mỗi lần bổ nhiệm dưới 05 năm theo quy định của pháp luật chuyên ngành và của cơ quan có thẩm quyền thì tuổi bổ nhiệm phải đủ một nhiệm kỳ; c) Công chức được điều động, bổ nhiệm giữ chức vụ mới tương đương hoặc thấp hơn chức vụ đang giữ thì không tính tuổi bổ nhiệm theo quy định tại điểm a khoản này. 5. Có đủ sức khoẻ để hoàn thành nhiệm vụ và chức trách được giao. 6. Không thuộc các trường hợp bị cấm đảm nhiệm chức vụ theo quy định của Đảng và của pháp luật; không đang trong thời hạn xử lý kỷ luật, không trong thời gian thực hiện các quy định liên quan đến kỷ luật quy định tại Điều 82 của Luật Cán bộ, công chức được sửa đổi, bổ sung tại khoản 17 Điều 1 Luật sửa đổi, bổ sung một số điều của Luật Cán bộ, công chức và Luật Viên chức.
 
 ────────────────────────────────────────────────────────────
 
-[4] 📋 [NGHỊ ĐỊNH]
-    Số hiệu : 115/2020/NĐ-CP
-    Tên VB  : QUY ĐỊNH VỀ TUYỂN DỤNG, SỬ DỤNG VÀ QUẢN LÝ VIÊN CHỨC
-    Điều    : Điều 1. Phạm vi điều chỉnh và đối tượng áp dụng
-    Độ liên quan: 0.258
+[4] 
+    Số hiệu : 138/2020/NĐ-CP
+    Tên VB  : QUY ĐỊNH VỀ TUYỂN DỤNG, SỬ DỤNG VÀ QUẢN LÝ CÔNG CHỨC
+    Điều    : Điều 43. Trách nhiệm trong công tác bổ nhiệm công chức giữ chức vụ lãnh đạo, quản lý
+    Độ liên quan: 0.925
 
-Điều 1. Phạm vi điều chỉnh và đối tượng áp dụng
-1. Nghị định này quy định về tuyển dụng, sử dụng và quản lý đối với viên chức làm việc trong đơn vị sự nghiệp công lập do cơ quan có thẩm quyền của Nhà nước, tổ chức chính trị, tổ chức chính trị - xã hội ở Trung ương, cấp tỉnh, cấp huyện thành lập theo quy định của pháp luật. 2. Việc tuyển dụng, sử dụng và quản lý đối với người làm việc trong tổ chức cơ yếu được thực hiện theo quy định của pháp luật về cơ yếu. 3. Đơn vị sự nghiệp thuộc tổ chức chính trị xã hội - nghề nghiệp, tổ chức xã hội, tổ chức xã hội - nghề nghiệp; đơn vị sự nghiệp thuộc đơn vị sự nghiệp công lập; đơn vị sự nghiệp thuộc doanh nghiệp do Nhà nước nắm giữ 100% vốn điều lệ hoặc doanh nghiệp do Nhà nước nắm giữ trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết được áp dụng các quy định tại Nghị định này để thực hiện việc tuyển dụng, sử dụng và quản lý đối với những người làm việc trong đơn vị sự nghiệp.
+Điều 43. Trách nhiệm trong công tác bổ nhiệm công chức giữ chức vụ lãnh đạo, quản lý
+1. Người đứng đầu, các thành viên trong cấp ủy, lãnh đạo cơ quan, tổ chức có trách nhiệm đề xuất nhân sự và nhận xét, đánh giá đối với nhân sự được đề xuất. 2. Tập thể cấp ủy, tập thể lãnh đạo cơ quan, tổ chức thảo luận, nhận xét, đánh giá, quyết định hoặc đề nghị cấp có thẩm quyền xem xét, quyết định. 3. Cá nhân, tập thể đề xuất bổ nhiệm phải chịu trách nhiệm trước cấp có thẩm quyền về ý kiến đề xuất, nhận xét, đánh giá, kết luận tiêu chuẩn chính trị, phẩm chất đạo đức, lối sống; năng lực công tác, ưu, khuyết điểm đối với nhân sự được đề xuất bổ nhiệm. 4. Cơ quan tham mưu về tổ chức cán bộ và các cơ quan liên quan chịu trách nhiệm về kết quả thẩm định, đề xuất nhân sự theo chức năng, nhiệm vụ và quyền hạn của mình. 5. Tập thể lãnh đạo, người đứng đầu quyết định bổ nhiệm chịu trách nhiệm đối với quyết định của mình; lãnh đạo, chỉ đạo công tác kiểm tra, giám sát và xử lý vi phạm về công tác cán bộ. 6. Công chức được đề xuất, xem xét bổ nhiệm phải chịu trách nhiệm việc kê khai lý lịch, hồ sơ cá nhân, kê khai tài sản, thu nhập của mình, giải trình các nội dung liên quan.
 
 ================================================================
 ## FORM_TEMPLATE — Biểu mẫu và danh sách FIELD_NAME
-Form ID   : Form_03
+Form ID   : Form_02
 Loại VB   : Quyết định
-Mục đích  : Ban hành hoặc phê duyệt văn bản kèm theo
+Mục đích  : Quy định trực tiếp (cá biệt)
 
 Field metadata (điền vào "fields"):
     - CAN_CU_PHAP_LY_1
@@ -97,17 +104,19 @@ Field metadata (điền vào "fields"):
     - NAM
     - NGAY
     - QUYEN_HAN_CHUC_VU_NGUOI_KY
+    - SO_DIEU_THI_HANH
     - SO_QUYET_DINH
     - TEN_CQ_BAN_HANH
     - TEN_CQ_CHU_QUAN
     - TEN_DON_VI_DE_NGHI
-    - TEN_VAN_BAN_KEM_THEO
     - THAM_QUYEN_BAN_HANH
     - THANG
     - TRICH_YEU
 
 Field thân văn bản — CŨNG điền vào "fields" (KHÔNG tạo key riêng):
-    - NOI_DUNG_TO_CHUC_THUC_HIEN
+    - NOI_DUNG_DIEU_1
+    - NOI_DUNG_DIEU_2
+    - NOI_DUNG_DIEU_3
 
 ────────────────────────────────────────────────────────────
 
@@ -126,7 +135,7 @@ Số: {{SO_QUYET_DINH}}/QĐ-{{CHU_VIET_TAT_CQ_BAN_HANH}}
 {{DIA_DANH}}, ngày {{NGAY}} tháng {{THANG}} năm {{NAM}}
 
 # QUYẾT ĐỊNH
-**Ban hành {{TRICH_YEU}}**
+**Về việc {{TRICH_YEU}}**
 
 **{{THAM_QUYEN_BAN_HANH}}**
 
@@ -137,17 +146,17 @@ Theo đề nghị của {{TEN_DON_VI_DE_NGHI}}.
 
 **QUYẾT ĐỊNH:**
 
-**Điều 1.** Ban hành kèm theo Quyết định này **{{TEN_VAN_BAN_KEM_THEO}}**.
+**Điều 1.** {{NOI_DUNG_DIEU_1}}
 
-**Điều 2.** {{NOI_DUNG_TO_CHUC_THUC_HIEN}}.
+**Điều 2.** {{NOI_DUNG_DIEU_2}}
 
-**Điều 3.** Quyết định này có hiệu lực kể từ ngày ký.
+**Điều 3.** {{NOI_DUNG_DIEU_3}}
 
 ---
 
 **Nơi nhận:**
 
-- Như Điều 2 
+- Như Điều {{SO_DIEU_THI_HANH}} 
 - {{CO_QUAN_NHAN_KHAC}} 
 - Lưu: VT, {{CHU_VIET_TAT_DON_VI_SOAN_THAO}}
 
@@ -162,53 +171,54 @@ Theo đề nghị của {{TEN_DON_VI_DE_NGHI}}.
 
 
 [Ví dụ 1]
-Tình huống: Sở Nội vụ tỉnh Thái Bình ban hành quy trình đánh giá mức độ hoàn thành nhiệm vụ của công chức cấp xã theo bộ chỉ số điện tử.
+Tình huống: Bộ Tài chính bổ nhiệm Vụ trưởng Vụ Chính sách Thuế.
 
-ỦY BAN NHÂN DÂN TỈNH THÁI BÌNH 
-**SỞ NỘI VỤ**
+CHÍNH PHỦ 
+**BỘ TÀI CHÍNH**
 
 ---
 
-Số: 221/QĐ-SNV
+Số: 543/QĐ-BTC
 
 **CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM** 
 **Độc lập - Tự do - Hạnh phúc**
 
 ---
 
-Thái Bình, ngày 19 tháng 1 năm 2021
+Hà Nội, ngày 15 tháng 04 năm 2021
 
 # QUYẾT ĐỊNH
-**Ban hành Quy trình đánh giá mức độ hoàn thành nhiệm vụ của công chức cấp xã theo Bộ chỉ số theo dõi điện tử tỉnh Thái Bình**
+**Về việc bổ nhiệm công chức lãnh đạo, quản lý**
 
-**GIÁM ĐỐC SỞ NỘI VỤ TỈNH THÁI BÌNH**
+**BỘ TRƯỞNG BỘ TÀI CHÍNH**
 
-Căn cứ Luật Cán bộ, công chức ngày 13 tháng 11 năm 2008; Luật sửa đổi, bổ sung một số điều của Luật Cán bộ, công chức và Luật Viên chức ngày 25 tháng 11 năm 2019; 
-Căn cứ Nghị định số 90/2020/NĐ-CP ngày 13 tháng 8 năm 2020 của Chính phủ về đánh giá, xếp loại chất lượng cán bộ, công chức, viên chức;
+Căn cứ Nghị định số 123/2016/NĐ-CP ngày 01 tháng 9 năm 2016 của Chính phủ quy định chức năng, nhiệm vụ, quyền hạn và cơ cấu tổ chức của bộ, cơ quan ngang bộ; 
+Căn cứ Nghị định số 87/2017/NĐ-CP ngày 26 tháng 7 năm 2017 của Chính phủ quy định chức năng, nhiệm vụ, quyền hạn và cơ cấu tổ chức của Bộ Tài chính;
 
-Theo đề nghị của Trưởng phòng Công chức, viên chức, Sở Nội vụ.
+Theo đề nghị của Vụ trưởng Vụ Tổ chức cán bộ.
 
 **QUYẾT ĐỊNH:**
 
-**Điều 1.** Ban hành kèm theo Quyết định này **Quy trình đánh giá mức độ hoàn thành nhiệm vụ của công chức cấp xã theo Bộ chỉ số theo dõi điện tử tỉnh Thái Bình**.
+**Điều 1.** Bổ nhiệm có thời hạn ông Lê Văn Cường, Phó Vụ trưởng Vụ Chính sách Thuế giữ chức Vụ trưởng Vụ Chính sách Thuế, Bộ Tài chính.
 
-**Điều 2.** Chánh Văn phòng Sở, Trưởng các phòng chuyên môn thuộc Sở, Trưởng phòng Nội vụ các huyện, thành phố và Chủ tịch Ủy ban nhân dân các xã, phường, thị trấn chịu trách nhiệm tổ chức thực hiện; Phòng Công chức, viên chức hướng dẫn biểu mẫu, theo dõi kết quả và tổng hợp báo cáo Giám đốc Sở.
+**Điều 2.** Ông Lê Văn Cường được hưởng phụ cấp chức vụ lãnh đạo hệ số 1,0. Quyết định này có hiệu lực kể từ ngày ký.
 
-**Điều 3.** Quyết định này có hiệu lực kể từ ngày ký.
+**Điều 3.** Chánh Văn phòng Bộ, Vụ trưởng Vụ Tổ chức cán bộ, Vụ trưởng Vụ Kế hoạch - Tài chính và ông Lê Văn Cường chịu trách nhiệm thi hành Quyết định này.
 
 ---
 
 **Nơi nhận:**
 
-- Như Điều 2 
-- Ủy ban nhân dân các huyện, thành phố; Ban Tổ chức Tỉnh ủy Thái Bình 
-- Lưu: VT, CCVC
+- Như Điều 3 
+- Thủ tướng Chính phủ (để b/c) 
+- Lưu: VT, TCCB
 
-**GIÁM ĐỐC**
+**KT. BỘ TRƯỞNG
+THỨ TRƯỞNG**
 
 *(Ký, đóng dấu)*
 
-**Nguyễn Khắc Thận**
+**Trần Xuân Hà**
 
 ================================================================
 # Skill: Yêu cầu JSON Đầu ra (Soạn thảo)
@@ -237,15 +247,17 @@ KHÔNG thêm bất kỳ text nào ngoài JSON:
     "NAM": "...",
     "NGAY": "...",
     "QUYEN_HAN_CHUC_VU_NGUOI_KY": "...",
+    "SO_DIEU_THI_HANH": "...",
     "SO_QUYET_DINH": "...",
     "TEN_CQ_BAN_HANH": "...",
     "TEN_CQ_CHU_QUAN": "...",
     "TEN_DON_VI_DE_NGHI": "...",
-    "TEN_VAN_BAN_KEM_THEO": "...",
     "THAM_QUYEN_BAN_HANH": "...",
     "THANG": "...",
     "TRICH_YEU": "...",
-    "NOI_DUNG_TO_CHUC_THUC_HIEN": "(nội dung thân văn bản — xem hướng dẫn cấu trúc quy tắc 2)"
+    "NOI_DUNG_DIEU_1": "(nội dung thân văn bản — xem hướng dẫn cấu trúc quy tắc 2)",
+    "NOI_DUNG_DIEU_2": "(nội dung thân văn bản — xem hướng dẫn cấu trúc quy tắc 2)",
+    "NOI_DUNG_DIEU_3": "(nội dung thân văn bản — xem hướng dẫn cấu trúc quy tắc 2)"
   }
 }
 
@@ -256,13 +268,14 @@ KHÔNG thêm bất kỳ text nào ngoài JSON:
 NOI_DUNG_*. KHÔNG tạo key nào khác ngoài `"fields"`.
 
 2. CÁC FIELD THÂN VĂN BẢN — điền trực tiếp vào key "fields":
-   • NOI_DUNG_TO_CHUC_THUC_HIEN
+   • NOI_DUNG_DIEU_1
+   • NOI_DUNG_DIEU_2
+   • NOI_DUNG_DIEU_3
    Viết nội dung theo cấu trúc sau:
    **Cấu trúc:**
    - Điều 1: Nội dung quyết định chính (bổ nhiệm / phê duyệt / ban hành...).
    - Điều 2: Trách nhiệm thi hành (cơ quan, cá nhân liên quan).
    - Điều 3: Hiệu lực thi hành (ngày có hiệu lực).
-   Mỗi điều khoản viết thành một đoạn riêng, bắt đầu bằng **Điều N.**
    ---
    KHÔNG tạo key riêng ngoài "fields" cho các field này.
 

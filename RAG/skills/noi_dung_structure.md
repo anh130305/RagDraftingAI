@@ -15,7 +15,6 @@ vào field NOI_DUNG_* trong JSON output.
 3. Nội dung đề nghị / thông báo / báo cáo cụ thể (số liệu, thời gian, địa điểm...).
 4. Đề nghị cơ quan nhận phối hợp / xem xét / giải quyết.
 
-Kết thúc bằng: "[Tên CQ] trân trọng./." hoặc tương đương.
 
 ---
 
@@ -26,7 +25,7 @@ Kết thúc bằng: "[Tên CQ] trân trọng./." hoặc tương đương.
 - Điều 2: Trách nhiệm thi hành (cơ quan, cá nhân liên quan).
 - Điều 3: Hiệu lực thi hành (ngày có hiệu lực).
 
-Mỗi điều khoản viết thành một đoạn riêng, bắt đầu bằng **Điều N.**
+Trong form đã có sẵn tiền tố "Điều x." ở trước các field {{NOI_DUNG_DIEU_1}}, {{NOI_DUNG_DIEU_2}}, ... nên trong json trả về đừng ghi lại, ví dụ thay vì ghi "Điều 1. Quy định về ..." thì chỉ cân trả về như sau: "Quy định về ..."
 
 ---
 
@@ -38,8 +37,6 @@ Mỗi điều khoản viết thành một đoạn riêng, bắt đầu bằng **
 3. Nội dung đề xuất (phương án, chỉ tiêu, nguồn lực, tiến độ...).
 4. Kiến nghị phê duyệt.
 
-Kết thúc: "[Tên CQ] kính trình [Cấp trên] xem xét, phê duyệt./."
-
 ---
 
 ## BIÊN BẢN (`bien_ban`)
@@ -49,6 +46,9 @@ Kết thúc: "[Tên CQ] kính trình [Cấp trên] xem xét, phê duyệt./."
 2. Nội dung diễn biến / ý kiến các bên.
 3. Kết luận / thống nhất / cam kết.
 4. Chữ ký các bên (nếu cần).
+
+Trình bày các thành viên tham dự theo dạng liệt kê, ngăn cách bởi dấu ";"
+Trình bày nội dung diễn biến (NOI_DUNG_DIEN_BIEN) như ví dụ được cung cấp: "NOI_DUNG_DIEN_BIEN": "1. BSCKII Trần Quốc Bảo phát biểu khai mạc, nêu yêu cầu triển khai nhanh các đội tiêm lưu động để hỗ trợ công nhân tại Khu công nghiệp Trà Nóc và Hưng Phú.\n\n2. Khoa Dược ...
 
 Ghi theo thứ tự thời gian, khách quan, trung thực.
 
@@ -60,7 +60,7 @@ Ghi theo thứ tự thời gian, khách quan, trung thực.
 Nêu rõ: họ tên người nghỉ, chức vụ, thời gian nghỉ (từ ngày... đến ngày...),
 nơi nghỉ phép, chế độ nghỉ được hưởng.
 
-Văn phong ngắn gọn, đủ ý, không cần căn cứ pháp lý dài.
+Văn phong ngắn gọn, đủ ý, có thể không cần căn cứ pháp lý.
 
 ---
 

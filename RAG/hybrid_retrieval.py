@@ -1,27 +1,22 @@
 """
-hybrid_retrieval_v4.py
+hybrid_retrieval_v5.py
 ======================
 Module tái sử dụng cho RAG pipeline - Soạn thảo Văn bản Hành chính Việt Nam.
 
-Fixes so với v3:
-  FIX 1 — RRF ID mismatch: BM25 dùng parquet chunk_id, ChromaDB dùng SHA-256.
-           Giải pháp: build _bm25_id_to_chroma_id map (chunk_id_raw → ChromaDB ID)
-           khi load ChromaDB, để RRF merge đúng cùng không gian ID.
+Fixes so với v4:
+  FIX 5 — Phân biệt Quyết định cá biệt (Form_02) vs Quyết định quy phạm/gián tiếp (Form_03).
+           v4 luôn trả ["Form_02", "Form_03"] cho mọi query có "quyết định" → reranker
+           phải chọn 1 trong 2, nhưng nếu DB ít mẫu thì sai. v5 dùng 2 pattern riêng:
 
-  FIX 2 — retrieve_forms() 1-candidate: col_forms.get() có thể trả nhiều chunk.
-           Giải pháp: dùng col_forms.query() với embedding để lấy chunk
-           semantically relevant nhất thay vì chunk đầu tiên bất kỳ.
+           • _QD_CA_BIET_PATTERN  → từ khóa nhân sự cụ thể (bổ nhiệm, khen thưởng…) → Form_02
+           • _QD_GIAN_TIEP_PATTERN → từ khóa ban hành quy chế/quy định…          → Form_03
+           • Fallback: không khớp pattern nào → ["Form_02", "Form_03"] (giữ hành vi v4)
 
-  FIX 3 — expand_legal_chunk() cần 'article' trong metadata ChromaDB.
-           Giải pháp: assert 'article' có trong LEGAL_META_COLS khi index,
-           và thêm guard: nếu key không tìm thấy, fallback về text gốc + warning.
-
-  FIX 4 — Context window guard cho expand.
-           Giải pháp: tính word_count sau expand, cảnh báo nếu vượt ngưỡng,
-           và truncate thông minh theo MAX_EXPAND_WORDS thay vì chỉ MAX_EXPAND_CHUNKS.
+           Hàm _detect_quyet_dinh_form() được tách riêng, tái sử dụng ở cả
+           detect_form_candidates() lẫn retrieve_examples() (qua form_id).
 
 Usage:
-    from hybrid_retrieval_v4 import init_retriever, retrieve_all
+    from hybrid_retrieval_v5 import init_retriever, retrieve_all
 
     init_retriever()                              # gọi 1 lần khi start
     results = retrieve_all("soạn thảo quyết định bổ nhiệm cán bộ")
@@ -79,17 +74,11 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 BM25_TOP_K         = 30
 DENSE_TOP_K        = 30
 RRF_K              = 60
-RERANK_TOP_N       = 10
+RERANK_TOP_N       = 8
 FINAL_TOP_K        = 4
 MAX_CHUNKS_PER_DOC = 1
-MAX_EXPAND_CHUNKS  = 2
-MAX_EXPAND_WORDS   = 600
-
-# INSTRUCTIONS = {
-#     "legal"   : "Instruct: Tim dieu khoan phap luat Viet Nam lien quan.\nQuery: ",
-#     "forms"   : "Instruct: Tim mau bieu hanh chinh phu hop voi nhu cau soan thao.\nQuery: ",
-#     "examples": "Instruct: Tim vi du van ban hanh chinh tuong tu tinh huong sau.\nQuery: ",
-# }
+MAX_EXPAND_CHUNKS  = 1
+MAX_EXPAND_WORDS   = 400
 
 INSTRUCTIONS = {
     "legal"   : "Instruct: Tìm điều khoản pháp luật Việt Nam liên quan.\nQuery: ",
@@ -98,11 +87,132 @@ INSTRUCTIONS = {
 }
 
 # ============================================================
+# TEXT NORMALIZATION
+# ============================================================
+
+def remove_diacritics(text: str) -> str:
+    nfd = unicodedata.normalize("NFD", text)
+    stripped = "".join(c for c in nfd if unicodedata.category(c) != "Mn")
+    return stripped.replace("đ", "d").replace("Đ", "D")
+
+
+def normalize_text(text: str) -> str:
+    text = str(text).lower().strip()
+    return re.sub(r"\s+", " ", text)
+
+
+def _normalize_query(query: str) -> str:
+    """Pipeline chuẩn hóa query: lowercase → bỏ dấu → collapse whitespace."""
+    return remove_diacritics(normalize_text(query))
+
+
+def tokenize_for_bm25(text: str, use_bigrams: bool = True) -> List[str]:
+    """Bigram tokenization: unigrams ≥2 ký tự + bigrams từ all_tokens."""
+    text = normalize_text(text)
+    text = remove_diacritics(text)
+    all_tokens = re.findall(r"[a-z][a-z0-9]*", text)
+    unigrams   = [t for t in all_tokens if len(t) >= 2]
+    if not use_bigrams:
+        return unigrams
+    bigrams = [f"{a}_{b}" for a, b in zip(all_tokens, all_tokens[1:])]
+    return unigrams + bigrams
+
+
+# ============================================================
+# FIX 5 — QUYẾT ĐỊNH: phân biệt cá biệt (Form_02) vs gián tiếp (Form_03)
+# ============================================================
+
+# Từ khóa nhận diện Quyết định cá biệt (Form_02):
+# Tác động trực tiếp đến 1 người/đơn vị cụ thể — bổ nhiệm, khen thưởng, kỷ luật…
+_QD_CA_BIET_PATTERN = re.compile(
+    r"bo\s*nhiem"           # bổ nhiệm
+    r"|mien\s*nhiem"        # miễn nhiệm
+    r"|dieu\s*dong"         # điều động
+    r"|tiep\s*nhan"         # tiếp nhận (nhân sự)
+    r"|khen\s*thuong"       # khen thưởng
+    r"|ky\s*luat"           # kỷ luật
+    r"|nghi\s*viec"         # nghỉ việc
+    r"|nghi\s*huu"          # nghỉ hưu
+    r"|cach\s*chuc"         # cách chức
+    r"|phe\s*duyet\s*nhan\s*su"   # phê duyệt nhân sự
+    r"|cho\s*phep"          # cho phép (cá nhân/tổ chức cụ thể)
+    r"|cap\s*phep"          # cấp phép
+    r"|thu\s*hoi\s*giay\s*phep"   # thu hồi giấy phép
+    r"|nang\s*luong"        # nâng lương
+    r"|phu\s*cap"           # phụ cấp
+    r"|bien\s*che"          # biên chế
+    r"|hop\s*dong\s*lao\s*dong",  # hợp đồng lao động
+    re.IGNORECASE,
+)
+
+# Từ khóa nhận diện Quyết định quy phạm / gián tiếp (Form_03):
+# Ban hành văn bản quy phạm nội bộ — quy chế, quy định, tiêu chuẩn…
+_QD_GIAN_TIEP_PATTERN = re.compile(
+    r"ban\s*hanh\s*quy(?!\s*che\s*luong)"   # ban hành quy… (trừ quy chế lương → cá biệt)
+    r"|ban\s*hanh\s*noi\s*quy"    # ban hành nội quy
+    r"|ban\s*hanh\s*tieu\s*chuan" # ban hành tiêu chuẩn
+    r"|ban\s*hanh\s*dinh\s*muc"   # ban hành định mức
+    r"|ban\s*hanh\s*phuong\s*an"  # ban hành phương án
+    r"|ban\s*hanh\s*ke\s*hoach"   # ban hành kế hoạch
+    r"|ban\s*hanh\s*quy\s*trinh"  # ban hành quy trình
+    r"|ban\s*hanh\s*chuong\s*trinh"  # ban hành chương trình
+    r"|ban\s*hanh\s*de\s*an"      # ban hành đề án
+    r"|sua\s*doi\s*quy"           # sửa đổi quy…
+    r"|bai\s*bo\s*quy"            # bãi bỏ quy…
+    r"|ban\s*hanh\s*quy\s*che",   # ban hành quy chế (tổng quát)
+    re.IGNORECASE,
+)
+
+# Pattern nhận diện từ khóa "quyết định" (trigger để vào phân nhánh)
+_QD_TRIGGER_PATTERN = re.compile(r"quyet\s*dinh", re.IGNORECASE)
+
+
+def _detect_quyet_dinh_form(normalized_query: str) -> List[str]:
+    """
+    Phân biệt quyết định cá biệt (Form_02) vs quyết định gián tiếp (Form_03).
+
+    Args:
+        normalized_query: Query đã qua _normalize_query() (không dấu, lowercase)
+
+    Returns:
+        ["Form_02"]          — khi có tín hiệu cá biệt rõ ràng
+        ["Form_03"]          — khi có tín hiệu quy phạm/gián tiếp rõ ràng
+        ["Form_02", "Form_03"] — fallback khi không đủ tín hiệu để chọn
+
+    Logic ưu tiên:
+        1. Nếu khớp cả hai → ưu tiên Form_02 (cá biệt thường cụ thể hơn)
+        2. Nếu chỉ khớp một → trả về form đó
+        3. Không khớp nào   → trả về cả hai để retriever + reranker quyết định
+    """
+    is_ca_biet   = bool(_QD_CA_BIET_PATTERN.search(normalized_query))
+    is_gian_tiep = bool(_QD_GIAN_TIEP_PATTERN.search(normalized_query))
+
+    if is_ca_biet and is_gian_tiep:
+        # Xung đột tín hiệu: ưu tiên cá biệt (cụ thể hơn), nhưng log warning
+        warnings.warn(
+            f"Query khớp cả Form_02 (cá biệt) lẫn Form_03 (gián tiếp). "
+            f"Ưu tiên Form_02. Query: '{normalized_query[:80]}'",
+            UserWarning,
+            stacklevel=3,
+        )
+        return ["Form_02"]
+    if is_ca_biet:
+        return ["Form_02"]
+    if is_gian_tiep:
+        return ["Form_03"]
+
+    # Không đủ tín hiệu → để retriever + reranker tự chọn
+    return ["Form_02", "Form_03"]
+
+
+# ============================================================
 # FORM KEYWORD MAP
 # ============================================================
+# Lưu ý: entry "quyet_dinh" được xử lý động qua _detect_quyet_dinh_form(),
+# KHÔNG đặt vào FORM_KEYWORD_MAP dưới dạng pattern tĩnh nữa.
 FORM_KEYWORD_MAP: List[Tuple[str, List[str]]] = [
     (r"nghi\s*quyet",                                               ["Form_01"]),
-    (r"quyet\s*dinh",                                               ["Form_02", "Form_03"]),
+    # "quyet dinh" → xử lý động, xem detect_form_candidates()
     (r"to\s*trinh|trinh\s*duyet|trinh\s*phe\s*duyet",              ["Form_04"]),
     (r"bao\s*cao",                                                  ["Form_04"]),
     (r"chi\s*thi",                                                  ["Form_04"]),
@@ -122,32 +232,6 @@ FORM_KEYWORD_MAP: List[Tuple[str, List[str]]] = [
 
 _COMPILED_FORM_PATTERNS: List[Tuple[re.Pattern, List[str]]] = []
 
-# ============================================================
-# TEXT NORMALIZATION
-# ============================================================
-
-def remove_diacritics(text: str) -> str:
-    nfd = unicodedata.normalize("NFD", text)
-    stripped = "".join(c for c in nfd if unicodedata.category(c) != "Mn")
-    return stripped.replace("đ", "d").replace("Đ", "D")
-
-
-def normalize_text(text: str) -> str:
-    text = str(text).lower().strip()
-    return re.sub(r"\s+", " ", text)
-
-
-def tokenize_for_bm25(text: str, use_bigrams: bool = True) -> List[str]:
-    """Bigram tokenization: unigrams ≥2 ký tự + bigrams từ all_tokens."""
-    text = normalize_text(text)
-    text = remove_diacritics(text)
-    all_tokens = re.findall(r"[a-z][a-z0-9]*", text)
-    unigrams   = [t for t in all_tokens if len(t) >= 2]
-    if not use_bigrams:
-        return unigrams
-    bigrams = [f"{a}_{b}" for a, b in zip(all_tokens, all_tokens[1:])]
-    return unigrams + bigrams
-
 
 # ============================================================
 # KEYWORD DETECTION
@@ -158,22 +242,32 @@ def detect_form_candidates(query: str) -> Optional[List[str]]:
     Normalize query → bỏ dấu → tìm pattern match có vị trí xuất hiện
     sớm nhất trong query → trả List[form_id] của pattern đó.
 
-    Thay vì gom tất cả match (dẫn đến conflict "công văn" + "hướng dẫn"),
-    chỉ lấy pattern nào xuất hiện gần đầu query nhất — đó thường là
-    loại văn bản chính cần soạn, không phải chủ đề nội dung.
+    FIX 5: "quyết định" được xử lý qua _detect_quyet_dinh_form() thay vì
+    entry tĩnh trong FORM_KEYWORD_MAP → phân biệt Form_02 vs Form_03 chính xác.
 
-    None = không detect được → caller dùng fallback dense search.
+    Thứ tự ưu tiên (earliest-match):
+        1. Scan _COMPILED_FORM_PATTERNS (không gồm "quyết định")
+        2. Nếu "quyet dinh" xuất hiện sớm hơn best_pos → override bằng kết quả
+           _detect_quyet_dinh_form()
+        3. Không match gì → None (caller dùng fallback dense search)
     """
-    q_norm = remove_diacritics(normalize_text(query))
+    q_norm = _normalize_query(query)
 
-    best_pos: int = len(q_norm) + 1   # sentinel: lớn hơn mọi vị trí thực
+    best_pos: int = len(q_norm) + 1
     best_form_ids: Optional[List[str]] = None
 
+    # Bước 1: scan FORM_KEYWORD_MAP (các loại văn bản khác)
     for pattern, form_ids in _COMPILED_FORM_PATTERNS:
         m = pattern.search(q_norm)
         if m and m.start() < best_pos:
             best_pos = m.start()
             best_form_ids = form_ids
+
+    # Bước 2: kiểm tra "quyết định" và so sánh vị trí
+    qd_match = _QD_TRIGGER_PATTERN.search(q_norm)
+    if qd_match and qd_match.start() < best_pos:
+        best_pos      = qd_match.start()
+        best_form_ids = _detect_quyet_dinh_form(q_norm)
 
     return best_form_ids
 
@@ -186,17 +280,13 @@ def _make_chroma_id(doc_id: str, chunk_index: int, text: str) -> str:
     """
     Tái tạo ChromaDB ID giống hệt embedAndIndex.ipynb:
         SHA-256[:24] của f"{doc_id}|{chunk_index}|{text[:200]}"
-    Dùng để build bảng ánh xạ chunk_id (parquet) → chroma_id.
     """
     raw = f"{doc_id}|{chunk_index}|{text[:200]}"
     return hashlib.sha256(raw.encode()).hexdigest()[:24]
 
 
 def _build_chroma_id_map(df: pd.DataFrame) -> Dict[str, str]:
-    """
-    FIX 1: Build bảng ánh xạ parquet chunk_id → ChromaDB SHA-256 ID.
-    BM25 trả về parquet chunk_id; cần convert sang chroma_id trước khi RRF.
-    """
+    """FIX 1: Build bảng ánh xạ parquet chunk_id → ChromaDB SHA-256 ID."""
     mapping: Dict[str, str] = {}
     for row in df.itertuples(index=False):
         chroma_id = _make_chroma_id(
@@ -250,21 +340,21 @@ def _build_bm25_index(
 # HYBRID RETRIEVER CLASS
 # ============================================================
 
-class HybridRetrieverV4:
+class HybridRetrieverV5:
     """
     BM25 bigram + ChromaDB dense + RRF (ID-corrected) + CrossEncoder reranker + dedup.
 
-    FIX 1: BM25 chunk_ids được convert sang ChromaDB IDs trước khi đưa vào RRF,
-    đảm bảo merge đúng khi 1 chunk xuất hiện ở cả hai nguồn → boost score.
+    Kế thừa toàn bộ FIX 1–4 từ v4.
+    FIX 5: detect_form_candidates() giờ phân biệt Form_02/Form_03 cho "quyết định".
     """
 
     def __init__(
         self,
         bm25_index: BM25Okapi,
-        bm25_ids: List[str],               # parquet chunk_ids
-        bm25_to_chroma: Dict[str, str],    # FIX 1: map parquet→chroma ID
+        bm25_ids: List[str],
+        bm25_to_chroma: Dict[str, str],
         chroma_col,
-        meta_lookup: Dict,                 # parquet chunk_id → row dict (fallback)
+        meta_lookup: Dict,
         embed_model: SentenceTransformer,
         reranker: CrossEncoder,
         instruction: str,
@@ -278,7 +368,7 @@ class HybridRetrieverV4:
     ):
         self.bm25               = bm25_index
         self.bm25_ids           = bm25_ids
-        self.bm25_to_chroma     = bm25_to_chroma   # FIX 1
+        self.bm25_to_chroma     = bm25_to_chroma
         self.col                = chroma_col
         self.meta               = meta_lookup
         self.embed_model        = embed_model
@@ -291,15 +381,10 @@ class HybridRetrieverV4:
         self.rerank_top_n       = rerank_top_n
         self.final_top_k        = final_top_k
         self.max_chunks_per_doc = max_chunks_per_doc
-        # Cache reverse map một lần, tránh tính lại mỗi query (FIX perf)
         self._chroma_to_parquet = {v: k for k, v in bm25_to_chroma.items()}
 
     def _bm25_search(self, query: str) -> List[Tuple[str, float]]:
-        """
-        Trả về List[(chroma_id, bm25_score)].
-        FIX 1: convert parquet chunk_id → chroma_id trước khi trả về,
-        để RRF merge đúng không gian ID với dense results.
-        """
+        """Trả về List[(chroma_id, bm25_score)]. FIX 1: convert parquet→chroma ID."""
         tokens = tokenize_for_bm25(query)
         if not tokens:
             return []
@@ -313,7 +398,6 @@ class HybridRetrieverV4:
             parquet_id = self.bm25_ids[i]
             chroma_id  = self.bm25_to_chroma.get(parquet_id)
             if chroma_id is None:
-                # ID chưa có trong map (hiếm) → bỏ qua để tránh ghost entry trong RRF
                 continue
             results.append((chroma_id, float(scores[i])))
         return results
@@ -346,13 +430,10 @@ class HybridRetrieverV4:
 
     def _rrf(
         self,
-        bm25_results: List[Tuple[str, float]],    # (chroma_id, score) — FIX 1
-        dense_results: List[Tuple[str, float, str, Dict]],  # (chroma_id, dist, ...)
+        bm25_results: List[Tuple[str, float]],
+        dense_results: List[Tuple[str, float, str, Dict]],
     ) -> List[Tuple[str, float]]:
-        """
-        Reciprocal Rank Fusion trên không gian chroma_id thống nhất.
-        FIX 1: cả hai danh sách đã dùng cùng chroma_id → overlap được tính đúng.
-        """
+        """Reciprocal Rank Fusion trên không gian chroma_id thống nhất."""
         scores: Dict[str, float] = {}
         for rank, (cid, _) in enumerate(bm25_results, start=1):
             scores[cid] = scores.get(cid, 0.0) + 1.0 / (self.rrf_k + rank)
@@ -406,17 +487,15 @@ class HybridRetrieverV4:
             bm25_res  = []
             dense_res = self._dense_search(query, where=where)
         else:
-            bm25_res  = self._bm25_search(query)     # trả về chroma_ids
+            bm25_res  = self._bm25_search(query)
             dense_res = self._dense_search(query, where=where)
 
-        # Build text & metadata lookups (keyed by chroma_id)
         doc_texts:   Dict[str, str]  = {}
         chroma_meta: Dict[str, Dict] = {}
         for cid, _, doc, meta in dense_res:
             doc_texts[cid]   = doc
             chroma_meta[cid] = meta
 
-        # FIX 1: BM25-only hits dùng cached reverse map (nhanh hơn)
         for cid, _ in bm25_res:
             if cid not in doc_texts:
                 parquet_id = self._chroma_to_parquet.get(cid)
@@ -427,7 +506,6 @@ class HybridRetrieverV4:
         bm25_score_map = {cid: s for cid, s in bm25_res}
         dense_dist_map = {cid: d for cid, d, _, _ in dense_res}
 
-        # RRF — cùng không gian chroma_id
         rrf_ranked    = self._rrf(bm25_res, dense_res)
         top_n_ids     = [cid for cid, _ in rrf_ranked[: self.rerank_top_n]]
         rrf_score_map = {cid: s for cid, s in rrf_ranked}
@@ -451,7 +529,7 @@ class HybridRetrieverV4:
                 "rrf_score"   : round(rrf_score_map.get(cid, 0.0), 6),
                 "rerank_score": round(float(rerank_score), 4),
                 "latency_ms"  : round((time.time() - t0) * 1000, 1),
-                "in_both"     : cid in bm25_score_map and cid in dense_dist_map,  # debug
+                "in_both"     : cid in bm25_score_map and cid in dense_dist_map,
             })
         return results
 
@@ -459,11 +537,11 @@ class HybridRetrieverV4:
 # ============================================================
 # MODULE-LEVEL STATE
 # ============================================================
-_retriever_legal:    Optional[HybridRetrieverV4] = None
-_retriever_forms:    Optional[HybridRetrieverV4] = None
-_retriever_examples: Optional[HybridRetrieverV4] = None
-_col_forms:          Optional[object]            = None
-_reranker:           Optional[CrossEncoder]      = None
+_retriever_legal:    Optional[HybridRetrieverV5] = None
+_retriever_forms:    Optional[HybridRetrieverV5] = None
+_retriever_examples: Optional[HybridRetrieverV5] = None
+_col_forms:          Optional[object]             = None
+_reranker:           Optional[CrossEncoder]       = None
 _embed_model:        Optional[SentenceTransformer] = None
 _expand_index:       Dict[Tuple[str, str], List[Tuple[int, str]]] = {}
 
@@ -474,23 +552,19 @@ def init_retriever(
 ) -> None:
     """
     Khởi tạo toàn bộ pipeline: load model, BM25, ChromaDB, build ID map.
-    Gọi 1 lần khi start application.
-
-    Idempotent: nếu retriever đã được khởi tạo và force_rebuild_bm25=False,
-    hàm sẽ skip toàn bộ để tránh load lại BM25/ChromaDB không cần thiết.
+    Gọi 1 lần khi start application. Idempotent.
     """
     global _retriever_legal, _retriever_forms, _retriever_examples
     global _col_forms, _reranker, _embed_model, _expand_index
     global _COMPILED_FORM_PATTERNS
 
-    # Guard tổng: nếu đã init đầy đủ và không yêu cầu rebuild BM25 → skip
     if _retriever_legal is not None and not force_rebuild_bm25:
         print("init_retriever: Đã khởi tạo trước đó — bỏ qua.")
         return
 
     _dev = device or DEVICE
 
-    # Compile regex patterns
+    # Compile regex patterns (KHÔNG gồm "quyet dinh" — xử lý động)
     _COMPILED_FORM_PATTERNS = [
         (re.compile(pat, re.IGNORECASE), fids)
         for pat, fids in FORM_KEYWORD_MAP
@@ -499,23 +573,19 @@ def init_retriever(
     for d in [BM25_DIR, MODEL_EMBED, MODEL_RERANK]:
         d.mkdir(parents=True, exist_ok=True)
 
-    # Load chunk DataFrames
     print("Loading chunk files...")
     df_legal    = pd.read_parquet(CHUNK_DIR / "legal_chunks.parquet")
     df_forms    = pd.read_parquet(CHUNK_DIR / "forms_chunks.parquet")
     df_examples = pd.read_parquet(CHUNK_DIR / "examples_chunks.parquet")
     print(f"  legal={len(df_legal):,}  forms={len(df_forms)}  examples={len(df_examples)}")
 
-    # FIX 3: verify 'article' column present cho expand
     assert "article" in df_legal.columns, \
         "legal_chunks.parquet thiếu cột 'article' — expand sẽ không hoạt động."
 
-    # BM25 indexes
     bm25_legal,    ids_legal    = _build_bm25_index(df_legal,    "text", BM25_DIR / "bm25_legal_v2.pkl",    "legal",    force_rebuild_bm25)
     bm25_forms,    ids_forms    = _build_bm25_index(df_forms,    "text", BM25_DIR / "bm25_forms_v2.pkl",    "forms",    force_rebuild_bm25)
     bm25_examples, ids_examples = _build_bm25_index(df_examples, "text", BM25_DIR / "bm25_examples_v2.pkl", "examples", force_rebuild_bm25)
 
-    # FIX 1: Build chroma_id maps
     print("Building ChromaDB ID maps (FIX 1)...")
     t0 = time.time()
     bm25_to_chroma_legal    = _build_chroma_id_map(df_legal)
@@ -524,12 +594,10 @@ def init_retriever(
     print(f"  legal={len(bm25_to_chroma_legal):,}  forms={len(bm25_to_chroma_forms)}  "
           f"examples={len(bm25_to_chroma_examples)}  ({time.time()-t0:.1f}s)")
 
-    # Metadata lookups (parquet chunk_id → row dict, fallback cho BM25-only hits)
     legal_meta    = df_legal.set_index("chunk_id").to_dict(orient="index")
     forms_meta    = df_forms.set_index("chunk_id").to_dict(orient="index")
     examples_meta = df_examples.set_index("chunk_id").to_dict(orient="index")
 
-    # Expand index: (doc_id, article) → sorted (chunk_index, text)
     print("Building expand index...")
     _expand_index.clear()
     for row in df_legal.itertuples(index=False):
@@ -541,7 +609,6 @@ def init_retriever(
         _expand_index[key].sort(key=lambda x: x[0])
     print(f"  {len(_expand_index):,} (doc_id, article) pairs")
 
-    # Embedding model — chỉ load nếu chưa được inject từ app_state
     if _embed_model is None:
         print(f"Loading embedding model ({_dev})...")
         _embed_model = SentenceTransformer(
@@ -550,7 +617,6 @@ def init_retriever(
     else:
         print("init_retriever: Dùng embed model đã inject từ app_state, bỏ qua load.")
 
-    # ChromaDB
     print("Connecting to ChromaDB...")
     chroma_client = chromadb.PersistentClient(
         path=str(CHROMA_DIR),
@@ -561,7 +627,6 @@ def init_retriever(
     col_examples  = chroma_client.get_collection("examples_chunks")
     print(f"  legal={col_legal_all.count():,}  forms={_col_forms.count()}  examples={col_examples.count()}")
 
-    # FIX 3: Spot-check 'article' có trong ChromaDB metadata
     _sample = col_legal_all.get(limit=1, include=["metadatas"])
     if _sample["metadatas"] and "article" not in _sample["metadatas"][0]:
         warnings.warn(
@@ -572,21 +637,19 @@ def init_retriever(
             stacklevel=2,
         )
 
-    # Reranker
     print("Loading reranker...")
     _reranker = CrossEncoder(
         RERANK_MODEL_NAME, device=_dev, cache_folder=str(MODEL_RERANK), max_length=512, local_files_only=True
     )
 
-    # Instantiate retrievers
-    _retriever_legal = HybridRetrieverV4(
+    _retriever_legal = HybridRetrieverV5(
         bm25_index=bm25_legal, bm25_ids=ids_legal,
         bm25_to_chroma=bm25_to_chroma_legal,
         chroma_col=col_legal_all, meta_lookup=legal_meta,
         embed_model=_embed_model, reranker=_reranker,
         instruction=INSTRUCTIONS["legal"], collection_name="legal",
     )
-    _retriever_forms = HybridRetrieverV4(
+    _retriever_forms = HybridRetrieverV5(
         bm25_index=bm25_forms, bm25_ids=ids_forms,
         bm25_to_chroma=bm25_to_chroma_forms,
         chroma_col=_col_forms, meta_lookup=forms_meta,
@@ -594,15 +657,15 @@ def init_retriever(
         instruction=INSTRUCTIONS["forms"], collection_name="forms",
         final_top_k=1, max_chunks_per_doc=1,
     )
-    _retriever_examples = HybridRetrieverV4(
+    _retriever_examples = HybridRetrieverV5(
         bm25_index=bm25_examples, bm25_ids=ids_examples,
         bm25_to_chroma=bm25_to_chroma_examples,
         chroma_col=col_examples, meta_lookup=examples_meta,
         embed_model=_embed_model, reranker=_reranker,
         instruction=INSTRUCTIONS["examples"], collection_name="examples",
-        final_top_k=3, max_chunks_per_doc=1,
+        final_top_k=1, max_chunks_per_doc=1,
     )
-    print("✅ Retriever v4 initialized.")
+    print("✅ Retriever v5 initialized.")
 
 
 def _check_init() -> None:
@@ -622,7 +685,7 @@ def _expand_legal_chunk(
 ) -> Tuple[str, int]:
     """
     Ghép full điều luật từ expand index.
-    FIX 3: guard khi 'article' vắng trong metadata → fallback về text gốc + warning.
+    FIX 3: guard khi 'article' vắng trong metadata → fallback về text gốc.
     FIX 4: truncate khi tổng từ vượt max_words → tránh overflow context window.
 
     Returns:
@@ -631,7 +694,6 @@ def _expand_legal_chunk(
     doc_id  = metadata.get("doc_id", "")
     article = metadata.get("article", "")
 
-    # FIX 3: guard thiếu article
     if not article:
         warnings.warn(
             f"metadata thiếu 'article' cho doc_id='{doc_id}'. "
@@ -650,7 +712,6 @@ def _expand_legal_chunk(
     n_used = 0
 
     for idx, (chunk_idx, text) in enumerate(all_chunks[:max_chunks]):
-        # Bỏ header lặp lại ở chunk 2+ (dạng "[Điều X. ...]")
         if idx > 0:
             lines = text.split("\n")
             if lines and lines[0].startswith("[") and article in lines[0]:
@@ -658,12 +719,10 @@ def _expand_legal_chunk(
         if not text:
             continue
 
-        # FIX 4: word-count guard
         chunk_words = len(text.split())
         if total_words + chunk_words > max_words:
-            # Thêm phần còn lại của chunk cuối nếu có chỗ
             remaining = max_words - total_words
-            if remaining > 50:  # chỉ thêm nếu còn ý nghĩa (>50 từ)
+            if remaining > 50:
                 truncated = " ".join(text.split()[:remaining])
                 merged_parts.append(truncated + " [...]")
                 n_used += 1
@@ -695,7 +754,7 @@ def retrieve_legal(
 
     Args:
         query       : Câu truy vấn tiếng Việt
-        top_k       : Số điều luật trả về (default 3)
+        top_k       : Số điều luật trả về (default 4)
         type_filter : "LUẬT" | "NGHỊ ĐỊNH" | "NGHỊ QUYẾT" | "PHÁP LỆNH"
         use_reranker: Dùng CrossEncoder (chậm hơn, chính xác hơn)
         expand      : Ghép full điều luật từ parquet (recommended: True)
@@ -713,9 +772,9 @@ def retrieve_legal(
             metadata=r["metadata"],
             fallback_text=r["text"],
         )
-        r["text"]             = expanded_text
+        r["text"]              = expanded_text
         r["n_chunks_expanded"] = n_used
-        r["expanded_words"]   = len(expanded_text.split())
+        r["expanded_words"]    = len(expanded_text.split())
 
     return results
 
@@ -728,8 +787,8 @@ def retrieve_forms(
     Retrieve biểu mẫu hành chính phù hợp nhất.
     Trả về List[Dict] với 1 form duy nhất.
 
-    FIX 2: 1-candidate path dùng query() thay vì get() để đảm bảo
-    chunk được chọn là semantic-relevant nhất với query (không phải chunk đầu tiên ngẫu nhiên).
+    FIX 2: 1-candidate path dùng query() thay vì get() (semantic-relevant).
+    FIX 5: detect_form_candidates() giờ phân biệt Form_02/Form_03 cho quyết định.
     """
     _check_init()
     form_candidates = detect_form_candidates(query)
@@ -738,7 +797,7 @@ def retrieve_forms(
         return _retriever_forms.retrieve(query, use_reranker=use_reranker)
 
     if len(form_candidates) == 1:
-        # FIX 2: dùng dense query thay vì get() để lấy chunk relevant nhất
+        # FIX 2: dense query để lấy chunk semantically relevant nhất
         q_vec = _embed_model.encode(
             [INSTRUCTIONS["forms"] + query],
             normalize_embeddings=True,
@@ -759,11 +818,13 @@ def retrieve_forms(
                 "dense_dist"  : round(float(res["distances"][0][0]), 4),
                 "rerank_score": 1.0,
                 "source"      : "keyword_match",
+                # FIX 5: ghi lại form được chọn để debug
+                "detected_form": form_candidates[0],
             }]
         # form_id không tồn tại trong DB → fallback dense
         return _retriever_forms.retrieve(query, use_reranker=use_reranker)
 
-    # Nhiều candidates → fetch tất cả rồi rerank
+    # Nhiều candidates (fallback Form_02 + Form_03) → fetch rồi rerank
     res = _col_forms.get(
         where={"form_id": {"$in": form_candidates}},
         include=["documents", "metadatas"],
@@ -772,7 +833,13 @@ def retrieve_forms(
         return _retriever_forms.retrieve(query, use_reranker=use_reranker)
 
     candidates_list = [
-        {"chunk_id": cid, "text": doc, "metadata": meta, "source": "keyword_match"}
+        {
+            "chunk_id": cid,
+            "text": doc,
+            "metadata": meta,
+            "source": "keyword_match",
+            "detected_form": None,   # reranker sẽ chọn
+        }
         for cid, doc, meta in zip(res["ids"], res["documents"], res["metadatas"])
     ]
     if use_reranker and len(candidates_list) > 1:
@@ -783,7 +850,10 @@ def retrieve_forms(
     else:
         for c in candidates_list:
             c["rerank_score"] = 1.0
-    return [candidates_list[0]]
+
+    best = candidates_list[0]
+    best["detected_form"] = best["metadata"].get("form_id")
+    return [best]
 
 
 def retrieve_examples(
@@ -794,13 +864,20 @@ def retrieve_examples(
 ) -> List[Dict]:
     """
     Retrieve ví dụ văn bản (few-shot examples).
+
+    FIX 5: detect_form_candidates() trả về Form_02 hoặc Form_03 cụ thể
+    → examples được lấy đúng loại quyết định, không trộn lẫn.
     Ưu tiên: form_id truyền thẳng > keyword detect > fallback dense.
     """
     _check_init()
     _retriever_examples.final_top_k = top_k
+
     if not form_id:
         _candidates = detect_form_candidates(query)
+        # Nếu detect trả về 2 form (fallback) → chỉ lấy form_id đầu tiên
+        # để examples không quá loãng; reranker sẽ chọn đúng form
         form_id = _candidates[0] if _candidates else None
+
     return _retriever_examples.retrieve(
         query,
         form_candidates=[form_id] if form_id else None,
@@ -818,18 +895,28 @@ def retrieve_all(
     """
     Entry point chính cho RAG generation pipeline.
 
+    FIX 5: form_results giờ có field "detected_form" → examples được filter
+    đúng Form_02 hoặc Form_03 thay vì luôn dùng form_candidates[0].
+
     Returns:
         {
             "legal"   : top-k điều luật (expanded full text, word-guard),
             "form"    : 1 form template phù hợp nhất (semantic-correct),
-            "examples": top-k ví dụ cùng loại form,
+            "examples": top-k ví dụ cùng loại form (đúng Form_02/Form_03),
         }
     """
     _check_init()
     form_results = retrieve_forms(query)
-    detected_form_id = (
-        form_results[0]["metadata"].get("form_id") if form_results else None
-    )
+
+    # FIX 5: ưu tiên detected_form (đã phân biệt cá biệt/gián tiếp)
+    # nếu không có thì fallback về form_id trong metadata
+    detected_form_id = None
+    if form_results:
+        detected_form_id = (
+            form_results[0].get("detected_form")
+            or form_results[0]["metadata"].get("form_id")
+        )
+
     return {
         "legal"   : retrieve_legal(
             query, top_k=legal_top_k,
@@ -848,11 +935,30 @@ def retrieve_all(
 # MAIN (chạy trực tiếp để smoke test)
 # ============================================================
 def main():
-    print("Initializing retriever v4...")
+    print("Initializing retriever v5...")
     init_retriever(force_rebuild_bm25=False)
 
+    test_queries = [
+        "soạn thảo quyết định bổ nhiệm cán bộ",              # → Form_02
+        "ban hành quy chế làm việc của cơ quan",              # → Form_03
+        "quyết định nâng lương cho nhân viên",                # → Form_02
+        "ban hành nội quy sử dụng tài sản công",              # → Form_03
+        "soạn thảo quyết định",                               # → Form_02 + Form_03 (fallback)
+    ]
+
+    for query in test_queries:
+        q_norm = _normalize_query(query)
+        qd_m = _QD_TRIGGER_PATTERN.search(q_norm)
+        if qd_m:
+            detected = _detect_quyet_dinh_form(q_norm)
+        else:
+            detected = detect_form_candidates(query)
+        print(f"\nQuery : {query}")
+        print(f"Detect: {detected}")
+
+    print("\n" + "=" * 70)
     query = "soạn thảo quyết định bổ nhiệm cán bộ"
-    print(f"\nQuery: {query}\n")
+    print(f"Full retrieve_all: {query}\n")
     results = retrieve_all(query)
 
     print("=" * 70)
@@ -873,7 +979,7 @@ def main():
     for r in results["form"]:
         meta = r["metadata"]
         print(f"  {meta.get('form_id','?')} | {meta.get('form_type','')}")
-        print(f"  source={r.get('source','pipeline')}  rerank={r.get('rerank_score',0):.4f}")
+        print(f"  detected_form={r.get('detected_form','?')}  source={r.get('source','pipeline')}  rerank={r.get('rerank_score',0):.4f}")
         print(f"  {meta.get('purpose','')}")
 
     print("\n" + "=" * 70)

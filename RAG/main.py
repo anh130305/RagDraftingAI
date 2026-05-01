@@ -1,9 +1,13 @@
+import asyncio
 import logging
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+import json
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 import time
 import os
+from promptApi import PromptAPI
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -35,7 +39,7 @@ async def startup_event():
     logger.info("RAG Service: Khởi động...")
 
     # BƯỚC 1: Shared resources (embed model + ChromaDB client)
-    from app_state import init_shared_state, get_updater as _get_updater, get_embed_model
+    from app_state import init_shared_state, get_updater as _get_updater
     init_shared_state()
 
     # BƯỚC 2: Inject embed model vào hybrid_retrieval TRƯỚC khi init_retriever chạy.
@@ -92,55 +96,37 @@ class LegalQARequest(BaseModel):
     legal_top_k: Optional[int] = None
     call_llm: bool = True
 
-class IngestRequest(BaseModel):
-    ocr_text: str
-    ministry: str = ""
-    manual_so_hieu: str = ""
-    manual_loai_vb: str = ""
-    manual_ten_van_ban: str = ""
-    force_if_exists: bool = True
-    only_new_chunks: bool = False
-    dry_run_delete: bool = False
-    skip_upsert: bool = False
-
-class DeleteDocRequest(BaseModel):
-    so_hieu: str
-    dry_run: bool = False
-    collection_key: str = "legal"
-
-class DeleteArticleRequest(BaseModel):
-    so_hieu: str
-    article_query: str
-    dry_run: bool = False
-    collection_key: str = "legal"
-
-class BatchDeleteRequest(BaseModel):
-    so_hieu_list: List[str]
-    dry_run: bool = False
-    collection_key: str = "legal"
+@app.on_event("startup")
+async def startup_event():
+    logger.info("RAG Service started. Models will be initialized.")
+    global api
+    api = PromptAPI()
+    logger.info("RAG Service is ready to handle requests.")
 
 
-# ═══════════════════════════════════════════════════════════════
-# HEALTH
-# ═══════════════════════════════════════════════════════════════
+def get_api():
+    global api
+    if api is None:
+        logger.info("Initializing PromptAPI (Lazy Load)...")
+        api = PromptAPI()
+        logger.info("PromptAPI initialized successfully.")
+    return api
 
 @app.get("/api/v1/rag/health")
 async def health_check():
-    if _prompt_api is None:
-        return {"status": "starting", "message": "Models chưa sẵn sàng."}
+    if api is None:
+        return {"status": "ready_to_load", "message": "Service is up, models not yet loaded."}
     return {"status": "ready", "message": "RAG Service is operational."}
-
-
-# ═══════════════════════════════════════════════════════════════
-# RAG ENDPOINTS (giữ nguyên như cũ)
-# ═══════════════════════════════════════════════════════════════
 
 @app.post("/api/v1/rag/draft")
 async def draft(request: DraftRequest):
+    current_api = get_api()
     try:
-        result = _get_prompt_api().draft(
+        result = current_api.draft(
+
             query=request.query,
             extras=request.extras,
+            legal_type_filter=request.legal_type_filter,
             call_llm=request.call_llm,
         )
         return result
@@ -150,11 +136,13 @@ async def draft(request: DraftRequest):
 
 @app.post("/api/v1/rag/legal_qa")
 async def legal_qa(request: LegalQARequest):
+    current_api = get_api()
     try:
-        result = _get_prompt_api().legal_qa(
+        result = current_api.legal_qa(
             query=request.query,
             extras=request.extras,
             legal_top_k=request.legal_top_k,
+            legal_type_filter=request.legal_type_filter,
             call_llm=request.call_llm,
         )
         return result
@@ -163,112 +151,35 @@ async def legal_qa(request: LegalQARequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ═══════════════════════════════════════════════════════════════
-# DB ENDPOINTS (mới — dùng chung DocumentUpdater)
-# ═══════════════════════════════════════════════════════════════
+@app.post("/api/v1/rag/legal_qa_stream")
+def legal_qa_stream(request: LegalQARequest):
+    current_api = get_api()
 
-@app.get("/api/v1/db/status")
-async def db_status():
-    """Xem số chunks hiện có của từng collection."""
-    try:
-        return _get_updater().db_status()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    def event_stream():
+        try:
+            for event in current_api.legal_qa_stream(
+                query=request.query,
+                extras=request.extras,
+                legal_top_k=request.legal_top_k,
+                legal_type_filter=request.legal_type_filter,
+                call_llm=request.call_llm,
+            ):
+                yield json.dumps(event, ensure_ascii=False) + "\n"
+        except (asyncio.CancelledError, GeneratorExit):
+            logger.info("Legal QA stream cancelled by client disconnect")
+            return
+        except Exception as e:
+            logger.exception(f"Legal QA stream error: {e}")
+            yield json.dumps({"type": "error", "error": str(e)}, ensure_ascii=False) + "\n"
 
-@app.get("/api/v1/db/check/{so_hieu:path}")
-async def check_doc(so_hieu: str, collection_key: str = "legal"):
-    """Kiểm tra văn bản đã có trong DB chưa."""
-    try:
-        return _get_updater().check_doc(so_hieu, collection_key=collection_key)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/v1/db/ingest")
-async def ingest(request: IngestRequest, background_tasks: BackgroundTasks):
-    """
-    Ingest văn bản OCR mới vào ChromaDB.
-    Tốn thời gian → chạy sync và trả kết quả khi xong.
-    Nếu muốn async, đổi thành background_tasks.add_task().
-    """
-    try:
-        report = _get_updater().ingest(
-            ocr_text=request.ocr_text,
-            ministry=request.ministry,
-            manual_so_hieu=request.manual_so_hieu,
-            manual_loai_vb=request.manual_loai_vb,
-            manual_ten_van_ban=request.manual_ten_van_ban,
-            force_if_exists=request.force_if_exists,
-            only_new_chunks=request.only_new_chunks,
-            dry_run_delete=request.dry_run_delete,
-            skip_upsert=request.skip_upsert,
-        )
-        if report["status"] == "error":
-            raise HTTPException(status_code=422, detail=report["errors"])
-        return report
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Ingest error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/v1/db/delete_doc")
-async def delete_doc(request: DeleteDocRequest):
-    """Xoá tất cả chunks của một văn bản theo số hiệu."""
-    try:
-        return _get_updater().delete_doc(
-            so_hieu=request.so_hieu,
-            dry_run=request.dry_run,
-            collection_key=request.collection_key,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/v1/db/delete_article")
-async def delete_article(request: DeleteArticleRequest):
-    """Xoá chunks của một Điều cụ thể."""
-    try:
-        return _get_updater().delete_article(
-            so_hieu=request.so_hieu,
-            article_query=request.article_query,
-            dry_run=request.dry_run,
-            collection_key=request.collection_key,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/v1/db/batch_delete")
-async def batch_delete(request: BatchDeleteRequest):
-    """Xoá nhiều văn bản theo danh sách số hiệu."""
-    try:
-        df = _get_updater().batch_delete(
-            so_hieu_list=request.so_hieu_list,
-            dry_run=request.dry_run,
-            collection_key=request.collection_key,
-        )
-        return df.to_dict(orient="records")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/v1/db/rebuild_bm25")
-async def rebuild_bm25(background_tasks: BackgroundTasks):
-    """
-    Rebuild BM25 index sau khi ingest/xoá.
-    Chạy trong background — trả về ngay, kết quả log vào server.
-    """
-    def _run():
-        result = _get_updater().rebuild_bm25()
-        if result["status"] == "ok":
-            logger.info(f"rebuild_bm25: Hoàn tất — {result['rows_exported']} rows, {result['elapsed_s']}s")
-        else:
-            logger.error(f"rebuild_bm25: Lỗi — {result.get('error')}")
-
-    background_tasks.add_task(_run)
-    return {"status": "started", "message": "BM25 rebuild đang chạy trong background."}
-
-
-# ═══════════════════════════════════════════════════════════════
-# ENTRY POINT
-# ═══════════════════════════════════════════════════════════════
+    return StreamingResponse(
+        event_stream(),
+        media_type="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 if __name__ == "__main__":
     import uvicorn

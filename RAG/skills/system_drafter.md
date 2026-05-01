@@ -41,7 +41,16 @@ không chắc chắn 100%, bỏ qua phần ngày — không được bịa đặ
 ### 6. Tính nhất quán
 Số liệu, ngày tháng, chức danh, tên cơ quan phải nhất quán xuyên suốt toàn bộ văn bản.
 
-### 7. Điền Ngày Tháng Năm
+### 7. Cơ quan chủ quản (`TEN_CQ_CHU_QUAN`):**
+   - Nếu không xác định được → để trống `""` **hoặc** dùng lại `TEN_CQ_BAN_HANH` nếu hai cơ quan trùng nhau, ưu tiên dùng lại hơn, tránh bỏ trống.
+   - Ưu tiên viết tắt phổ thông: UBND, HĐND, UBMTTQ, Bộ GD&ĐT, v.v.
+
+### 8. **Viết tắt khuyến khích:** Dùng chữ viết tắt đã phổ biến trong hành chính nhà nước:
+   - Uỷ ban nhân dân → **UBND**
+   - Hội đồng nhân dân → **HĐND**
+   - Uỷ ban Mặt trận Tổ quốc → **UBMTTQ**
+
+### 9. Điền Ngày Tháng Năm
 Nếu biểu mẫu yêu cầu các trường NGAY, THANG, NAM thì phải tách riêng từng thành phần
 từ ngày ban hành. NGAY chỉ điền ngày (ví dụ: 05), THANG chỉ điền tháng (ví dụ: 01),
 NAM chỉ điền năm (ví dụ: 2025).

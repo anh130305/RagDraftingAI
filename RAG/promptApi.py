@@ -73,7 +73,7 @@ except ImportError as e:
 # LLM CONFIG
 # ═══════════════════════════════════════════════════════════════
 _LLM_CONFIG = {
-    "groq_model"  : os.environ.get("LLM_MODEL", "llama-3.3-70b-versatile"),
+    "groq_model"  : os.environ.get("LLM_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct"),
     "openai_model": os.environ.get("LLM_MODEL", "gpt-4o-mini"),
     "max_tokens"  : 4096,
     "temperature" : 0.1,
@@ -235,7 +235,7 @@ def estimate_tokens(text: str) -> int:
 #   Response allocation (max_tokens):              ~4,096
 #   ──────────────────────────────────────────  ──────
 #   Available for user input (query + extras + files):  3,500  (buffer ~400)
-USER_TOKEN_LIMIT = 3500
+USER_TOKEN_LIMIT = 5000
 class PromptAPI:
     """
     API layer chính. Khởi tạo một lần, dùng nhiều lần.
@@ -715,11 +715,19 @@ def get_api(
     return _api_instance
 
 
+"""
+PATCH cho promptAPI.py — Thay thế toàn bộ block `if __name__ == "__main__":` cũ
+bằng phiên bản dưới đây để tích hợp DocxFiller.
+
+Copy đoạn này vào cuối file promptAPI.py (thay thế block cũ).
+"""
+
 # ═══════════════════════════════════════════════════════════════
-# CLI SMOKE TEST
+# CLI SMOKE TEST — Tích hợp DocxFiller
 # ═══════════════════════════════════════════════════════════════
 if __name__ == "__main__":
-    import argparse, sys
+    import argparse
+    import sys
 
     parser = argparse.ArgumentParser(description="promptAPI smoke test")
     parser.add_argument("--mode",   choices=["draft", "legal_qa"], default="draft")
@@ -729,16 +737,47 @@ if __name__ == "__main__":
     parser.add_argument("--no-reranker", action="store_true")
     parser.add_argument("--no-llm",      action="store_true",
                         help="Chỉ build prompt, không gọi LLM")
+    parser.add_argument("--no-fill",     action="store_true",
+                        help="Bỏ qua bước fill docx, chỉ in fields ra màn hình")
+    parser.add_argument("--forms-dir",   type=str, default="Forms/docx",
+                        help="Thư mục chứa template docx (mặc định: Forms/docx)")
+    parser.add_argument("--drafts-dir",  type=str, default="drafts",
+                        help="Thư mục lưu file draft (mặc định: drafts)")
     args = parser.parse_args()
 
     DEFAULT_QUERIES = {
-        "draft"   : "Soạn công văn của Cục Văn thư và Lưu trữ Nhà nước gửi các Bộ về hướng dẫn thi hành Luật Lưu trữ",
+        "draft"   : "Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý theo quy định của luật cán bộ, công chức.",
+        # "draft": "Soạn thảo biên bản họp Hội đồng kỷ luật công chức.",
         "legal_qa": "Trình bày điều kiện cấp giấy phép kinh doanh?",
     }
     DEFAULT_EXTRAS = {
-        "draft"   : "Ngày ký: 05/01/2025\nNgười ký: Cục trưởng Đặng Thanh Tùng\nSố CV: 12/VTLT-NV",
+        "draft"   : (
+            "Cơ quan ban hành: Sở Nội vụ tỉnh Bình Dương.\n"
+            "Viết tắt cơ quan ban hành: SNV.\n"
+            "Cơ quan chủ quản: UBND tỉnh Bình Dương.\n"
+            "Số quyết định: 45. Ngày ký: 20/01/2026.\n"
+            "Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai.\n"
+            "Đối tượng bổ nhiệm: Ông Nguyễn Văn Hùng.\n"
+            "Chức vụ bổ nhiệm: Trưởng phòng Hành chính - Tổng hợp.\n"
+        ),
+        # "draft": (
+        #     "Cơ quan ban hành/ chủ quản: Sở Y tế tỉnh Phú Thọ.\n"
+        #     "Viết tắt cơ quan ban hành: SYT.\n"
+        #     "Đối tượng bị xem xét: Ông Nguyễn Văn Hải, chức vụ Chuyên viên phòng Tổ chức cán bộ.\n"
+        #     "Hành vi vi phạm: Vi phạm quy định về thời giờ làm việc, tự ý nghỉ việc không có lý do chính đáng "
+        #     "tổng cộng 05 ngày làm việc trong một tháng, gây ảnh hưởng đến tiến độ giải quyết hồ sơ công vụ.\n"
+        #     "Thời gian: 14h00 ngày 20/03/2026. Địa điểm: Phòng họp Ban Giám đốc Sở Y tế Phú Thọ.\n"
+        #     "Hội đồng kỷ luật: \n"
+        #     "1. BS. Nguyễn Đức Thắng (Chủ tịch Hội đồng - Giám đốc Sở)\n"
+        #     "2. Bà Trần Thị Lan (Thư ký Hội đồng - Trưởng phòng TC-CB)\n"
+        #     "3. Và 03 thành viên khác theo Quyết định số 45/QĐ-SYT ngày 10/03/2026.\n"
+        #     "Diễn biến chính: Hội đồng xác định hành vi của ông Hải là tái phạm sau khi đã bị nhắc nhở bằng văn bản. "
+        #     "Ông Hải thừa nhận khuyết điểm và hứa sửa chữa. \n"
+        #     "Kết quả: Hội đồng tiến hành bỏ phiếu kín. Kết quả 05/05 phiếu (100%) thống nhất kiến nghị hình thức Cảnh cáo."
+        # ),
         "legal_qa": "",
     }
+
     query  = args.query  or DEFAULT_QUERIES[args.mode]
     extras = args.extras or DEFAULT_EXTRAS[args.mode] or None
 
@@ -753,24 +792,57 @@ if __name__ == "__main__":
 
     api = PromptAPI(use_reranker=not args.no_reranker)
 
+    # ── DRAFT mode ─────────────────────────────────────────────
     if args.mode == "draft":
         result = api.draft(query, extras=extras, call_llm=not args.no_llm)
+
         if result["status"] == "ok":
             print("[OK] Fields trả về:")
             for k, v in result["fields"].items():
                 preview = v[:100].replace("\n", " ")
                 print(f"  {k}: {preview}")
+
+            # ── FILL DOCX ──────────────────────────────────────
+            if not args.no_fill:
+                print("\n" + "-"*48)
+                print("Đang fill docx template...")
+                try:
+                    from docx_filler import DocxFiller
+                    filler = DocxFiller(
+                        forms_dir  = args.forms_dir,
+                        drafts_dir = args.drafts_dir,
+                    )
+                    output_path = filler.fill_from_result(result)
+                    if output_path:
+                        print(f"✅ Draft đã lưu tại: {output_path.resolve()}")
+                    else:
+                        print("⚠️  Không thể fill docx (xem log bên trên).")
+                except FileNotFoundError as e:
+                    print(f"❌ Không tìm thấy template: {e}")
+                except RuntimeError as e:
+                    print(f"❌ Lỗi runtime: {e}")
+                except Exception as e:
+                    print(f"❌ Lỗi không xác định khi fill docx: {e}")
+                    logger.exception(e)
+            else:
+                print("\n[--no-fill] Bỏ qua bước fill docx.")
+
         elif result["status"] == "prompt_only":
-            print("[PROMPT ONLY] Messages đã build:")
+            print("[PROMPT ONLY] Messages đã build (dùng --no-llm để xem chi tiết):")
             for m in result["meta"].get("messages", []):
                 print(f"  [{m['role'].upper()}] {m['content'][:200]}...")
+
         else:
             print(f"[ERROR] {result['error']}")
 
-        print(f"\nMeta: {json.dumps({k: v for k, v in result['meta'].items() if k != 'messages' and k != 'llm_raw'}, ensure_ascii=False, indent=2)}")
+        print(
+            f"\nMeta: {json.dumps({k: v for k, v in result['meta'].items() if k not in ('messages', 'llm_raw')}, ensure_ascii=False, indent=2)}"
+        )
 
-    else:  # legal_qa
+    # ── LEGAL QA mode ──────────────────────────────────────────
+    else:
         result = api.legal_qa(query, extras=extras, call_llm=not args.no_llm)
+
         if result["status"] == "ok":
             print("[OK] Câu trả lời:\n")
             print(result["answer"])
@@ -779,4 +851,6 @@ if __name__ == "__main__":
         else:
             print(f"[ERROR] {result['error']}")
 
-        print(f"\nMeta: {json.dumps({k: v for k, v in result['meta'].items() if k != 'messages'}, ensure_ascii=False, indent=2)}")
+        print(
+            f"\nMeta: {json.dumps({k: v for k, v in result['meta'].items() if k != 'messages'}, ensure_ascii=False, indent=2)}"
+        )

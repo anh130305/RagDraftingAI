@@ -1,8 +1,0 @@
-https://luatvietnam.vn/bieu-mau/bieu-mau-van-ban-hanh-chinh-571-27528-article.html
-https://www.kaggle.com/datasets/tuongdang/vietnamese-legal-dataset?resource=download
-
-Tải dataset csv trên Kaggle về máy và giải nén, sau đó di chuyển file `vbpl_crawl_2.csv` vào thư mục `dataset` trong dự án của bạn.
-Rồi dùng file utils/convert_dataset.py để chuyển đổi file csv sang định dạng parquet, giúp việc đọc dữ liệu nhanh hơn trong quá trình xử lý.
-
-link chromaDB:
-https://drive.google.com/file/d/1Xi8VHnlqJqMNlqBzxr1Nzsza9-w0IjOF/view?usp=sharing

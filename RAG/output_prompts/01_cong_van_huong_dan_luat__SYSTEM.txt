@@ -1,9 +1,9 @@
-# RAG CLI — 05_bien_ban_hop_ky_luat
-# Run     : 20260429_010529
-# Thời điểm: 2026-04-29 01:06:32
-# Form    : Form_09 (Biên bản)
+# RAG CLI — 01_cong_van_huong_dan_luat
+# Run     : 20260428_235022
+# Thời điểm: 2026-04-28 23:51:14
+# Form    : Form_05 (Công văn)
 # Reranker: BẬT
-# Query   : Soạn thảo biên bản họp Hội đồng kỷ luật công chức.
+# Query   : Soạn công văn của Cục Văn thư và Lưu trữ Nhà nước gửi các Bộ, cơ quan ngang Bộ về việc hướng dẫn triển khai thi hành Luậ...
 ======================================================================
 
 # Skill: Chuyên viên Soạn thảo Văn bản Hành chính
