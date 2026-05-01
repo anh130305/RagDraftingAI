@@ -1,10 +1,14 @@
-link.txt
-data/vn_law_corpus.csv
-data/thuvienphapluat_full.parquet
 .agent
 .github
 .env
+
+link.txt
+data/vn_law_corpus.csv
+data/thuvienphapluat_full.parquet
+
 /VN_Law_Advisor-main
 
 
 __pycache__/
+
+.DS_Store
