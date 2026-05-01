@@ -18,6 +18,7 @@ app = FastAPI(title="RAG Drafting Service", version="1.0.0")
 # ─── Global instances (khởi tạo trong startup) ────────────────────────────
 _prompt_api = None  # PromptAPI singleton
 _updater    = None  # DocumentUpdater singleton (dùng chung resources)
+api         = None  # PromptAPI instance dùng cho endpoints
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -39,7 +40,7 @@ async def startup_event():
     logger.info("RAG Service: Khởi động...")
 
     # BƯỚC 1: Shared resources (embed model + ChromaDB client)
-    from app_state import init_shared_state, get_updater as _get_updater
+    from app_state import init_shared_state, get_updater as _get_updater, get_embed_model
     init_shared_state()
 
     # BƯỚC 2: Inject embed model vào hybrid_retrieval TRƯỚC khi init_retriever chạy.
@@ -88,20 +89,15 @@ def _get_updater():
 class DraftRequest(BaseModel):
     query: str
     extras: Optional[str] = None
+    legal_type_filter: Optional[str] = None
     call_llm: bool = True
 
 class LegalQARequest(BaseModel):
     query: str
     extras: Optional[str] = None
     legal_top_k: Optional[int] = None
+    legal_type_filter: Optional[str] = None
     call_llm: bool = True
-
-@app.on_event("startup")
-async def startup_event():
-    logger.info("RAG Service started. Models will be initialized.")
-    global api
-    api = PromptAPI()
-    logger.info("RAG Service is ready to handle requests.")
 
 
 def get_api():
@@ -123,10 +119,8 @@ async def draft(request: DraftRequest):
     current_api = get_api()
     try:
         result = current_api.draft(
-
             query=request.query,
             extras=request.extras,
-            legal_type_filter=request.legal_type_filter,
             call_llm=request.call_llm,
         )
         return result
@@ -142,7 +136,6 @@ async def legal_qa(request: LegalQARequest):
             query=request.query,
             extras=request.extras,
             legal_top_k=request.legal_top_k,
-            legal_type_filter=request.legal_type_filter,
             call_llm=request.call_llm,
         )
         return result
@@ -161,7 +154,6 @@ def legal_qa_stream(request: LegalQARequest):
                 query=request.query,
                 extras=request.extras,
                 legal_top_k=request.legal_top_k,
-                legal_type_filter=request.legal_type_filter,
                 call_llm=request.call_llm,
             ):
                 yield json.dumps(event, ensure_ascii=False) + "\n"
