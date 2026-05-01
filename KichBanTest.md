@@ -117,6 +117,7 @@ Thời gian nghỉ: Từ ngày 01/08/2025 đến hết ngày 10/08/2025
 
 
 # Kịch Bản TEST Chuẩn
+
 DEFAULT_QUERIES = {
     "draft"   : "Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý theo quy định của luật cán bộ, công chức.",
     "legal_qa": "Trình bày điều kiện cấp giấy phép kinh doanh?",
