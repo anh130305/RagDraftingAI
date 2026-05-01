@@ -108,6 +108,7 @@ class RAGService:
                     "extras": extras,
                     "call_llm": True,
                 },
+                timeout=httpx.Timeout(180.0, connect=10.0, read=180.0),
             )
             response.raise_for_status()
             return response.json()
@@ -149,6 +150,7 @@ class RAGService:
                     "extras": extras,
                     "call_llm": True,
                 },
+                timeout=httpx.Timeout(180.0, connect=10.0, read=180.0),
             ) as response:
                 response.raise_for_status()
 
@@ -192,8 +194,7 @@ class RAGService:
     async def draft_document(
         self, 
         query: str, 
-        extras: Optional[str] = None, 
-        legal_type_filter: Optional[str] = None
+        extras: Optional[str] = None
     ) -> Dict[str, Any]:
         """Call the RAG draft mode via API."""
         try:
@@ -202,9 +203,9 @@ class RAGService:
                 json={
                     "query": query,
                     "extras": extras,
-                    "legal_type_filter": legal_type_filter,
                     "call_llm": True,
                 },
+                timeout=httpx.Timeout(360.0, connect=10.0, read=360.0),
             )
             response.raise_for_status()
             return response.json()

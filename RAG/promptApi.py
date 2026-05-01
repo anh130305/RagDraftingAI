@@ -275,7 +275,6 @@ class PromptAPI:
         self,
         query             : str,
         extras            : Optional[str] = None,
-        legal_type_filter : Optional[str] = None,
         call_llm          : bool = True,
     ) -> Dict[str, Any]:
         """
@@ -348,7 +347,6 @@ class PromptAPI:
                 query,
                 legal_top_k       = self.legal_top_k,
                 examples_top_k    = self.examples_top_k,
-                legal_type_filter = legal_type_filter,
                 expand_legal      = True,
             )
 
@@ -414,7 +412,6 @@ class PromptAPI:
         query             : str,
         extras            : Optional[str] = None,
         legal_top_k       : Optional[int] = None,
-        legal_type_filter : Optional[str] = None,
         call_llm          : bool = True,
     ) -> Dict[str, Any]:
         """
@@ -487,7 +484,6 @@ class PromptAPI:
             legal_chunks = retrieve_legal(
                 query,
                 top_k       = top_k,
-                type_filter = legal_type_filter,
                 use_reranker= self.use_reranker,
                 expand      = True,
             )
@@ -544,7 +540,6 @@ class PromptAPI:
         query: str,
         extras: Optional[str] = None,
         legal_top_k: Optional[int] = None,
-        legal_type_filter: Optional[str] = None,
         call_llm: bool = True,
     ) -> Iterator[Dict[str, Any]]:
         """
@@ -572,7 +567,6 @@ class PromptAPI:
             legal_chunks = retrieve_legal(
                 query,
                 top_k=top_k,
-                type_filter=legal_type_filter,
                 use_reranker=self.use_reranker,
                 expand=True,
             )

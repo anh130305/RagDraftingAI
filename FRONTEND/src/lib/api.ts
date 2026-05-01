@@ -40,10 +40,10 @@ export function resolveDocumentFileUrl(filePath: string): string {
 
 function sanitizeCloudinaryFilename(name: string): string {
   if (!name) return 'document';
-  
+
   // Remove extension if present in name to avoid double extension in flag
   const nameWithoutExt = name.includes('.') ? name.split('.').slice(0, -1).join('.') : name;
-  
+
   // Simple Vietnamese character normalization
   const signedChars = "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ";
   const unsignedChars = "aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyydAAAAAAAAAAAAAAAAAEEEEEEEEEEEIIIIIOOOOOOOOOOOOOOOOOUUUUUUUUUUUYYYYYD";
@@ -61,14 +61,14 @@ function sanitizeCloudinaryFilename(name: string): string {
 
 function applyCloudinaryUploadFlag(url: string, flag: string, value?: string): string {
   if (!url || !CLOUDINARY_UPLOAD_URL_REGEX.test(url)) return url;
-  
+
   const fullFlag = value ? `${flag}:${value}` : flag;
-  
+
   // Check if flag already exists in any form (standalone or with value)
   if (url.includes(`/${flag}`) || url.includes(`,${flag}`)) {
     return url;
   }
-  
+
   return url.replace('/upload/', `/upload/${fullFlag}/`);
 }
 
@@ -83,7 +83,7 @@ function ensureCloudinaryExtension(url: string, extension?: string): string {
 
   const segments = pathPart.split('/');
   const lastSegment = segments[segments.length - 1] || '';
-  
+
   try {
     const decodedLastSegment = decodeURIComponent(lastSegment).toLowerCase();
     if (decodedLastSegment.endsWith(`.${ext}`)) return url;
@@ -153,7 +153,7 @@ export function getDocumentDownloadUrl(
   const normalized = normalizeCloudinaryDocumentUrl(url, { kind, fileName, fileType });
   const downloadName = sanitizeCloudinaryFilename(fileName || 'document');
   const attachmentUrl = applyCloudinaryUploadFlag(normalized, 'fl_attachment', downloadName);
-  
+
   // Add a cache buster to ensure the browser fetches the fresh version with headers.
   const separator = attachmentUrl.includes('?') ? '&' : '?';
   return `${attachmentUrl}${separator}t=${Date.now()}`;
@@ -427,8 +427,25 @@ async function finalizeCloudinaryUpload(
 
 export async function uploadDocument(file: File, title?: string, chatSessionId?: string) {
   const signature = await requestCloudinaryUploadSignature(file, chatSessionId);
+  console.debug('uploadDocument: presign signature', { file: file.name, chatSessionId, signature });
   const uploadResult = await uploadFileDirectlyToCloudinary(file, signature);
-  return finalizeCloudinaryUpload(uploadResult, file, title, chatSessionId);
+  console.debug('uploadDocument: cloudinary result', { file: file.name, uploadResult });
+  const doc = await finalizeCloudinaryUpload(uploadResult, file, title, chatSessionId);
+  console.debug('uploadDocument: finalize returned', { file: file.name, doc });
+  return doc;
+}
+
+export async function uploadAdminKnowledgeBaseDocument(file: File, title?: string) {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (title) {
+    formData.append('title', title);
+  }
+
+  return request<DocumentResponse>('/api/v1/admin/knowledge-base/upload', {
+    method: 'POST',
+    body: formData,
+  });
 }
 
 export function logout() {
@@ -558,7 +575,6 @@ export function recordPromptTemplateUse(id: string) {
 export interface DraftRequest {
   query: string;
   extras?: string;
-  legal_type_filter?: string;
   session_id?: string;
 }
 
@@ -584,7 +600,7 @@ export function generateDraftDocx(data: DraftRequest) {
   return request<DraftResponse>('/api/v1/drafting/generate-docx', {
     method: 'POST',
     body: JSON.stringify(data),
-  }, 180000);
+  }, 360000);
 }
 
 /* ─── Chat ──────────────────────────────────────────────── */
@@ -653,12 +669,14 @@ export function deleteSession(id: string) {
 }
 
 export function sendMessage(sessionId: string, content: string, mode: 'qa' | 'generate' = 'qa', extras?: string) {
+  const timeoutMs = mode === 'qa' ? 180000 : 360000;
   return request<ChatMessage>(
     `/api/v1/chat/sessions/${sessionId}/messages`,
     {
       method: 'POST',
       body: JSON.stringify({ content, mode, extras }),
     },
+    timeoutMs
   );
 }
 
@@ -756,6 +774,7 @@ export interface DocumentResponse {
   uploaded_by: string | null;
   session_id?: string | null;
   chunk_count: number;
+  rag_ingested: boolean;
   error_message: string | null;
   created_at: string;
   updated_at: string;
@@ -898,4 +917,154 @@ export interface AIMonitoringResponse {
 
 export function getAIMonitoringStats(days: number = 7) {
   return request<AIMonitoringResponse>(`/api/v1/admin/ai-monitoring?days=${days}`);
+}
+
+/* ─── Admin RAG ChromaDB Management ──────────────────────── */
+
+export interface RAGStatusResponse {
+  [collection: string]: number;
+}
+
+export interface RAGCheckResponse {
+  exists: boolean;
+  chunk_count: number;
+  article_count: number;
+  articles: string[];
+  so_hieu: string;
+}
+
+export interface RAGIngestRequest {
+  ocr_text: string;
+  ministry?: string;
+  manual_so_hieu?: string;
+  manual_loai_vb?: string;
+  manual_ten_van_ban?: string;
+  force_if_exists?: boolean;
+  only_new_chunks?: boolean;
+}
+
+export interface RAGIngestResponse {
+  status: 'ok' | 'error' | 'skipped';
+  header: {
+    so_hieu: string;
+    ten_van_ban: string;
+    co_quan: string;
+    loai_vb: string;
+  };
+  doc_already_exists: boolean;
+  articles_found: number;
+  chunks_created: number;
+  abolished_found: Array<{ so_hieu: string; count: number; snippet: string }>;
+  delete_results: Array<{ so_hieu: string; deleted_count: number }>;
+  upsert_result: {
+    upserted: number;
+    skipped: number;
+    errors: string[];
+  };
+  errors: string[];
+  bm25_rebuild?: string;
+}
+
+export interface RAGDeleteDocRequest {
+  so_hieu: string;
+  dry_run?: boolean;
+  collection_key?: string;
+}
+
+export interface RAGDeleteDocResponse {
+  so_hieu: string;
+  found_ids: string[];
+  deleted_count: number;
+  dry_run: boolean;
+  protected: boolean;
+  bm25_rebuild?: string;
+}
+
+export interface RAGDeleteArticleRequest {
+  so_hieu: string;
+  article_query: string;
+  dry_run?: boolean;
+  collection_key?: string;
+}
+
+export interface RAGDeleteArticleResponse {
+  found_ids: string[];
+  deleted_count: number;
+  dry_run: boolean;
+  bm25_rebuild?: string;
+}
+
+export function getRAGStatus() {
+  return request<RAGStatusResponse>('/api/v1/admin/rag/status');
+}
+
+export function checkRAGDoc(so_hieu: string, collection_key: string = 'legal') {
+  return request<RAGCheckResponse>('/api/v1/admin/rag/check', {
+    method: 'POST',
+    body: JSON.stringify({ so_hieu, collection_key }),
+  });
+}
+
+export function ingestRAGDoc(data: RAGIngestRequest) {
+  return request<RAGIngestResponse>('/api/v1/admin/rag/ingest', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }, 300000); // 5 min timeout for heavy documents
+}
+
+export function deleteRAGDoc(data: RAGDeleteDocRequest) {
+  return request<RAGDeleteDocResponse>('/api/v1/admin/rag/delete-doc', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteRAGArticle(data: RAGDeleteArticleRequest) {
+  return request<RAGDeleteArticleResponse>('/api/v1/admin/rag/delete-article', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function rebuildBM25() {
+  return request<{ status: string; message: string }>('/api/v1/admin/rag/rebuild-bm25', {
+    method: 'POST',
+  });
+}
+
+export interface OCRExtractResponse {
+  text: string;
+  filename: string;
+  chars: number;
+  method: string;
+}
+
+export function adminExtractText(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return request<OCRExtractResponse>('/api/v1/admin/rag/extract-text', {
+    method: 'POST',
+    body: formData,
+  }, 120000); // 2 min timeout for large scanned PDFs
+}
+
+// Ingest a document from Cloudinary into ChromaDB (OCR → chunk → embed)
+export function ingestDocToRAG(documentId: string) {
+  return request<RAGIngestResponse>(`/api/v1/admin/rag/ingest-doc/${documentId}`, {
+    method: 'POST',
+  }, 300000); // 5 min timeout for heavy OCR
+}
+
+// Remove document from ChromaDB only (keep in Cloudinary)
+export function uningestDocFromRAG(documentId: string) {
+  return request<{ status: string; deleted_count: number }>(`/api/v1/admin/rag/uningest-doc/${documentId}`, {
+    method: 'POST',
+  });
+}
+
+// Hard delete: remove from ChromaDB + Cloudinary + PostgreSQL
+export function hardDeleteDoc(documentId: string) {
+  return request<{ status: string; errors: string[] }>(`/api/v1/admin/rag/hard-delete-doc/${documentId}`, {
+    method: 'DELETE',
+  });
 }

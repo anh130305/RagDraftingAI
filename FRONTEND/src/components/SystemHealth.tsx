@@ -23,7 +23,10 @@ const auditActionLabels: Record<string, string> = {
   create_session: 'Tạo Phiên',
   delete_session: 'Xóa Phiên',
   update_user: 'Cập nhật User',
-  storage_error: 'Lỗi Lưu trữ'
+  storage_error: 'Lỗi Lưu trữ',
+  rag_ingest: 'Nạp RAG',
+  rag_delete: 'Xoá RAG',
+  rag_rebuild: 'Rebuild BM25',
 };
 
 const getActionConfig = (action: string) => {
@@ -37,6 +40,9 @@ const getActionConfig = (action: string) => {
     case 'update_user': return { icon: UserPlus, color: 'text-secondary', bg: 'bg-secondary/10', border: 'border-secondary/20' };
     case 'create_session': return { icon: Activity, color: 'text-primary', bg: 'bg-primary/5', border: 'border-primary/10' };
     case 'storage_error': return { icon: Cloud, color: 'text-error', bg: 'bg-error/10', border: 'border-error/20' };
+    case 'rag_ingest': return { icon: Database, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' };
+    case 'rag_delete': return { icon: Trash2, color: 'text-error', bg: 'bg-error/10', border: 'border-error/20' };
+    case 'rag_rebuild': return { icon: RefreshCw, color: 'text-secondary', bg: 'bg-secondary/10', border: 'border-secondary/20' };
     default: return { icon: KeyRound, color: 'text-on-surface-variant', bg: 'bg-surface-high', border: 'border-outline-variant' };
   }
 };

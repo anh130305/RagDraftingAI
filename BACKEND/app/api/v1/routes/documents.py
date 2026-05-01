@@ -3,12 +3,16 @@ routes.documents – Document upload, listing, detail, and chunk retrieval.
 """
 
 import io
+import csv
+import json
+import xml.etree.ElementTree as ET
 from uuid import UUID
 from typing import Optional
 from urllib.parse import unquote, urlparse
 
 from fastapi import APIRouter, Depends, UploadFile, File, Form, Query, Request, BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
+import logging
 
 from app.api.deps import get_db, require_chat_user
 from app.core.config import settings
@@ -25,6 +29,8 @@ from app.schemas.document import (
 from app.services import document_service, audit_service
 from app.models.audit_log import AuditAction
 from app.services import cloudinary_service
+import httpx as _httpx
+from starlette.concurrency import run_in_threadpool
 import requests
 import pytesseract
 import fitz
@@ -32,6 +38,8 @@ import docx
 from PIL import Image
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_optional_uuid(value: Optional[str]) -> Optional[UUID]:
@@ -43,15 +51,76 @@ def _parse_optional_uuid(value: Optional[str]) -> Optional[UUID]:
         return None
 
 
+def _decode_text_bytes(contents: bytes) -> str:
+    for encoding in ("utf-8", "utf-8-sig", "cp1258", "latin-1"):
+        try:
+            return contents.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return contents.decode("utf-8", errors="replace")
+
+
+def _extract_xml_text(contents: bytes) -> str:
+    root = ET.fromstring(_decode_text_bytes(contents))
+    return " ".join(part.strip() for part in root.itertext() if part and part.strip())
+
+
+def _extract_csv_text(contents: bytes) -> str:
+    text = _decode_text_bytes(contents)
+    reader = csv.reader(io.StringIO(text))
+    rows: list[str] = []
+    for row in reader:
+        cleaned = [cell.strip() for cell in row if cell and cell.strip()]
+        if cleaned:
+            rows.append(" | ".join(cleaned))
+    return "\n".join(rows).strip()
+
+
 def _extract_text_from_bytes(contents: bytes, *, filename: str = "", content_type: str = "") -> str:
+    """Extract text from file bytes. Supports text, CSV, XML, PDF (OCR fallback), DOCX, and images."""
     lowered_filename = (filename or "").lower()
     lowered_content_type = (content_type or "").lower()
+
+    if (
+        lowered_filename.endswith(".txt")
+        or lowered_filename.endswith(".md")
+        or lowered_filename.endswith(".csv")
+        or lowered_filename.endswith(".tsv")
+        or lowered_filename.endswith(".json")
+        or lowered_filename.endswith(".xml")
+        or lowered_content_type.startswith("text/")
+        or "csv" in lowered_content_type
+        or "json" in lowered_content_type
+        or ("xml" in lowered_content_type and "wordprocessingml" not in lowered_content_type)
+        or "markdown" in lowered_content_type
+    ):
+        if lowered_filename.endswith(".csv") or lowered_filename.endswith(".tsv") or "csv" in lowered_content_type:
+            return _extract_csv_text(contents)
+        if lowered_filename.endswith(".json") or "json" in lowered_content_type:
+            parsed = json.loads(_decode_text_bytes(contents))
+            return json.dumps(parsed, ensure_ascii=False, indent=2)
+        if lowered_filename.endswith(".xml") or "xml" in lowered_content_type:
+            return _extract_xml_text(contents)
+        return _decode_text_bytes(contents).strip()
 
     if lowered_filename.endswith(".pdf") or lowered_content_type == "application/pdf":
         doc = fitz.open(stream=contents, filetype="pdf")
         text = ""
         for page in doc:
             text += page.get_text()
+        
+        avg_chars_per_page = len(text.strip()) / max(len(doc), 1)
+        if avg_chars_per_page < 50:  # Scanned PDF threshold
+            ocr_text = ""
+            for page in doc:
+                # Render page as high-res image for better OCR accuracy
+                pix = page.get_pixmap(dpi=300)
+                img = Image.open(io.BytesIO(pix.tobytes("png")))
+                page_text = pytesseract.image_to_string(img, lang="vie+eng")
+                ocr_text += page_text + "\n"
+            doc.close()
+            return ocr_text.strip() if ocr_text.strip() else text.strip()
+
         doc.close()
         return text.strip()
 
@@ -61,7 +130,7 @@ def _extract_text_from_bytes(contents: bytes, *, filename: str = "", content_typ
         return text.strip()
 
     if lowered_filename.endswith(".doc") or "application/msword" in lowered_content_type:
-        raise ValueError("Định dạng DOC cũ chưa được hỗ trợ OCR trực tiếp. Hãy chuyển sang DOCX hoặc PDF.")
+        raise ValueError("Định dạng DOC cũ chưa được hỗ trợ trong môi trường hiện tại. Hãy chuyển sang DOCX/PDF hoặc cài bộ chuyển đổi ngoài.")
 
     image = Image.open(io.BytesIO(contents))
     text = pytesseract.image_to_string(image, lang="vie+eng")
@@ -114,6 +183,8 @@ def presign_document_upload(
     current_user: User = Depends(require_chat_user),
 ):
     """Return a signed Cloudinary upload payload for direct browser uploads."""
+    logger.info("presign upload requested user=%s file=%s session=%s",
+                str(current_user.id), payload.file_name, payload.chat_session_id)
     signature_payload = cloudinary_service.build_signed_upload_payload(
         file_name=payload.file_name,
         content_type=payload.content_type,
@@ -137,12 +208,16 @@ def upload_document(
     try:
         # Use cloudinary if configured
         cloudinary_res = cloudinary_service.upload_to_cloudinary(
-            file, 
-            user_id=str(current_user.id), 
-            session_id=chat_session_id
+            file,
+            user_id=str(current_user.id),
+            session_id=chat_session_id,
         )
-        file_path = cloudinary_res["url"]
-        cloudinary_public_id = cloudinary_res["public_id"]
+        logger.info("upload_document: cloudinary upload result user=%s file=%s public_id=%s",
+                    str(current_user.id), getattr(file, 'filename', None), cloudinary_res.get('public_id'))
+        file_path = cloudinary_res.get("url")
+        cloudinary_public_id = cloudinary_res.get("public_id")
+        # Prefer the bytes reported by Cloudinary for accurate file_size; fall back to UploadFile.size if present
+        file_size = cloudinary_res.get("bytes") or getattr(file, "size", None)
     except Exception as e:
         # Log failure to audit trail
         background_tasks.add_task(
@@ -164,11 +239,13 @@ def upload_document(
         title=title or file.filename,
         file_path=file_path,
         file_type=file.content_type,
-        file_size=file.size,
+        file_size=file_size,
         uploaded_by=current_user.id,
         session_id=UUID(chat_session_id) if chat_session_id and chat_session_id != "general" else None,
         cloudinary_public_id=cloudinary_public_id,
     )
+    logger.info("upload_document: created doc id=%s title=%s user=%s",
+                str(doc.id), doc.title, str(current_user.id))
     
     background_tasks.add_task(
         audit_service.log_action,
@@ -183,7 +260,7 @@ def upload_document(
 
 
 @router.post("/upload/complete", response_model=CloudinaryUploadCompleteResponse, status_code=201)
-def complete_document_upload(
+async def complete_document_upload(
     request: Request,
     background_tasks: BackgroundTasks,
     payload: CloudinaryUploadCompleteRequest,
@@ -191,6 +268,7 @@ def complete_document_upload(
     current_user: User = Depends(require_chat_user),
 ):
     """Persist metadata after a direct Cloudinary upload and run OCR from the Cloudinary URL."""
+
     try:
         session_scope = payload.chat_session_id or "general"
         normalized_public_id = _validate_asset_ownership(
@@ -198,6 +276,8 @@ def complete_document_upload(
             str(current_user.id),
             session_scope,
         )
+        logger.info("complete_document_upload: user=%s public_id=%s session=%s",
+                    str(current_user.id), payload.cloudinary_public_id, payload.chat_session_id)
         decoded_path = _validate_cloudinary_url(payload.file_path)
         if normalized_public_id not in decoded_path:
             raise HTTPException(status_code=400, detail="URL tệp không khớp public_id.")
@@ -216,13 +296,25 @@ def complete_document_upload(
         extracted_text = None
         ocr_error = None
         try:
-            extracted_text = _extract_text_from_cloudinary_url(
-                payload.file_path,
-                filename=payload.title or payload.file_path.split("/")[-1],
-                content_type=payload.file_type or "",
+            # Download file asynchronously instead of blocking with requests.get()
+            async with _httpx.AsyncClient(timeout=30.0) as dl_client:
+                dl_resp = await dl_client.get(payload.file_path)
+            dl_resp.raise_for_status()
+            file_bytes = dl_resp.content
+
+            # Offload CPU-bound OCR to threadpool
+            extracted_text = await run_in_threadpool(
+                lambda: _extract_text_from_bytes(
+                    file_bytes,
+                    filename=payload.title or payload.file_path.split("/")[-1],
+                    content_type=payload.file_type or "",
+                )
             )
         except Exception as ocr_exc:
             ocr_error = str(ocr_exc)
+
+        logger.info("complete_document_upload: created doc id=%s user=%s ocr_len=%s ocr_err=%s",
+                    str(doc.id), str(current_user.id), len(extracted_text or ""), str(ocr_error))
 
         background_tasks.add_task(
             audit_service.log_action,
@@ -262,29 +354,15 @@ def extract_text_from_file(
     file: UploadFile = File(...),
     current_user: User = Depends(require_chat_user),
 ):
-    """Run extraction on uploaded image, pdf, or docx and return extracted text."""
+    """Run extraction on uploaded file and return extracted text."""
     try:
         contents = file.file.read()
-        filename = file.filename.lower() if file.filename else ""
-        
-        if filename.endswith(".pdf"):
-            doc = fitz.open(stream=contents, filetype="pdf")
-            text = ""
-            for page in doc:
-                text += page.get_text()
-            doc.close()
-            return {"text": text.strip()}
-            
-        elif filename.endswith(".docx"):
-            doc = docx.Document(io.BytesIO(contents))
-            text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
-            return {"text": text.strip()}
-            
-        else: # assume image
-            image = Image.open(io.BytesIO(contents))
-            text = pytesseract.image_to_string(image, lang='vie+eng')
-            return {"text": text.strip()}
-            
+        text = _extract_text_from_bytes(
+            contents,
+            filename=file.filename or "",
+            content_type=file.content_type or "",
+        )
+        return {"text": text}
     except Exception as e:
         return {"text": "", "error": str(e)}
 

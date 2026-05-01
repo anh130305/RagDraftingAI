@@ -51,8 +51,7 @@ async def generate_draft(
     
     result = await rag_service.draft_document(
         query=payload.query,
-        extras=payload.extras,
-        legal_type_filter=payload.legal_type_filter
+        extras=payload.extras
     )
     
     elapsed_ms = int((time.perf_counter() - start_time) * 1000)

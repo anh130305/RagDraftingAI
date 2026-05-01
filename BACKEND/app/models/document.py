@@ -6,7 +6,7 @@ Tracks uploaded files and their processing status through the RAG pipeline.
 import enum
 import uuid
 
-from sqlalchemy import Column, String, Integer, BigInteger, Enum, DateTime, ForeignKey, func
+from sqlalchemy import Column, String, Integer, BigInteger, Boolean, Enum, DateTime, ForeignKey, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -43,6 +43,7 @@ class Document(Base):
         index=True,
     )
     chunk_count = Column(Integer, nullable=False, default=0)
+    rag_ingested = Column(Boolean, nullable=False, default=False)
     error_message = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(

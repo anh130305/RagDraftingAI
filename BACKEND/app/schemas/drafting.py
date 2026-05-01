@@ -13,7 +13,6 @@ class DraftRequest(BaseModel):
         description="Thông tin bổ sung / ràng buộc",
         json_schema_extra={"example": "Ngày ký: 05/01/2025\nNgười ký: Cục trưởng"},
     )
-    legal_type_filter: Optional[str] = Field(None, description="Lọc loại văn bản: LUẬT | NGHỊ ĐỊNH | NGHỊ QUYẾT | PHÁP LỆNH")
     session_id: Optional[str] = Field(None, description="ID của phiên chat để gắn tài liệu vào")
 
 class DraftMeta(BaseModel):
