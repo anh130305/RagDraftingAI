@@ -603,7 +603,7 @@ export default function KnowledgeBase() {
                   </div>
                 )}
               </>
-            ) : null
+            ) : null}
           </div>
         </div>
       </div>
