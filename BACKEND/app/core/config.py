@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     # ── RAG Service ──────────────────────────────────────────
     RAG_SERVICE_URL: str = "http://localhost:8001"
+    RAG_REBUILD_SERVICE_URL: str = "http://localhost:8001"
 
     # ── Google OAuth ─────────────────────────────────────────
     GOOGLE_CLIENT_ID: Optional[str] = None

@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import {
   Activity, Cpu, HardDrive, Network,
   AlertTriangle, Search, Filter, RefreshCw,
-  ChevronLeft, ChevronRight, FileText, UserPlus, LogIn, Trash2, Database, KeyRound, Download,
+  ChevronLeft, ChevronRight, FileText, UserPlus, Trash2, Database, KeyRound, Download,
   Cloud, AlertCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -14,11 +14,10 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 
 const auditActionLabels: Record<string, string> = {
-  login: 'Đăng nhập',
-  logout: 'Đăng xuất',
   upload_document: 'Tải lên Tài liệu',
   download_document: 'Tải xuống Tài liệu',
   delete_document: 'Xóa Tài liệu',
+  draft_document:'Tạo Văn bản',
   query: 'Truy vấn RAG',
   create_session: 'Tạo Phiên',
   delete_session: 'Xóa Phiên',
@@ -26,23 +25,20 @@ const auditActionLabels: Record<string, string> = {
   storage_error: 'Lỗi Lưu trữ',
   rag_ingest: 'Nạp RAG',
   rag_delete: 'Xoá RAG',
-  rag_rebuild: 'Rebuild BM25',
 };
 
 const getActionConfig = (action: string) => {
   switch (action) {
-    case 'login': return { icon: LogIn, color: 'text-success', bg: 'bg-success/10', border: 'border-success/20' };
-    case 'logout': return { icon: LogIn, color: 'text-on-surface-variant', bg: 'bg-surface-high', border: 'border-outline-variant' };
     case 'upload_document': return { icon: FileText, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' };
     case 'download_document': return { icon: Download, color: 'text-secondary', bg: 'bg-secondary/10', border: 'border-secondary/20' };
     case 'delete_document': return { icon: Trash2, color: 'text-error', bg: 'bg-error/10', border: 'border-error/20' };
+    case 'draft_document': return { icon: FileText, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' };
     case 'query': return { icon: Database, color: 'text-tertiary', bg: 'bg-tertiary/10', border: 'border-tertiary/20' };
     case 'update_user': return { icon: UserPlus, color: 'text-secondary', bg: 'bg-secondary/10', border: 'border-secondary/20' };
     case 'create_session': return { icon: Activity, color: 'text-primary', bg: 'bg-primary/5', border: 'border-primary/10' };
     case 'storage_error': return { icon: Cloud, color: 'text-error', bg: 'bg-error/10', border: 'border-error/20' };
     case 'rag_ingest': return { icon: Database, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' };
     case 'rag_delete': return { icon: Trash2, color: 'text-error', bg: 'bg-error/10', border: 'border-error/20' };
-    case 'rag_rebuild': return { icon: RefreshCw, color: 'text-secondary', bg: 'bg-secondary/10', border: 'border-secondary/20' };
     default: return { icon: KeyRound, color: 'text-on-surface-variant', bg: 'bg-surface-high', border: 'border-outline-variant' };
   }
 };
@@ -84,7 +80,7 @@ export default function SystemHealth() {
           const label = auditActionLabels[action] || action;
           let fill = '#8b5cf6'; // default primary
           if (action === 'delete_document' || action === 'delete_session') fill = '#ef4444';
-          if (action === 'login' || action === 'upload_document') fill = '#22c55e';
+          if (action === 'upload_document') fill = '#22c55e';
           if (action === 'query') fill = '#3b82f6';
           return { name: label, count, fill };
         });
