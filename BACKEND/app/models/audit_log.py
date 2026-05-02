@@ -16,8 +16,6 @@ from app.db.session import Base
 
 class AuditAction(str, enum.Enum):
     """All auditable actions in the system."""
-    login = "login"
-    logout = "logout"
     upload_document = "upload_document"
     delete_document = "delete_document"
     query = "query"
@@ -37,7 +35,6 @@ class AuditAction(str, enum.Enum):
     # RAG ChromaDB Operations
     rag_ingest = "rag_ingest"
     rag_delete = "rag_delete"
-    rag_rebuild = "rag_rebuild"
 
 
 class AuditLog(Base):

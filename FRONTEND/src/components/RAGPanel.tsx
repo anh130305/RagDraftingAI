@@ -8,12 +8,18 @@ import * as api from '../lib/api';
 /* ────────────── Types ────────────── */
 interface CollectionStat { name: string; count: number }
 
+interface RAGPanelProps {
+  refreshSignal?: number;
+  syncing?: boolean;
+}
+
 /* ────────────── Main Component ────────────── */
-export default function RAGPanel() {
+export default function RAGPanel({ refreshSignal = 0, syncing = false }: RAGPanelProps) {
   // ── ChromaDB Status ──
   const [collections, setCollections] = useState<CollectionStat[]>([]);
   const [statusLoading, setStatusLoading] = useState(true);
   const [ragOnline, setRagOnline] = useState<boolean | null>(null);
+  const [retryTick, setRetryTick] = useState(0);
 
   // ── Fetch Status ──
   const fetchStatus = useCallback(async () => {
@@ -24,15 +30,28 @@ export default function RAGPanel() {
       setCollections(arr);
       setRagOnline(true);
     } catch {
-      setRagOnline(false);
+      if (!syncing) {
+        setRagOnline(false);
+      }
     } finally {
       setStatusLoading(false);
     }
-  }, []);
+  }, [syncing]);
 
-  useEffect(() => { fetchStatus(); }, [fetchStatus]);
+  useEffect(() => { fetchStatus(); }, [fetchStatus, refreshSignal, retryTick]);
+
+  useEffect(() => {
+    if (!syncing) return;
+
+    const timer = setInterval(() => {
+      setRetryTick(tick => tick + 1);
+    }, 2000);
+
+    return () => clearInterval(timer);
+  }, [syncing]);
 
   const totalChunks = collections.reduce((s, c) => s + (c.count >= 0 ? c.count : 0), 0);
+  const isBusy = statusLoading || syncing;
 
   // ── UI ──
   return (
@@ -40,7 +59,7 @@ export default function RAGPanel() {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Database className="w-4 h-4 text-primary" />
-          <h4 className="text-sm font-bold text-on-surface">ChromaDB Vector Store</h4>
+          <h4 className="text-sm font-bold text-on-surface">Dữ liệu Vector DataBase</h4>
           {ragOnline !== null && (
             <span className={cn(
               "px-2 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wider",
@@ -52,15 +71,24 @@ export default function RAGPanel() {
             </span>
           )}
         </div>
-        <button onClick={fetchStatus} disabled={statusLoading}
+        <button onClick={fetchStatus} disabled={isBusy}
           className="p-1.5 rounded-lg hover:bg-surface-highest transition-colors text-on-surface-variant">
-          <RefreshCw className={cn("w-3.5 h-3.5", statusLoading && "animate-spin")} />
+          <RefreshCw className={cn("w-3.5 h-3.5", isBusy && "animate-spin")} />
         </button>
       </div>
 
+      {syncing && (
+        <div className="mb-3 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] font-semibold text-primary">
+          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+          {statusLoading
+            ? 'RAG đang khởi động lại, đang làm mới trạng thái...'
+            : 'RAG đang khởi động lại, cập nhật trạng thái mới...'}
+        </div>
+      )}
+
       {statusLoading && collections.length === 0 ? (
         <div className="grid grid-cols-2 gap-3">
-          {[1,2,3,4].map(i => <div key={i} className="h-16 rounded-lg bg-surface-highest animate-pulse" />)}
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-16 rounded-lg bg-surface-highest animate-pulse" />)}
         </div>
       ) : ragOnline === false ? (
         <div className="text-xs text-error flex items-center gap-2 py-3">

@@ -35,6 +35,8 @@ export default function KnowledgeBase() {
   // ── Action states ──
   const [ingestingId, setIngestingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [ragRefreshSignal, setRagRefreshSignal] = useState(0);
+  const [ragSyncing, setRagSyncing] = useState(false);
 
   const fetchDocuments = useCallback(async () => {
     try {
@@ -56,6 +58,10 @@ export default function KnowledgeBase() {
     if (!timerRef.current) {
       timerRef.current = setInterval(fetchDocuments, 5000);
     }
+  };
+
+  const refreshRagStatus = () => {
+    setRagRefreshSignal(signal => signal + 1);
   };
 
   useEffect(() => {
@@ -168,14 +174,17 @@ export default function KnowledgeBase() {
     if (!ok) return;
 
     setIngestingId(doc.id);
+    setRagSyncing(true);
     try {
       const res = await api.ingestDocToRAG(doc.id);
-      showToast(`Ingest thành công: ${res.chunks_created ?? 0} chunks`, 'success');
+      showToast(`Ingest thành công "${doc.title}": ${res.chunks_created ?? 0} chunks`, 'success');
       await fetchDocuments();
+      refreshRagStatus();
     } catch (err: any) {
       showToast(err.message || 'Lỗi khi ingest', 'error');
     } finally {
       setIngestingId(null);
+      setRagSyncing(false);
     }
   };
 
@@ -190,14 +199,17 @@ export default function KnowledgeBase() {
     if (!ok) return;
 
     setDeletingId(doc.id);
+    setRagSyncing(true);
     try {
       await api.uningestDocFromRAG(doc.id);
-      showToast('Đã gỡ khỏi Vector Database. File vẫn còn trên Cloudinary.', 'success');
+      showToast(`Đã gỡ "${doc.title}" khỏi Vector Database. File gốc vẫn còn.`, 'warning');
       await fetchDocuments();
+      refreshRagStatus();
     } catch (err: any) {
       showToast(err.message || 'Lỗi khi gỡ', 'error');
     } finally {
       setDeletingId(null);
+      setRagSyncing(false);
     }
   };
 
@@ -212,14 +224,17 @@ export default function KnowledgeBase() {
     if (!ok) return;
 
     setDeletingId(doc.id);
+    setRagSyncing(true);
     try {
       await api.hardDeleteDoc(doc.id);
-      showToast('Đã xoá vĩnh viễn tài liệu.', 'success');
+      showToast(`Đã xoá vĩnh viễn tài liệu "${doc.title}".`, 'success');
       await fetchDocuments();
+      refreshRagStatus();
     } catch (err: any) {
       showToast(err.message || 'Lỗi khi xoá', 'error');
     } finally {
       setDeletingId(null);
+      setRagSyncing(false);
     }
   };
 
@@ -236,7 +251,7 @@ export default function KnowledgeBase() {
     setDeletingId(doc.id);
     try {
       await api.deleteAdminKnowledgeBase(doc.id);
-      showToast('Đã xoá tài liệu.', 'success');
+      showToast(`Đã xoá tài liệu "${doc.title}".`, 'success');
       await fetchDocuments();
     } catch (err: any) {
       showToast(err.message || 'Lỗi khi xoá', 'error');
@@ -442,7 +457,7 @@ export default function KnowledgeBase() {
           </div>
 
           {/* RAG Panel — ChromaDB Status only */}
-          <RAGPanel />
+          <RAGPanel refreshSignal={ragRefreshSignal} syncing={ragSyncing} />
         </div>
 
         {/* Right: Document List — Split by ingest status */}
@@ -572,7 +587,7 @@ export default function KnowledgeBase() {
                     <div className="sticky top-0 z-10 px-4 py-2 bg-yellow-500/5 border-b border-yellow-500/10 flex items-center gap-2">
                       <Clock className="w-3.5 h-3.5 text-yellow-500" />
                       <span className="text-[11px] font-bold text-yellow-600 uppercase tracking-wider">
-                        Chưa Ingest — chỉ trên Cloudinary ({notIngestedDocs.length})
+                        Chưa Nạp Vào Vector DataBase — chỉ trên Cloud ({notIngestedDocs.length})
                       </span>
                     </div>
                     <div className="p-2 space-y-1">
@@ -588,7 +603,7 @@ export default function KnowledgeBase() {
                   </div>
                 )}
               </>
-            ) : null /* pendingUploads đang hiển thị ở trên, không cần thêm gì */}
+            ) : null
           </div>
         </div>
       </div>

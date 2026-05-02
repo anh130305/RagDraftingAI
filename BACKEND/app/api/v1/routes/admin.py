@@ -512,20 +512,11 @@ async def rag_delete_article(
 
 @router.post("/rag/rebuild-bm25")
 async def rag_rebuild_bm25(
-    request: Request,
-    background_tasks: BackgroundTasks,
     admin: User = Depends(require_admin),
 ):
     """Proxy: Trigger BM25 index rebuild."""
     try:
         result = await rag_client.rebuild_bm25()
-        background_tasks.add_task(
-            audit_service.log_action,
-            user_id=admin.id,
-            action=AuditAction.rag_rebuild,
-            resource_type="bm25",
-            ip_address=request.client.host if request.client else None,
-        )
         return result
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=e.response.status_code, detail=str(e))

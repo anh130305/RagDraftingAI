@@ -20,6 +20,7 @@ class RAGClient:
 
     def __init__(self, base_url: Optional[str] = None):
         self.base_url = (base_url or settings.RAG_SERVICE_URL).rstrip("/")
+        self.rebuild_base_url = (settings.RAG_REBUILD_SERVICE_URL or self.base_url).rstrip("/")
         self._client = httpx.AsyncClient(
             timeout=httpx.Timeout(300.0, connect=10.0, read=300.0),
             limits=httpx.Limits(max_keepalive_connections=5, max_connections=20),
@@ -154,7 +155,7 @@ class RAGClient:
     async def rebuild_bm25(self) -> dict:
         """Trigger BM25 index rebuild (runs in background on RAG service)."""
         r = await self._client.post(
-            f"{self.base_url}/api/v1/db/rebuild_bm25", timeout=10.0
+            f"{self.rebuild_base_url}/api/v1/db/rebuild_bm25", timeout=100.0
         )
         r.raise_for_status()
         return r.json()
