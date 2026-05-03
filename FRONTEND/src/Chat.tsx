@@ -434,8 +434,9 @@ export default function Chat() {
     setSubmittingSessionId(currentSessionKey);
     setStatusText('Đang gửi tin nhắn...');
 
+    const formattedExtras = extras ? extras.replace(/\n/g, '  \n') : '';
     const combinedContent = mode === 'generate' && extras
-      ? `${content}\n\n**Thông tin bổ sung:**\n${extras}`
+      ? `${content}\n\n---\n**Thông tin bổ sung:**\n\n${formattedExtras}`
       : content;
 
     try {
@@ -591,7 +592,7 @@ export default function Chat() {
         setStatusText('Đang thực hiện soạn thảo văn bản...');
         try {
           const draftRes = await api.generateDraftDocx({
-            query: combinedContent,
+            query: content,
             extras: extras,
             session_id: resolvedSessionId,
           });
@@ -841,11 +842,15 @@ export default function Chat() {
                                 {/* Text bubble */}
                                 {text && (
                                   <div className={`px-5 py-3 rounded-2xl shadow-sm ${isUser
-                                    ? 'bg-primary text-on-primary-fixed rounded-tr-none'
+                                    ? 'bg-[#0084FF] text-white rounded-tr-none'
                                     : 'bg-surface-container-high text-on-surface rounded-tl-none border border-outline-variant/10'
                                     }`}>
                                     {isUser ? (
-                                      <p className="text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap font-body">{text}</p>
+                                      <div className="chat-markdown user-markdown text-sm md:text-[15px] leading-relaxed font-body">
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                          {text}
+                                        </ReactMarkdown>
+                                      </div>
                                     ) : (
                                       <div className="chat-markdown text-sm md:text-[15px] leading-relaxed font-body">
                                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -857,8 +862,12 @@ export default function Chat() {
                                 )}
                                 {/* Fallback if only files with no typed text and no extract */}
                                 {!text && fileNames.length === 0 && (
-                                  <div className="px-5 py-3 rounded-2xl shadow-sm bg-primary text-on-primary-fixed rounded-tr-none">
-                                    <p className="text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap font-body">{msg.content}</p>
+                                  <div className="px-5 py-3 rounded-2xl shadow-sm bg-[#0084FF] text-white rounded-tr-none">
+                                    <div className="chat-markdown user-markdown text-sm md:text-[15px] leading-relaxed font-body">
+                                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {msg.content}
+                                      </ReactMarkdown>
+                                    </div>
                                   </div>
                                 )}
                               </>

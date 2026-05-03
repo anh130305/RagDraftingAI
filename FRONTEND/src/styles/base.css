@@ -261,4 +261,33 @@
     background: color-mix(in srgb, var(--surface-highest) 70%, transparent);
     font-weight: 700;
   }
+
+  .user-markdown,
+  .user-markdown h1,
+  .user-markdown h2,
+  .user-markdown h3,
+  .user-markdown h4,
+  .user-markdown a,
+  .user-markdown blockquote,
+  .user-markdown strong {
+    color: white !important;
+  }
+
+  .user-markdown h2 {
+    border-left-color: rgba(255, 255, 255, 0.6) !important;
+  }
+
+  .user-markdown blockquote {
+    background: rgba(255, 255, 255, 0.15) !important;
+  }
+
+  .user-markdown code,
+  .user-markdown pre,
+  .user-markdown th {
+    background: rgba(255, 255, 255, 0.2) !important;
+  }
+
+  .user-markdown hr {
+    border-top-color: rgba(255, 255, 255, 0.3) !important;
+  }
 }
