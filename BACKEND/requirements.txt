@@ -49,3 +49,5 @@ cloudinary
 
 # RAG module integration (minimal)
 python-docx
+
+sqlalchemy

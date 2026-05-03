@@ -12,7 +12,15 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # ── Database ─────────────────────────────────────────────
+    # Local Database
     DATABASE_URL: str = "postgresql://postgres:admin@localhost:5432/rag_db"
+    
+    # Cloud Database (Aiven)
+    USE_CLOUD_DB: bool = False
+    CLOUD_DATABASE_URL: Optional[str] = None
+    CLOUD_DB_SSL_CA: Optional[str] = None
+    CLOUD_DB_SSL_CERT: Optional[str] = None
+    CLOUD_DB_SSL_KEY: Optional[str] = None
 
     # ── JWT / Auth ───────────────────────────────────────────
     SECRET_KEY: str = "change-me-in-production"
@@ -52,6 +60,7 @@ class Settings(BaseSettings):
         "env_file": ".env",
         "env_file_encoding": "utf-8",
         "case_sensitive": True,
+        "extra": "ignore",
     }
 
 

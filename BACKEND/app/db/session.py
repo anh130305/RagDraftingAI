@@ -24,8 +24,34 @@ _SessionLocal = None
 def get_engine():
     global _engine
     if _engine is None:
-        print(f"DEBUG: Connecting to database at: {settings.DATABASE_URL.split('@')[-1]}")
-        _engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
+        if settings.USE_CLOUD_DB and settings.CLOUD_DATABASE_URL:
+            try:
+                print(f"DEBUG: Attempting to connect to Cloud Database at: {settings.CLOUD_DATABASE_URL.split('@')[-1]}")
+                connect_args = {}
+                if settings.CLOUD_DB_SSL_CA:
+                    connect_args["sslrootcert"] = settings.CLOUD_DB_SSL_CA
+                if settings.CLOUD_DB_SSL_CERT:
+                    connect_args["sslcert"] = settings.CLOUD_DB_SSL_CERT
+                if settings.CLOUD_DB_SSL_KEY:
+                    connect_args["sslkey"] = settings.CLOUD_DB_SSL_KEY
+                if connect_args:
+                    connect_args["sslmode"] = "verify-ca"
+                
+                _cloud_engine = create_engine(settings.CLOUD_DATABASE_URL, pool_pre_ping=True, connect_args=connect_args)
+                # Test connection early
+                with _cloud_engine.connect() as conn:
+                    pass
+                _engine = _cloud_engine
+                print("DEBUG: Successfully connected to Cloud Database.")
+            except Exception as e:
+                print(f"WARNING: Failed to connect to Cloud Database: {e}")
+                print("DEBUG: Falling back to Local Database.")
+                _engine = None
+        
+        if _engine is None:
+            print(f"DEBUG: Connecting to Local database at: {settings.DATABASE_URL.split('@')[-1]}")
+            _engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
+            
     return _engine
 
 
