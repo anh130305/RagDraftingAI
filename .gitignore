@@ -12,3 +12,5 @@ data/thuvienphapluat_full.parquet
 __pycache__/
 
 .DS_Store
+
+Key/
