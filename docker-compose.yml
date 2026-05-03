@@ -35,7 +35,7 @@ services:
         reservations:
           memory: 6G
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/api/v1/rag/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8001/api/v1/rag/health" ]
       interval: 20s
       timeout: 20s
       retries: 30
@@ -61,7 +61,7 @@ services:
         reservations:
           memory: 6G
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/api/v1/rag/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8002/api/v1/rag/health" ]
       interval: 20s
       timeout: 20s
       retries: 30
@@ -77,9 +77,15 @@ services:
     volumes:
       - ./BACKEND:/app
       - ./RAG:/RAG
+      - ./BACKEND/Key:/app/Key
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app
     environment:
       - DATABASE_URL=${DATABASE_URL}
+      - USE_CLOUD_DB=${USE_CLOUD_DB}
+      - CLOUD_DATABASE_URL=${CLOUD_DATABASE_URL}
+      - CLOUD_DB_SSL_CA=/app/Key/ca.pem
+      - CLOUD_DB_SSL_CERT=${CLOUD_DB_SSL_CERT}
+      - CLOUD_DB_SSL_KEY=${CLOUD_DB_SSL_KEY}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
