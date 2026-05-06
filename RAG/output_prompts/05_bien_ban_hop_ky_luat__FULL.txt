@@ -1,6 +1,6 @@
 # RAG CLI — 05_bien_ban_hop_ky_luat
-# Run     : 20260429_010529
-# Thời điểm: 2026-04-29 01:06:32
+# Run     : 20260506_122641
+# Thời điểm: 2026-05-06 12:38:21
 # Form    : Form_09 (Biên bản)
 # Reranker: BẬT
 # Query   : Soạn thảo biên bản họp Hội đồng kỷ luật công chức.
@@ -51,7 +51,16 @@ không chắc chắn 100%, bỏ qua phần ngày — không được bịa đặ
 ### 6. Tính nhất quán
 Số liệu, ngày tháng, chức danh, tên cơ quan phải nhất quán xuyên suốt toàn bộ văn bản.
 
-### 7. Điền Ngày Tháng Năm
+### 7. Cơ quan chủ quản (`TEN_CQ_CHU_QUAN`):**
+   - Nếu không xác định được → để trống `""` **hoặc** dùng lại `TEN_CQ_BAN_HANH` nếu hai cơ quan trùng nhau, ưu tiên dùng lại hơn, tránh bỏ trống.
+   - Ưu tiên viết tắt phổ thông: UBND, HĐND, UBMTTQ, Bộ GD&ĐT, v.v.
+
+### 8. **Viết tắt khuyến khích:** Dùng chữ viết tắt đã phổ biến trong hành chính nhà nước:
+   - Uỷ ban nhân dân → **UBND**
+   - Hội đồng nhân dân → **HĐND**
+   - Uỷ ban Mặt trận Tổ quốc → **UBMTTQ**
+
+### 9. Điền Ngày Tháng Năm
 Nếu biểu mẫu yêu cầu các trường NGAY, THANG, NAM thì phải tách riêng từng thành phần
 từ ngày ban hành. NGAY chỉ điền ngày (ví dụ: 05), THANG chỉ điền tháng (ví dụ: 01),
 NAM chỉ điền năm (ví dụ: 2025).
@@ -105,21 +114,19 @@ Khi có chồng chéo giữa các điều khoản, ưu tiên theo thứ bậc:
 Luật > Pháp lệnh > Nghị định > Nghị quyết.
 
 
-[1] 
+📋 [NGHỊ ĐỊNH] [1]
     Số hiệu : 172/2025/NĐ-CP
-    Tên VB  : CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+    Tên VB  : NGHỊ ĐỊNH Quy định về xử lý kỷ luật cán bộ, công chức
     Điều    : Điều 20. Tổ chức họp Hội đồng kỷ luật công chức có hành vi vi phạm
     Độ liên quan: 0.982
 
-[Điều 20. Tổ chức họp Hội đồng kỷ luật công chức có hành vi vi phạm]
-1. Chuẩn bị họp a) Chậm nhất là 05 ngày làm việc trước ngày tổ chức cuộc họp của Hội đồng kỷ luật, giấy triệu tập họp phải được gửi tới công chức có hành vi vi phạm. Trường hợp công chức có hành vi vi phạm vắng mặt nhưng có giấy đề nghị tổ chức cuộc họp thì Hội đồng kỷ luật vẫn tiến hành họp. Trường hợp công chức có hành vi vi phạm vắng mặt ở cuộc họp theo giấy triệu tập lần thứ 2 thì Hội đồng kỷ luật vẫn tiến hành họp; b) Hội đồng kỷ luật có thể mời đại diện của tổ chức chính trị, tổ chức chính trị - xã hội của cơ quan, tổ chức, đơn vị nơi công chức có hành vi vi phạm đang công tác; đại diện cơ quan, tổ chức, đơn vị, cá nhân liên quan dự họp. Người được mời dự họp có quyền phát biểu ý kiến và đề xuất hình thức kỷ luật nhưng không được bỏ phiếu về hình thức kỷ luật; c) Công chức được cử ghi biên bản cuộc họp của Hội đồng kỷ luật có nhiệm vụ chuẩn bị tài liệu, hồ sơ liên quan đến việc xử lý kỷ luật, ghi biên bản cuộc họp của Hội đồng kỷ luật; d) Hồ sơ xử lý kỷ luật trình Hội đồng kỷ luật gồm: bản tự kiểm điểm, trích ngang sơ yếu lý lịch của công chức, biên bản cuộc họp kiểm điểm của cơ quan, tổ chức, đơn vị sử dụng công chức và các tài liệu khác có liên quan. 2. Trình tự họp a) Chủ tịch Hội đồng kỷ luật tuyên bố lý do, giới thiệu các thành viên tham dự; b) Công chức được cử ghi biên bản cuộc họp của Hội đồng kỷ luật đọc trích ngang sơ yếu lý lịch của công chức có hành vi vi phạm và các tài liệu khác có liên quan; c) Công chức có hành vi vi phạm đọc bản tự kiểm điểm; Trường hợp công chức có hành vi vi phạm vắng mặt nhưng có bản kiểm điểm thì công chức được cử ghi biên bản cuộc họp của Hội đồng kỷ luật đọc thay; trường hợp có mặt nhưng không làm bản tự kiểm điểm hoặc vắng mặt và không có bản kiểm điểm thì Hội
-hành vi vi phạm vắng mặt nhưng có bản kiểm điểm thì công chức được cử ghi biên bản cuộc họp của Hội đồng kỷ luật đọc thay; trường hợp có mặt nhưng không làm bản tự kiểm điểm hoặc vắng mặt và không có bản kiểm điểm thì Hội đồng kỷ luật tiến hành các trình tự còn lại của cuộc họp quy định tại khoản này; d) Công chức được cử ghi biên bản cuộc họp của Hội đồng kỷ luật đọc biên bản cuộc họp kiểm điểm; đ) Các thành viên Hội đồng kỷ luật và người tham dự cuộc họp thảo luận và phát biểu ý kiến; e) Công chức có hành vi vi phạm phát biểu ý kiến; nếu công chức có hành vi vi phạm không phát biểu ý kiến hoặc vắng mặt thì Hội đồng kỷ luật tiến hành các trình tự còn lại của cuộc họp quy định tại khoản này; g) Hội đồng kỷ luật bỏ phiếu về việc có kỷ luật hay không kỷ luật; trường hợp đa số phiếu kiến nghị kỷ luật [...]
+[Điều 20. Tổ chức họp Hội đồng kỷ luật công chức có hành vi vi phạm] 1. Chuẩn bị họp a) Chậm nhất là 05 ngày làm việc trước ngày tổ chức cuộc họp của Hội đồng kỷ luật, giấy triệu tập họp phải được gửi tới công chức có hành vi vi phạm. Trường hợp công chức có hành vi vi phạm vắng mặt nhưng có giấy đề nghị tổ chức cuộc họp thì Hội đồng kỷ luật vẫn tiến hành họp. Trường hợp công chức có hành vi vi phạm vắng mặt ở cuộc họp theo giấy triệu tập lần thứ 2 thì Hội đồng kỷ luật vẫn tiến hành họp; b) Hội đồng kỷ luật có thể mời đại diện của tổ chức chính trị, tổ chức chính trị - xã hội của cơ quan, tổ chức, đơn vị nơi công chức có hành vi vi phạm đang công tác; đại diện cơ quan, tổ chức, đơn vị, cá nhân liên quan dự họp. Người được mời dự họp có quyền phát biểu ý kiến và đề xuất hình thức kỷ luật nhưng không được bỏ phiếu về hình thức kỷ luật; c) Công chức được cử ghi biên bản cuộc họp của Hội đồng kỷ luật có nhiệm vụ chuẩn bị tài liệu, hồ sơ liên quan đến việc xử lý kỷ luật, ghi biên bản cuộc họp của Hội đồng kỷ luật; d) Hồ sơ xử lý kỷ luật trình Hội đồng kỷ luật gồm: bản tự kiểm điểm, trích ngang sơ yếu lý lịch của công chức, biên bản cuộc họp kiểm điểm của cơ quan, tổ chức, đơn vị sử dụng công chức và các tài liệu khác có liên quan. 2. Trình tự họp a) Chủ tịch Hội đồng kỷ luật tuyên bố lý do, giới thiệu các thành viên tham dự; b) Công chức được cử ghi biên bản cuộc họp của Hội đồng kỷ luật đọc trích ngang sơ yếu lý lịch của công chức có hành vi vi phạm và các tài liệu khác có liên quan; c) Công chức có hành vi vi phạm đọc bản tự kiểm điểm; Trường hợp công chức có hành vi vi phạm vắng mặt nhưng có bản kiểm điểm thì công chức được cử ghi biên bản cuộc họp của Hội đồng kỷ luật đọc thay; trường hợp có mặt nhưng không [...]
 
 ────────────────────────────────────────────────────────────
 
-[2] 
+📋 [NGHỊ ĐỊNH] [2]
     Số hiệu : 172/2025/NĐ-CP
-    Tên VB  : CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+    Tên VB  : NGHỊ ĐỊNH Quy định về xử lý kỷ luật cán bộ, công chức
     Điều    : Điều 18. Hội đồng kỷ luật công chức
     Độ liên quan: 0.969
 
@@ -134,9 +141,9 @@ hành vi vi phạm vắng mặt nhưng có bản kiểm điểm thì công chứ
 
 ────────────────────────────────────────────────────────────
 
-[3] 
+📋 [NGHỊ ĐỊNH] [3]
     Số hiệu : 172/2025/NĐ-CP
-    Tên VB  : CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+    Tên VB  : NGHỊ ĐỊNH Quy định về xử lý kỷ luật cán bộ, công chức
     Điều    : Điều 21. Quyết định kỷ luật công chức
     Độ liên quan: 0.869
 
@@ -151,6 +158,16 @@ hành vi vi phạm vắng mặt nhưng có bản kiểm điểm thì công chứ
 Mục 3
 THẨM QUYỀN VÀ TRÌNH TỰ, THỦ TỤC XỬ LÝ KỶ LUẬT
  ĐỐI VỚI NGƯỜI ĐÃ THÔI VIỆC, NGHỈ HƯU
+
+────────────────────────────────────────────────────────────
+
+📋 [NGHỊ ĐỊNH] [4]
+    Số hiệu : 172/2025/NĐ-CP
+    Tên VB  : NGHỊ ĐỊNH Quy định về xử lý kỷ luật cán bộ, công chức
+    Điều    : Điều 17. Tổ chức họp kiểm điểm công chức
+    Độ liên quan: 0.846
+
+[Điều 17. Tổ chức họp kiểm điểm công chức] 1. Trách nhiệm tổ chức cuộc họp kiểm điểm a) Trường hợp người bị kiểm điểm là công chức không giữ chức vụ lãnh đạo, quản lý thì người đứng đầu cơ quan, tổ chức, đơn vị sử dụng công chức chủ trì cuộc họp kiểm điểm. Trường hợp người đứng đầu, tất cả cấp phó của người đứng đầu cơ quan, tổ chức, đơn vị sử dụng công chức thuộc một trong các trường hợp quy định tại khoản 11 Điều 2 Nghị định này hoặc trong cùng vụ việc bị xem xét kỷ luật thì lãnh đạo cơ quan cấp trên trực tiếp của cơ quan, tổ chức, đơn vị sử dụng công chức chủ trì cuộc họp; b) Trường hợp người bị kiểm điểm là người đứng đầu hoặc cấp phó của người đứng đầu thì lãnh đạo cơ quan cấp trên trực tiếp của cơ quan, tổ chức, đơn vị nơi công chức công tác có trách nhiệm tổ chức cuộc họp kiểm điểm và quyết định thành phần dự họp. 2. Thành phần tham dự cuộc họp kiểm điểm a) Trường hợp cơ quan, tổ chức, đơn vị nơi công chức công tác là đơn vị cấu thành thì thành phần dự họp là toàn thể công chức của đơn vị cấu thành; đại diện lãnh đạo, cấp ủy cơ quan tham mưu về công tác tổ chức cán bộ của cơ quan, tổ chức, đơn vị sử dụng công chức; b) Trường hợp cơ quan, tổ chức, đơn vị sử dụng công chức không có đơn vị cấu thành thì thành phần dự họp kiểm điểm là toàn thể công chức của cơ quan, tổ chức, đơn vị sử dụng công chức; c) Trường hợp người bị kiểm điểm là công chức được cử biệt phái thì ngoài thành phần quy định tại điểm a, điểm b khoản này còn phải có đại diện lãnh đạo của cơ quan cử công chức biệt phái. 3. Việc tổ chức cuộc họp kiểm điểm được tiến hành như sau: a) Người chủ trì cuộc họp tuyên bố lý do cuộc họp, thông báo hoặc ủy quyền cho cơ quan tham mưu về công tác tổ chức cán bộ thông báo các nội dung: tóm tắt về quá trình công tác; hành vi vi phạm; các hình thức [...]
 
 ================================================================
 ## FORM_TEMPLATE — Biểu mẫu và danh sách FIELD_NAME
@@ -240,14 +257,14 @@ Cuộc họp kết thúc vào {{THOI_GIAN_KET_THUC}} cùng ngày.
 
 
 [Ví dụ 1]
-Tình huống: Biên bản họp chuẩn bị kỳ thi tuyển sinh lớp 10 tại Sở Giáo dục và Đào tạo Lào Cai năm 2024.
+Tình huống: Biên bản họp triển khai công tác chống ngập úng đô thị tại Công ty công ích ở TP.HCM năm 2024.
 
-ỦY BAN NHÂN DÂN TỈNH LÀO CAI 
-**SỞ GIÁO DỤC VÀ ĐÀO TẠO**
+ỦY BAN NHÂN DÂN THÀNH PHỐ HỒ CHÍ MINH 
+**TRUNG TÂM QUẢN LÝ HẠ TẦNG KỸ THUẬT THÀNH PHỐ**
 
 ---
 
-Số: 32/BB-SGDĐT
+Số: 26/BB-TTQLHTKT
 
 **CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM** 
 **Độc lập - Tự do - Hạnh phúc**
@@ -255,35 +272,35 @@ Số: 32/BB-SGDĐT
 ---
 
 # BIÊN BẢN
-**Họp triển khai công tác tổ chức kỳ thi tuyển sinh lớp 10 trung học phổ thông năm học 2024-2025**
+**Họp triển khai phương án ứng phó ngập úng cục bộ trong mùa mưa năm 2024**
 
-Thời gian bắt đầu: 08 giờ 00 phút, ngày 23 tháng 5 năm 2024 
+Thời gian bắt đầu: 08 giờ 15 phút, ngày 17 tháng 5 năm 2024 
 
-Địa điểm: Hội trường tầng 4, Sở Giáo dục và Đào tạo tỉnh Lào Cai, thành phố Lào Cai, tỉnh Lào Cai 
+Địa điểm: Phòng họp tầng 5, Trung tâm Quản lý hạ tầng kỹ thuật thành phố, quận 3, Thành phố Hồ Chí Minh 
 
-Thành phần tham dự: Lãnh đạo Sở; trưởng phòng giáo dục và đào tạo các huyện, thị xã, thành phố; hiệu trưởng các trường THPT; đại diện Công an tỉnh, Sở Y tế, Điện lực Lào Cai; tổng số 42 người 
+Thành phần tham dự: Ban Giám đốc Trung tâm; đại diện Sở Xây dựng; Công ty TNHH MTV Thoát nước đô thị; đại diện UBND các quận 7, Bình Thạnh, Thủ Đức; tổng số 24 người 
 
-Chủ trì (chủ tọa): Hoàng Quốc Khánh, Giám đốc Sở Giáo dục và Đào tạo 
+Chủ trì (chủ tọa): Nguyễn Hữu Trường, Giám đốc Trung tâm Quản lý hạ tầng kỹ thuật thành phố 
 
-Thư ký (người ghi biên bản): Bùi Thị Hạnh, Chuyên viên Phòng Quản lý chất lượng
+Thư ký (người ghi biên bản): Phan Thị Thanh Nhàn, Chuyên viên Phòng Quản lý thoát nước
 
 ---
 
 ## Nội dung cuộc họp
 
-1. Ông Hoàng Quốc Khánh quán triệt yêu cầu tổ chức kỳ thi an toàn, nghiêm túc, đúng quy chế, bảo đảm công bằng cho thí sinh trên toàn tỉnh.
+1. Ông Nguyễn Hữu Trường nêu tình hình dự báo mưa lớn đầu mùa và yêu cầu chủ động triển khai các biện pháp giảm ngập tại 18 điểm có nguy cơ tái diễn.
 
-2. Phòng Quản lý chất lượng báo cáo số lượng đăng ký dự thi là 8.462 thí sinh, bố trí tại 23 điểm thi với 361 phòng thi; dự kiến huy động 1.128 cán bộ, giáo viên, nhân viên tham gia làm nhiệm vụ.
+2. Công ty Thoát nước đô thị báo cáo đã nạo vét 72/95 tuyến cống trọng điểm, đạt 75,8% kế hoạch; còn 07 điểm đang chờ bàn giao mặt bằng để thi công khẩn cấp.
 
-3. Đại diện Công an tỉnh trình bày phương án bảo đảm an ninh, an toàn đề thi, bài thi và phân luồng giao thông; Sở Y tế xây dựng kế hoạch trực cấp cứu, phòng chống dịch bệnh tại các điểm thi.
+3. Đại diện các địa phương phản ánh một số điểm ngập thường xuyên trên đường Nguyễn Hữu Cảnh, Quốc Hương, Lương Định Của và khu vực chợ Thủ Đức; đề nghị bố trí máy bơm lưu động và lực lượng trực trong các đợt mưa lớn.
 
-4. Cuộc họp thống nhất tổ chức tập huấn quy chế thi cho toàn bộ cán bộ coi thi trước ngày 30 tháng 5 năm 2024; kiểm tra cơ sở vật chất, camera giám sát và hệ thống điện dự phòng tại các điểm thi trước ngày 01 tháng 6 năm 2024.
+4. Cuộc họp thống nhất kích hoạt 12 tổ phản ứng nhanh, chuẩn bị 18 máy bơm di động, 06 xe hút bùn và phương án phân luồng giao thông khi mưa lớn kéo dài trên 100 mm/3 giờ.
 
-5. Kết luận: Các đơn vị gửi phương án chi tiết về Sở trước 17 giờ ngày 27 tháng 5 năm 2024; Sở thành lập 05 đoàn kiểm tra công tác chuẩn bị kỳ thi.
+5. Kết luận: Hoàn thành nạo vét các tuyến cống còn lại trước ngày 10 tháng 6 năm 2024; cập nhật bản đồ điểm ngập và số điện thoại đường dây nóng công khai trên cổng thông tin điện tử của Sở Xây dựng.
 
 ---
 
-Cuộc họp kết thúc vào 11 giờ 30 phút cùng ngày.
+Cuộc họp kết thúc vào 10 giờ 50 phút cùng ngày.
 
 ---
 
@@ -291,7 +308,7 @@ Cuộc họp kết thúc vào 11 giờ 30 phút cùng ngày.
 
 *(Ký, ghi rõ họ tên)*
 
-**Bùi Thị Hạnh, Chuyên viên Phòng Quản lý chất lượng**
+**Phan Thị Thanh Nhàn, Chuyên viên Phòng Quản lý thoát nước**
 
 ---
 
@@ -299,13 +316,13 @@ Cuộc họp kết thúc vào 11 giờ 30 phút cùng ngày.
 
 *(Ký, đóng dấu)*
 
-**Hoàng Quốc Khánh, Giám đốc Sở Giáo dục và Đào tạo**
+**Nguyễn Hữu Trường, Giám đốc Trung tâm Quản lý hạ tầng kỹ thuật thành phố**
 
 ---
 
 **Nơi nhận:**
 
-- Ủy ban nhân dân tỉnh Lào Cai 
+- Ủy ban nhân dân Thành phố Hồ Chí Minh 
 - Lưu: VT, Hồ sơ
 
 ================================================================
@@ -355,6 +372,10 @@ NOI_DUNG_*. KHÔNG tạo key nào khác ngoài `"fields"`.
    2. Nội dung diễn biến / ý kiến các bên.
    3. Kết luận / thống nhất / cam kết.
    4. Chữ ký các bên (nếu cần).
+   Trình bày các thành viên tham dự theo dạng liệt kê, ngăn cách bởi dấu ";"
+   Trình bày nội dung diễn biến (NOI_DUNG_DIEN_BIEN) như ví dụ được cung cấp: "NOI_DUNG_DIEN_BIEN": "1. BSCKII Trần Quốc Bảo phát biểu khai mạc, nêu yêu cầu triển khai nhanh các đội tiêm lưu động để hỗ trợ công nhân tại Khu công nghiệp Trà Nóc và Hưng Phú.
+
+2. Khoa Dược ...
    Ghi theo thứ tự thời gian, khách quan, trung thực.
    ---
    KHÔNG tạo key riêng ngoài "fields" cho các field này.
