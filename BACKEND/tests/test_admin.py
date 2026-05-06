@@ -104,7 +104,7 @@ class TestAdminAuditLogs:
         resp = client.get(
             "/api/v1/admin/audit-logs",
             headers=admin_auth,
-            params={"action": "login", "skip": 0, "limit": 10},
+            params={"action": "upload_document", "skip": 0, "limit": 10},
         )
         assert resp.status_code == 200
 
