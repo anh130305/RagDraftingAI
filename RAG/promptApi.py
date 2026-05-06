@@ -275,6 +275,7 @@ class PromptAPI:
         self,
         query             : str,
         extras            : Optional[str] = None,
+        legal_type_filter : Optional[str] = None,
         call_llm          : bool = True,
     ) -> Dict[str, Any]:
         """
@@ -347,6 +348,7 @@ class PromptAPI:
                 query,
                 legal_top_k       = self.legal_top_k,
                 examples_top_k    = self.examples_top_k,
+                legal_type_filter = legal_type_filter,
                 expand_legal      = True,
             )
 
@@ -412,6 +414,7 @@ class PromptAPI:
         query             : str,
         extras            : Optional[str] = None,
         legal_top_k       : Optional[int] = None,
+        legal_type_filter : Optional[str] = None,
         call_llm          : bool = True,
     ) -> Dict[str, Any]:
         """
@@ -484,6 +487,7 @@ class PromptAPI:
             legal_chunks = retrieve_legal(
                 query,
                 top_k       = top_k,
+                type_filter = legal_type_filter,
                 use_reranker= self.use_reranker,
                 expand      = True,
             )
@@ -540,6 +544,7 @@ class PromptAPI:
         query: str,
         extras: Optional[str] = None,
         legal_top_k: Optional[int] = None,
+        legal_type_filter: Optional[str] = None,
         call_llm: bool = True,
     ) -> Iterator[Dict[str, Any]]:
         """
@@ -567,6 +572,7 @@ class PromptAPI:
             legal_chunks = retrieve_legal(
                 query,
                 top_k=top_k,
+                type_filter=legal_type_filter,
                 use_reranker=self.use_reranker,
                 expand=True,
             )
@@ -746,35 +752,35 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     DEFAULT_QUERIES = {
-        "draft"   : "Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý theo quy định của luật cán bộ, công chức.",
-        # "draft": "Soạn thảo biên bản họp Hội đồng kỷ luật công chức.",
+        # "draft"   : "Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý theo quy định của luật cán bộ, công chức.",
+        "draft": "Soạn thảo biên bản họp Hội đồng kỷ luật công chức.",
         "legal_qa": "Trình bày điều kiện cấp giấy phép kinh doanh?",
     }
     DEFAULT_EXTRAS = {
-        "draft"   : (
-            "Cơ quan ban hành: Sở Nội vụ tỉnh Bình Dương.\n"
-            "Viết tắt cơ quan ban hành: SNV.\n"
-            "Cơ quan chủ quản: UBND tỉnh Bình Dương.\n"
-            "Số quyết định: 45. Ngày ký: 20/01/2026.\n"
-            "Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai.\n"
-            "Đối tượng bổ nhiệm: Ông Nguyễn Văn Hùng.\n"
-            "Chức vụ bổ nhiệm: Trưởng phòng Hành chính - Tổng hợp.\n"
-        ),
-        # "draft": (
-        #     "Cơ quan ban hành/ chủ quản: Sở Y tế tỉnh Phú Thọ.\n"
-        #     "Viết tắt cơ quan ban hành: SYT.\n"
-        #     "Đối tượng bị xem xét: Ông Nguyễn Văn Hải, chức vụ Chuyên viên phòng Tổ chức cán bộ.\n"
-        #     "Hành vi vi phạm: Vi phạm quy định về thời giờ làm việc, tự ý nghỉ việc không có lý do chính đáng "
-        #     "tổng cộng 05 ngày làm việc trong một tháng, gây ảnh hưởng đến tiến độ giải quyết hồ sơ công vụ.\n"
-        #     "Thời gian: 14h00 ngày 20/03/2026. Địa điểm: Phòng họp Ban Giám đốc Sở Y tế Phú Thọ.\n"
-        #     "Hội đồng kỷ luật: \n"
-        #     "1. BS. Nguyễn Đức Thắng (Chủ tịch Hội đồng - Giám đốc Sở)\n"
-        #     "2. Bà Trần Thị Lan (Thư ký Hội đồng - Trưởng phòng TC-CB)\n"
-        #     "3. Và 03 thành viên khác theo Quyết định số 45/QĐ-SYT ngày 10/03/2026.\n"
-        #     "Diễn biến chính: Hội đồng xác định hành vi của ông Hải là tái phạm sau khi đã bị nhắc nhở bằng văn bản. "
-        #     "Ông Hải thừa nhận khuyết điểm và hứa sửa chữa. \n"
-        #     "Kết quả: Hội đồng tiến hành bỏ phiếu kín. Kết quả 05/05 phiếu (100%) thống nhất kiến nghị hình thức Cảnh cáo."
+        # "draft"   : (
+        #     "Cơ quan ban hành: Sở Nội vụ tỉnh Bình Dương.\n"
+        #     "Viết tắt cơ quan ban hành: SNV.\n"
+        #     "Cơ quan chủ quản: UBND tỉnh Bình Dương.\n"
+        #     "Số quyết định: 45. Ngày ký: 20/01/2026.\n"
+        #     "Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai.\n"
+        #     "Đối tượng bổ nhiệm: Ông Nguyễn Văn Hùng.\n"
+        #     "Chức vụ bổ nhiệm: Trưởng phòng Hành chính - Tổng hợp.\n"
         # ),
+        "draft": (
+            "Cơ quan ban hành/ chủ quản: Sở Y tế tỉnh Phú Thọ.\n"
+            "Viết tắt cơ quan ban hành: SYT.\n"
+            "Đối tượng bị xem xét: Ông Nguyễn Văn Hải, chức vụ Chuyên viên phòng Tổ chức cán bộ.\n"
+            "Hành vi vi phạm: Vi phạm quy định về thời giờ làm việc, tự ý nghỉ việc không có lý do chính đáng "
+            "tổng cộng 05 ngày làm việc trong một tháng, gây ảnh hưởng đến tiến độ giải quyết hồ sơ công vụ.\n"
+            "Thời gian: 14h00 ngày 20/03/2026. Địa điểm: Phòng họp Ban Giám đốc Sở Y tế Phú Thọ.\n"
+            "Hội đồng kỷ luật: \n"
+            "1. BS. Nguyễn Đức Thắng (Chủ tịch Hội đồng - Giám đốc Sở)\n"
+            "2. Bà Trần Thị Lan (Thư ký Hội đồng - Trưởng phòng TC-CB)\n"
+            "3. Và 03 thành viên khác theo Quyết định số 45/QĐ-SYT ngày 10/03/2026.\n"
+            "Diễn biến chính: Hội đồng xác định hành vi của ông Hải là tái phạm sau khi đã bị nhắc nhở bằng văn bản. "
+            "Ông Hải thừa nhận khuyết điểm và hứa sửa chữa. \n"
+            "Kết quả: Hội đồng tiến hành bỏ phiếu kín. Kết quả 05/05 phiếu (100%) thống nhất kiến nghị hình thức Cảnh cáo."
+        ),
         "legal_qa": "",
     }
 

@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -98,9 +99,61 @@ _PRIORITY_BADGE: Dict[str, str] = {
     "NGHỊ QUYẾT": "📌 [NGHỊ QUYẾT]",
 }
 
+_DOC_ID_TYPE_RULES: List[Tuple[str, str]] = [
+    ("NGHỊ ĐỊNH",  r'(^|[/\-_])ND($|[/\-_])|(^|[/\-_])NDCP($|[/\-_])'),
+    ("NGHỊ QUYẾT", r'(^|[/\-_])NQ($|[/\-_])|(^|[/\-_])NQLT($|[/\-_])'),
+    ("PHÁP LỆNH",  r'(^|[/\-_])PL($|[/\-_])'),
+    ("LUẬT",       r'(^|[/\-_])QH\d*($|[/\-_])'),
+]
+
+
+def _fold_vietnamese(text: str) -> str:
+    """Uppercase + bỏ dấu để nhận diện ổn định từ doc_id/số hiệu."""
+    text = str(text or "").replace("Đ", "D").replace("đ", "d")
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    return text.upper()
+
+
+def _normalize_legal_type(value: str) -> str:
+    folded = _fold_vietnamese(value)
+    for legal_type in _LEGAL_PRIORITY:
+        if _fold_vietnamese(legal_type) == folded:
+            return legal_type
+    return ""
+
+
+def _detect_type_from_doc_id(doc_id: str) -> str:
+    folded = _fold_vietnamese(doc_id)
+    for legal_type, pattern in _DOC_ID_TYPE_RULES:
+        if re.search(pattern, folded):
+            return legal_type
+    return ""
+
+
+def _get_legal_type(meta: Dict) -> str:
+    """
+    Lấy loại văn bản pháp luật chuẩn từ metadata.
+
+    Ưu tiên:
+    1. type_normalized nếu có và thuộc nhóm hỗ trợ priority badge.
+    2. doc_id, vì thường chứa số hiệu dạng 170/2025/NĐ-CP__...
+    3. source_doc_no/id nếu doc_id không có hoặc không suy ra được.
+    """
+    normalized = _normalize_legal_type(meta.get("type_normalized", ""))
+    if normalized:
+        return normalized
+
+    for key in ("doc_id", "source_doc_no", "id"):
+        detected = _detect_type_from_doc_id(meta.get(key, ""))
+        if detected:
+            return detected
+
+    return "N/A"
+
 
 def _priority_key(chunk: Dict) -> int:
-    doc_type = chunk.get("metadata", {}).get("type_normalized", "")
+    doc_type = _get_legal_type(chunk.get("metadata", {}))
     return _LEGAL_PRIORITY.get(doc_type, 99)
 
 
@@ -217,7 +270,8 @@ def _format_legal_context(legal_chunks: List[Dict]) -> str:
     for idx, chunk in enumerate(sorted_chunks, start=1):
         meta     = chunk.get("metadata", {})
         doc_no   = meta.get("id", meta.get("source_doc_no", "N/A"))
-        doc_type = meta.get("type_normalized", "N/A")
+        doc_type = _get_legal_type(meta)
+        badge    = _PRIORITY_BADGE.get(doc_type, f"[{doc_type}]")
         doc_name = meta.get("doc_name", meta.get("name", "N/A"))
         article  = meta.get("article", "")
         text     = chunk.get("text", "").strip()
@@ -232,7 +286,7 @@ def _format_legal_context(legal_chunks: List[Dict]) -> str:
             validity_note = f"\n    Có hiệu lực từ: {eff_date}"
 
         header = (
-            f"[{idx}] \n"
+            f"{badge} [{idx}]\n"
             f"    Số hiệu : {doc_no}\n"
             f"    Tên VB  : {doc_name}\n"
             f"    Điều    : {article}"

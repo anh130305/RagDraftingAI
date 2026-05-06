@@ -93,7 +93,7 @@ PARQUET_META_COLS = LEGAL_META_COLS  # giống nhau
 NEVER_REMOVE = {
     "30/2020/NĐ-CP", "01/2011/QH13", "80/2015/QH13", "15/2020/QH14",
     "34/2016/NĐ-CP", "45/2019/QH14", "58/2014/QH13",
-    "138/2020/NĐ-CP", "115/2020/NĐ-CP", "61/2018/NĐ-CP",
+    "115/2020/NĐ-CP", "61/2018/NĐ-CP",
     "34/2019/NĐ-CP", "76/2015/QH13", "77/2015/QH13", "36/2018/QH14",
     "02/2011/QH13", "03/2011/QH13",
 }
@@ -203,37 +203,183 @@ def _coerce_metadata(meta: Dict) -> Dict:
 # PARSING
 # ============================================================
 
+DOC_NO_PATTERN = re.compile(
+    r'(?<!\d)'
+    r'(\d{1,4})[ \t]*/[ \t]*(\d{4})[ \t]*/[ \t]*'
+    r'([A-ZÀ-Ỹà-ỹĐđ0-9]{1,16}'
+    r'(?:[ \t]*(?:-|/)[ \t]*[A-ZÀ-Ỹà-ỹĐđ0-9]{1,40})*)',
+    re.IGNORECASE | re.UNICODE,
+)
+
+DOC_NO_TYPE_RULES = [
+    ("NGHỊ ĐỊNH",  r'(^|[/\-])N[DĐ]($|[/\-])|(^|[/\-])N[DĐ]CP($|[/\-])'),
+    ("THÔNG TƯ",   r'(^|[/\-])TT($|[/\-])|(^|[/\-])TTLT($|[/\-])'),
+    ("QUYẾT ĐỊNH", r'(^|[/\-])Q[DĐ]($|[/\-])|(^|[/\-])Q[DĐ]TTG($|[/\-])'),
+    ("NGHỊ QUYẾT", r'(^|[/\-])NQ($|[/\-])|(^|[/\-])NQLT($|[/\-])'),
+    ("PHÁP LỆNH",  r'(^|[/\-])PL($|[/\-])'),
+    ("LUẬT",       r'(^|[/\-])QH\d*($|[/\-])'),
+]
+
+TEXT_TYPE_RULES = [
+    ("NGHỊ ĐỊNH",  r'\bNGHI\s*DINH\b|\bN[DĐ]\b'),
+    ("NGHỊ QUYẾT", r'\bNGHI\s*QUYET\b|\bNQ\b|\bNQLT\b'),
+    ("THÔNG TƯ",   r'\bTHONG\s*TU\b|\bTT\b|\bTTLT\b'),
+    ("QUYẾT ĐỊNH", r'\bQUYET\s*DINH\b|\bQ[DĐ]\b'),
+    ("PHÁP LỆNH",  r'\bPHAP\s*LENH\b|\bPL\b'),
+    ("LUẬT",       r'\bBO\s*LUAT\b|\bHIEN\s*PHAP\b|^\s*LUAT\b|\bQH\d*\b'),
+]
+
+
+def _fold_vietnamese(text: str) -> str:
+    """Uppercase + bỏ dấu để regex chịu được OCR thiếu dấu."""
+    text = str(text or "").replace("Đ", "D").replace("đ", "d")
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    return text.upper()
+
+
+def _normalize_doc_no(raw: str) -> str:
+    """Chuẩn hoá số hiệu: bỏ khoảng trắng OCR, chuẩn hoá slash/dash và vài mã phổ biến."""
+    s = str(raw or "").strip()
+    s = s.replace("\\", "/").replace("–", "-").replace("—", "-").replace("−", "-")
+    s = re.sub(r'[ \t]+', '', s).strip(".,;:()[]{}")
+    s = s.upper()
+    s = re.sub(r'(?<=/)ND(?=$|[-/])', 'NĐ', s)
+    s = re.sub(r'(?<=/)QD(?=$|[-/])', 'QĐ', s)
+    return s
+
+
+def _doc_no_type(so_hieu: str) -> str:
+    folded = _fold_vietnamese(_normalize_doc_no(so_hieu))
+    for label, pattern in DOC_NO_TYPE_RULES:
+        if re.search(pattern, folded):
+            return label
+    return ""
+
+
+def _looks_like_doc_no(so_hieu: str) -> bool:
+    m = re.match(r'^(\d{1,4})/(\d{4})/(.+)$', _normalize_doc_no(so_hieu))
+    if not m:
+        return False
+    year = int(m.group(2))
+    if year < 1945 or year > 2100:
+        return False
+    suffix = _fold_vietnamese(m.group(3))
+    known = ("QH", "UBTVQH", "ND", "NQ", "TT", "QD", "PL", "CP", "BNV", "BTC", "BTP", "BCA", "BYT", "BGDDT")
+    return any(token in suffix for token in known)
+
+
+def _extract_doc_no(text: str) -> str:
+    """Lấy số hiệu tốt nhất từ OCR header, ưu tiên dòng có 'Số:' và mã loại văn bản."""
+    head = str(text or "")[:4000]
+    candidates = []
+
+    for m in DOC_NO_PATTERN.finditer(head):
+        raw = m.group(0)
+        so_hieu = _normalize_doc_no(raw)
+        if not _looks_like_doc_no(so_hieu):
+            continue
+
+        line_start = head.rfind("\n", 0, m.start()) + 1
+        line_end = head.find("\n", m.end())
+        if line_end == -1:
+            line_end = len(head)
+        line = head[line_start:line_end]
+        line_folded = _fold_vietnamese(line)
+
+        score = 0
+        if re.search(r'\bSO\b', line_folded):
+            score += 8
+        if _doc_no_type(so_hieu):
+            score += 5
+        if m.start() < 1500:
+            score += 2
+        score -= m.start() / 10000
+        candidates.append((score, so_hieu))
+
+    if not candidates:
+        return ""
+    return max(candidates, key=lambda x: x[0])[1]
+
+
+def _detect_doc_type(text: str, so_hieu: str = "") -> str:
+    """Nhận diện loại văn bản từ số hiệu trước, sau đó fallback sang header OCR."""
+    by_doc_no = _doc_no_type(so_hieu)
+    if by_doc_no:
+        return by_doc_no
+
+    lines = [ln.strip() for ln in str(text or "")[:2500].splitlines() if ln.strip()]
+    header_folded = "\n".join(_fold_vietnamese(ln) for ln in lines[:40])
+
+    for label, pattern in TEXT_TYPE_RULES:
+        flags = re.MULTILINE | re.UNICODE
+        if re.search(pattern, header_folded, flags):
+            return label
+
+    return "KHÔNG RÕ"
+
+
+def _is_title_noise(line: str) -> bool:
+    folded = _fold_vietnamese(line)
+    if not folded:
+        return True
+    if re.fullmatch(r'[_\-\s\.]+', line):
+        return True
+    return any(token in folded for token in (
+        "CONG HOA XA HOI CHU NGHIA VIET NAM",
+        "DOC LAP",
+        "HANH PHUC",
+        "HA NOI",
+        "TP.",
+        "THANH PHO",
+        "SO:",
+        "LUAT SO:",
+        "QUOC HOI",
+        "CHINH PHU",
+    ))
+
+
+def _is_after_title_boundary(line: str) -> bool:
+    folded = _fold_vietnamese(line)
+    return bool(re.match(
+        r'^\s*(CAN CU|THEO DE NGHI|QUOC HOI BAN HANH|CHINH PHU BAN HANH|'
+        r'CHUONG|MUC|DIEU)\b',
+        folded,
+    ))
+
+
+def _title_from_type_line(lines: List[str], type_idx: int, loai_vb: str) -> str:
+    title_parts = [loai_vb]
+    for line in lines[type_idx + 1:type_idx + 8]:
+        if _is_title_noise(line):
+            continue
+        if _is_after_title_boundary(line):
+            break
+        title_parts.append(line)
+    return " ".join(title_parts).strip()[:250]
+
+
+def _extract_doc_title(text: str, loai_vb: str = "") -> str:
+    """Heuristic lấy tên văn bản từ phần header OCR."""
+    lines = [re.sub(r'\s+', ' ', ln).strip() for ln in str(text or "")[:2500].splitlines()]
+    lines = [ln for ln in lines if ln]
+    for idx, line in enumerate(lines[:40]):
+        folded = _fold_vietnamese(line)
+        if _is_title_noise(line):
+            continue
+        if loai_vb != "KHÔNG RÕ" and _fold_vietnamese(line) == _fold_vietnamese(loai_vb):
+            return _title_from_type_line(lines, idx, loai_vb)
+        if re.search(r'\b(VE|QUY DINH|HUONG DAN|BAN HANH|SUA DOI|BO SUNG)\b', folded):
+            return line[:250]
+    return ""
+
+
 def _extract_doc_header(text: str) -> Dict[str, str]:
     """Trích metadata từ phần header văn bản OCR."""
     header = {"so_hieu": "", "ten_van_ban": "", "co_quan": "", "loai_vb": "KHÔNG RÕ"}
-    lines  = text[:2000].split("\n")
-
-    so_hieu_pat = re.compile(
-        r'\b(\d{1,3}/\d{4}/(?:[A-ZĐÔƯĂƠ][A-ZĐÔƯĂƠ0-9\-]+(?:/[A-ZĐÔƯĂƠ0-9\-]+)*))',
-        re.UNICODE,
-    )
-    for line in lines:
-        m = so_hieu_pat.search(line)
-        if m:
-            header["so_hieu"] = m.group(1)
-            break
-
-    for pat, loai in [
-        (r'LUẬT', 'LUẬT'), (r'NGHỊ ĐỊNH', 'NGHỊ ĐỊNH'),
-        (r'NGHỊ QUYẾT', 'NGHỊ QUYẾT'), (r'THÔNG TƯ', 'THÔNG TƯ'),
-        (r'QUYẾT ĐỊNH', 'QUYẾT ĐỊNH'), (r'PHÁP LỆNH', 'PHÁP LỆNH'),
-    ]:
-        if re.search(pat, text[:500], re.IGNORECASE):
-            header["loai_vb"] = loai
-            break
-
-    for line in lines[:30]:
-        line_clean = line.strip()
-        if len(line_clean) > 20 and re.search(
-            r'[VỀ|QUY ĐỊNH|HƯỚNG DẪN|BAN HÀNH]', line_clean, re.IGNORECASE
-        ):
-            header["ten_van_ban"] = line_clean[:200]
-            break
+    header["so_hieu"] = _extract_doc_no(text)
+    header["loai_vb"] = _detect_doc_type(text, header["so_hieu"])
+    header["ten_van_ban"] = _extract_doc_title(text, header["loai_vb"])
 
     return header
 
@@ -1145,6 +1291,7 @@ def _run_ingest_interactive(updater: "DocumentUpdater", file_path: str, ministry
 
     # ── BƯỚC 4: Hiển thị tóm tắt preview + double confirm ───────────────────
     so_hieu_final = report_preview["header"].get("so_hieu", "?")
+    ten_vb_final  = report_preview["header"].get("ten_van_ban", "") or "(chưa nhận diện)"
     n_chunks      = report_preview.get("chunks_created", 0)
     n_abolished   = len(report_preview.get("abolished_found", []))
     already_exist = report_preview.get("doc_already_exists", False)
@@ -1155,6 +1302,7 @@ def _run_ingest_interactive(updater: "DocumentUpdater", file_path: str, ministry
     print("║           ⚠️   XÁC NHẬN TRƯỚC KHI THỰC THI THẬT   ⚠️   ║")
     print("╠══════════════════════════════════════════════════════════╣")
     print(f"║  Số hiệu upsert : {so_hieu_final:<40}║")
+    print(f"║  Tên văn bản    : {ten_vb_final[:40]:<40}║")
     print(f"║  Chunks sẽ thêm : {n_chunks:<40}║")
     print(f"║  Đã có trong DB : {'⚠️  CÓ (sẽ upsert đè)' if already_exist else '✅ Chưa có':<40}║")
     print(f"║  VB bãi bỏ (xoá): {str(abolished_nos)[:40]:<40}║")
@@ -1187,6 +1335,7 @@ def _run_ingest_interactive(updater: "DocumentUpdater", file_path: str, ministry
     print("\n📄 BÁO CÁO XỬ LÝ:")
     print(f"  Số hiệu       : {report['header'].get('so_hieu', 'N/A')}")
     print(f"  Loại VB       : {report['header'].get('loai_vb', 'N/A')}")
+    print(f"  Tên VB        : {report['header'].get('ten_van_ban', 'N/A')}")
     print(f"  Đã có trong DB: {'⚠️  CÓ' if report['doc_already_exists'] else '✅ Chưa có'}")
     print(f"  Số Điều       : {report['articles_found']}")
     print(f"  Số chunks tạo : {report['chunks_created']}")

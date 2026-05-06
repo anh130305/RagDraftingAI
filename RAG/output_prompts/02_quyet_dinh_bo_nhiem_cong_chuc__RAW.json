@@ -1,7 +1,7 @@
 {
   "fields": {
-    "CAN_CU_PHAP_LY_1": "Luật số 80/2025/QH15",
-    "CAN_CU_PHAP_LY_2": "Nghị định số 138/2020/NĐ-CP",
+    "CAN_CU_PHAP_LY_1": "Luật số 80/2025/QH15 - Luật Cán bộ, Công chức",
+    "CAN_CU_PHAP_LY_2": "Nghị định số 170/2025/NĐ-CP - Nghị định Quy định về tuyển dụng, sử dụng và quản lý công chức",
     "CHU_VIET_TAT_CQ_BAN_HANH": "SNV",
     "CHU_VIET_TAT_DON_VI_SOAN_THAO": "SNV",
     "CO_QUAN_NHAN_KHAC": "",
@@ -11,15 +11,15 @@
     "NGAY": "20",
     "QUYEN_HAN_CHUC_VU_NGUOI_KY": "Giám đốc Sở Nội vụ",
     "SO_DIEU_THI_HANH": "3",
-    "SO_QUYET_DINH": "45/QĐ-SNV",
+    "SO_QUYET_DINH": "45",
     "TEN_CQ_BAN_HANH": "Sở Nội vụ tỉnh Bình Dương",
     "TEN_CQ_CHU_QUAN": "",
-    "TEN_DON_VI_DE_NGHI": "Đơn vị đề nghị bổ nhiệm",
+    "TEN_DON_VI_DE_NGHI": "Sở Nội vụ tỉnh Bình Dương",
     "THAM_QUYEN_BAN_HANH": "Giám đốc Sở Nội vụ",
     "THANG": "01",
     "TRICH_YEU": "bổ nhiệm công chức lãnh đạo, quản lý",
-    "NOI_DUNG_DIEU_1": "Bổ nhiệm có thời hạn ông Nguyễn Văn Hùng, giữ chức Trưởng phòng Hành chính - Tổng hợp, Sở Nội vụ tỉnh Bình Dương.",
-    "NOI_DUNG_DIEU_2": "Ông Nguyễn Văn Hùng được hưởng phụ cấp chức vụ lãnh đạo theo quy định. Quyết định này có hiệu lực kể từ ngày ký.",
+    "NOI_DUNG_DIEU_1": "Bổ nhiệm có thời hạn ông Nguyễn Văn Hùng, Phó Trưởng phòng giữ chức Trưởng phòng Hành chính - Tổng hợp, Sở Nội vụ tỉnh Bình Dương.",
+    "NOI_DUNG_DIEU_2": "Ông Nguyễn Văn Hùng được hưởng phụ cấp chức vụ lãnh đạo hệ số 1,0. Quyết định này có hiệu lực kể từ ngày ký.",
     "NOI_DUNG_DIEU_3": "Chánh Văn phòng Sở, Trưởng phòng Tổ chức cán bộ và ông Nguyễn Văn Hùng chịu trách nhiệm thi hành Quyết định này."
   }
 }
