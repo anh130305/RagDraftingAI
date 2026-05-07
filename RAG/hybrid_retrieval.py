@@ -543,6 +543,7 @@ _retriever_examples: Optional[HybridRetrieverV5] = None
 _col_forms:          Optional[object]             = None
 _reranker:           Optional[CrossEncoder]       = None
 _embed_model:        Optional[SentenceTransformer] = None
+_chroma_client:      Optional[chromadb.PersistentClient] = None
 _expand_index:       Dict[Tuple[str, str], List[Tuple[int, str]]] = {}
 
 
@@ -555,7 +556,7 @@ def init_retriever(
     Gọi 1 lần khi start application. Idempotent.
     """
     global _retriever_legal, _retriever_forms, _retriever_examples
-    global _col_forms, _reranker, _embed_model, _expand_index
+    global _col_forms, _reranker, _embed_model, _chroma_client, _expand_index
     global _COMPILED_FORM_PATTERNS
 
     if _retriever_legal is not None and not force_rebuild_bm25:
@@ -617,14 +618,17 @@ def init_retriever(
     else:
         print("init_retriever: Dùng embed model đã inject từ app_state, bỏ qua load.")
 
-    print("Connecting to ChromaDB...")
-    chroma_client = chromadb.PersistentClient(
-        path=str(CHROMA_DIR),
-        settings=Settings(anonymized_telemetry=False),
-    )
-    col_legal_all = chroma_client.get_collection("legal_chunks")
-    _col_forms    = chroma_client.get_collection("forms_chunks")
-    col_examples  = chroma_client.get_collection("examples_chunks")
+    if _chroma_client is None:
+        print("Connecting to ChromaDB...")
+        _chroma_client = chromadb.PersistentClient(
+            path=str(CHROMA_DIR),
+            settings=Settings(anonymized_telemetry=False),
+        )
+    else:
+        print("init_retriever: Dùng ChromaDB client đã inject từ app_state.")
+    col_legal_all = _chroma_client.get_collection("legal_chunks")
+    _col_forms    = _chroma_client.get_collection("forms_chunks")
+    col_examples  = _chroma_client.get_collection("examples_chunks")
     print(f"  legal={col_legal_all.count():,}  forms={_col_forms.count()}  examples={col_examples.count()}")
 
     _sample = col_legal_all.get(limit=1, include=["metadatas"])
@@ -637,10 +641,13 @@ def init_retriever(
             stacklevel=2,
         )
 
-    print("Loading reranker...")
-    _reranker = CrossEncoder(
-        RERANK_MODEL_NAME, device=_dev, cache_folder=str(MODEL_RERANK), max_length=512, local_files_only=True
-    )
+    if _reranker is None:
+        print("Loading reranker...")
+        _reranker = CrossEncoder(
+            RERANK_MODEL_NAME, device=_dev, cache_folder=str(MODEL_RERANK), max_length=512, local_files_only=True
+        )
+    else:
+        print("init_retriever: Dùng reranker đã load, bỏ qua load lại.")
 
     _retriever_legal = HybridRetrieverV5(
         bm25_index=bm25_legal, bm25_ids=ids_legal,

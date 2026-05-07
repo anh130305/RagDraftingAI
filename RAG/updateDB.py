@@ -1174,8 +1174,9 @@ class DocumentUpdater:
             import hybrid_retrieval as hr
             from hybrid_retrieval import init_retriever
             # Inject embed model đang dùng vào hybrid_retrieval trước khi gọi
-            # init_retriever(), tránh load lại model lần thứ 3.
+            # init_retriever(), tránh load lại model/client dư.
             hr._embed_model = self._embed_model
+            hr._chroma_client = self._chroma_client
             init_retriever(force_rebuild_bm25=True)
         except ImportError as e:
             msg = f"Không import được hybrid_retrieval: {e}"

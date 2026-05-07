@@ -18,7 +18,6 @@ RAG_SERVICE_MODE = os.getenv("RAG_SERVICE_MODE", "full").strip().lower()
 # ─── Global instances (khởi tạo trong startup) ────────────────────────────
 _prompt_api = None  # PromptAPI singleton
 _updater    = None  # DocumentUpdater singleton (dùng chung resources)
-api         = None  # PromptAPI instance dùng cho endpoints
 _db_mutation_lock = asyncio.Lock()
 _bm25_rebuild_task = None
 _bm25_rebuild_state = {
@@ -49,17 +48,23 @@ async def startup_event():
     logger.info("RAG Service: Khởi động...")
 
     # BƯỚC 1: Shared resources (embed model + ChromaDB client)
-    from app_state import init_shared_state, get_updater as _get_updater, get_embed_model
+    from app_state import (
+        init_shared_state,
+        get_chroma_client,
+        get_embed_model,
+        get_updater as _get_updater,
+    )
     init_shared_state()
 
     # BƯỚC 2: DocumentUpdater dùng chung model + client
     _updater = _get_updater()
 
     if RAG_SERVICE_MODE == "full":
-        # BƯỚC 3: Inject embed model vào hybrid_retrieval TRƯỚC khi init_retriever chạy.
-        # init_retriever() có guard: nếu _embed_model đã có → không load lại từ disk.
+        # BƯỚC 3: Inject shared resources vào hybrid_retrieval TRƯỚC khi
+        # init_retriever chạy để tránh load/tạo client dư.
         import hybrid_retrieval as hr
         hr._embed_model = get_embed_model()
+        hr._chroma_client = get_chroma_client()
 
         # BƯỚC 4: PromptAPI() — __init__ gọi init_retriever() nhưng guard đã đảm bảo
         # model không bị load lần 2. Dùng constructor bình thường, không dùng __new__.
@@ -81,6 +86,11 @@ def _get_prompt_api():
     global _prompt_api
     if _prompt_api is None:
         logger.info("Lazy-init PromptAPI...")
+        from app_state import init_shared_state, get_chroma_client, get_embed_model
+        init_shared_state()
+        import hybrid_retrieval as hr
+        hr._embed_model = get_embed_model()
+        hr._chroma_client = get_chroma_client()
         from promptApi import PromptAPI
         _prompt_api = PromptAPI()
     return _prompt_api
@@ -89,7 +99,8 @@ def _get_updater():
     global _updater
     if _updater is None:
         logger.info("Lazy-init DocumentUpdater...")
-        from app_state import get_updater
+        from app_state import init_shared_state, get_updater
+        init_shared_state()
         _updater = get_updater()
     return _updater
 
@@ -103,6 +114,7 @@ class DraftRequest(BaseModel):
     extras: Optional[str] = None
     legal_type_filter: Optional[str] = None
     call_llm: bool = True
+    model: Optional[str] = None
 
 class LegalQARequest(BaseModel):
     query: str
@@ -110,6 +122,7 @@ class LegalQARequest(BaseModel):
     legal_top_k: Optional[int] = None
     legal_type_filter: Optional[str] = None
     call_llm: bool = True
+    model: Optional[str] = None
 
 
 class DBCheckRequest(BaseModel):
@@ -149,13 +162,8 @@ class DBBatchDeleteRequest(BaseModel):
 
 
 def get_api():
-    global api
-    if api is None:
-        logger.info("Initializing PromptAPI (Lazy Load)...")
-        from promptApi import PromptAPI
-        api = PromptAPI()
-        logger.info("PromptAPI initialized successfully.")
-    return api
+    """Backward-compatible alias for older call sites."""
+    return _get_prompt_api()
 
 
 def _ensure_full_mode() -> None:
@@ -170,7 +178,7 @@ async def health_check():
             "mode": RAG_SERVICE_MODE,
             "message": "RAG rebuild service is operational.",
         }
-    if api is None:
+    if _prompt_api is None:
         return {"status": "ready_to_load", "message": "Service is up, models not yet loaded."}
     return {"status": "ready", "message": "RAG Service is operational."}
 
@@ -301,7 +309,9 @@ async def draft(request: DraftRequest):
         result = current_api.draft(
             query=request.query,
             extras=request.extras,
+            legal_type_filter=request.legal_type_filter,
             call_llm=request.call_llm,
+            model=request.model,
         )
         return result
     except Exception as e:
@@ -317,7 +327,9 @@ async def legal_qa(request: LegalQARequest):
             query=request.query,
             extras=request.extras,
             legal_top_k=request.legal_top_k,
+            legal_type_filter=request.legal_type_filter,
             call_llm=request.call_llm,
+            model=request.model,
         )
         return result
     except Exception as e:
@@ -336,7 +348,9 @@ def legal_qa_stream(request: LegalQARequest):
                 query=request.query,
                 extras=request.extras,
                 legal_top_k=request.legal_top_k,
+                legal_type_filter=request.legal_type_filter,
                 call_llm=request.call_llm,
+                model=request.model,
             ):
                 yield json.dumps(event, ensure_ascii=False) + "\n"
         except (asyncio.CancelledError, GeneratorExit):
