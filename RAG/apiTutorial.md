@@ -9,17 +9,20 @@
 | Soạn thảo | `api.draft()` | Soạn văn bản hành chính, trả về dict các fields đã điền |
 | Hỏi đáp | `api.legal_qa()` | Hỏi đáp pháp luật, trả về Markdown string |
 
+LLM mặc định là Groq **17b** (`meta-llama/llama-4-scout-17b-16e-instruct`). Mỗi request có thể chọn sang **70b** (`llama-3.3-70b-versatile`) bằng tham số `model`.
+
 ---
 
 ## Cài đặt & Khởi tạo
 
 ```bash
 # Cài dependencies
-pip install groq openai python-dotenv
+pip install -r requirements.txt
 
 # Tạo file .env (chọn một trong hai provider)
 echo "GROQ_API_KEY=your_key_here"   >> .env
 echo "OPENAI_API_KEY=your_key_here" >> .env
+echo "LLM_MODEL=meta-llama/llama-4-scout-17b-16e-instruct" >> .env
 ```
 
 ```python
@@ -56,9 +59,9 @@ Bên trong, `extras` được truyền vào `build_messages()` / `build_legal_qa
 api.draft(
     query              : str,
     extras             : str | None = None,
-    extra_instructions : str | None = None,   # alias tương thích ngược
     legal_type_filter  : str | None = None,
     call_llm           : bool = True,
+    model              : str | None = None,   # "17b" | "70b" | full model id
 ) -> dict
 ```
 
@@ -77,6 +80,26 @@ if result["status"] == "ok":
     for field, value in result["fields"].items():
         print(f"{field}: {value}")
 ```
+
+### Chọn model LLM
+
+```python
+# Mặc định: 17b
+result = api.draft(query="Soạn quyết định bổ nhiệm công chức")
+
+# Chọn model 70b cho yêu cầu cần lập luận kỹ hơn
+result = api.draft(
+    query = "Soạn quyết định bổ nhiệm công chức lãnh đạo, quản lý",
+    model = "70b",
+)
+```
+
+Các giá trị hợp lệ cho `model`:
+
+| Giá trị ngắn | Full model id |
+|--------------|---------------|
+| `"17b"` | `"meta-llama/llama-4-scout-17b-16e-instruct"` |
+| `"70b"` | `"llama-3.3-70b-versatile"` |
 
 ### Lọc loại văn bản pháp luật
 
@@ -125,6 +148,7 @@ messages = result["meta"]["messages"]
         "form_type"    : "Công văn",
         "legal_sources": ["30/2020/NĐ-CP", "01/2011/TT-BNV"],
         "context_stats": {"legal": 3, "form": 1, "examples": 1},
+        "llm_model"    : "meta-llama/llama-4-scout-17b-16e-instruct",
     }
 }
 
@@ -155,10 +179,10 @@ messages = result["meta"]["messages"]
 api.legal_qa(
     query              : str,
     extras             : str | None = None,
-    extra_instructions : str | None = None,   # alias tương thích ngược
     legal_top_k        : int | None = None,   # ghi đè số điều luật retrieve
     legal_type_filter  : str | None = None,
     call_llm           : bool = True,
+    model              : str | None = None,   # "17b" | "70b" | full model id
 ) -> dict
 ```
 
@@ -180,6 +204,7 @@ if result["status"] == "ok":
 result = api.legal_qa(
     query       = "So sánh thủ tục ban hành văn bản quy phạm pháp luật giữa Luật và Nghị định",
     legal_top_k = 8,   # mặc định là 5
+    model       = "70b",
 )
 ```
 
@@ -197,6 +222,7 @@ result = api.legal_qa(
         "elapsed_s"     : 3.1,
         "n_legal_chunks": 5,
         "legal_sources" : ["30/2020/NĐ-CP", "01/2011/TT-BNV"],
+        "llm_model"     : "meta-llama/llama-4-scout-17b-16e-instruct",
     }
 }
 ```
@@ -233,30 +259,67 @@ api = get_api(use_reranker=True, legal_top_k=3, examples_top_k=1)
 # FastAPI example
 from fastapi import FastAPI
 from pydantic import BaseModel
+from typing import Optional
 
 app = FastAPI()
 
 class DraftRequest(BaseModel):
     query : str
     extras: str = ""
+    model : Optional[str] = None
 
 @app.post("/draft")
 def draft_endpoint(body: DraftRequest):
     return api.draft(
         query  = body.query,
         extras = body.extras or None,
+        model  = body.model,
     )
 
 class QARequest(BaseModel):
     query : str
     extras: str = ""
+    model : Optional[str] = None
 
 @app.post("/legal_qa")
 def qa_endpoint(body: QARequest):
     return api.legal_qa(
         query  = body.query,
         extras = body.extras or None,
+        model  = body.model,
     )
+```
+
+---
+
+## FastAPI service (`main.py`)
+
+Khi chạy service bằng `main.py`, các endpoint RAG nhận thêm trường `model` trong JSON body.
+
+### Draft
+
+```bash
+curl -X POST http://localhost:8001/api/v1/rag/draft \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Soạn quyết định bổ nhiệm công chức lãnh đạo, quản lý",
+    "extras": "Người được bổ nhiệm: Ông Nguyễn Văn A",
+    "model": "17b",
+    "call_llm": true
+  }'
+```
+
+### Legal QA
+
+```bash
+curl -X POST http://localhost:8001/api/v1/rag/legal_qa \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Điều kiện bổ nhiệm công chức lãnh đạo, quản lý là gì?",
+    "legal_top_k": 5,
+    "model": "70b",
+    "call_llm": true
+  }'
 ```
 
 ---
@@ -282,28 +345,12 @@ python promptApi.py --no-reranker
 
 ---
 
-## Tương thích ngược
-
-Tham số `extra_instructions` vẫn hoạt động bình thường — code cũ không cần sửa:
-
-```python
-# Cách cũ — vẫn hoạt động
-api.draft(query="...", extra_instructions="Ngày ký: ...")
-
-# Cách mới — khuyến nghị
-api.draft(query="...", extras="Ngày ký: ...")
-```
-
-Khi cả hai được truyền, `extras` được ưu tiên.
-
----
-
 ## Biến môi trường
 
 | Biến | Mô tả | Mặc định |
 |------|-------|---------|
 | `GROQ_API_KEY` | API key cho Groq (ưu tiên cao nhất) | _(trống)_ |
 | `OPENAI_API_KEY` | API key cho OpenAI (fallback) | _(trống)_ |
-| `LLM_MODEL` | Tên model ghi đè | `llama-3.3-70b-versatile` (Groq) / `gpt-4o-mini` (OpenAI) |
+| `LLM_MODEL` | Tên model fallback cho cấu hình cũ; request `model` sẽ ưu tiên hơn | `meta-llama/llama-4-scout-17b-16e-instruct` |
 
 Nếu không có key nào → API trả `status: "prompt_only"` kèm `meta["messages"]` để caller tự gọi LLM.

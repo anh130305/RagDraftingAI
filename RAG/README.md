@@ -46,6 +46,13 @@ Quản lý cấu trúc giao tiếp với LLM:
 Cung cấp giao diện lập trình (API) cho ứng dụng:
 * `draft()`: Trình soạn thảo văn bản tự động.
 * `legal_qa()`: Hệ thống hỏi đáp pháp luật.
+* Hỗ trợ chọn LLM theo request: `17b` mặc định hoặc `70b` cho tác vụ cần lập luận kỹ hơn.
+
+### 🌐 `main.py`
+FastAPI service cho production/dev server:
+* RAG endpoints: `/api/v1/rag/draft`, `/api/v1/rag/legal_qa`, `/api/v1/rag/legal_qa_stream`.
+* DB endpoints: ingest, delete, status và rebuild BM25 thủ công.
+* Dùng chung embedding model và ChromaDB client giữa update/retrieve trong cùng process.
 
 ### 💻 `generatePrompt.py`
 Công cụ dòng lệnh (CLI) để chạy thử nghiệm nhanh các kịch bản soạn thảo.
@@ -59,7 +66,9 @@ Công cụ dòng lệnh (CLI) để chạy thử nghiệm nhanh các kịch bả
     * `rank-bm25`: Xử lý tìm kiếm văn bản truyền thống.
     * `sentence-transformers`: Tạo embedding cho tìm kiếm ngữ nghĩa.
     * `chromadb`: Cơ sở dữ liệu vector.
-    * `pandas` & `python-dotenv`: Quản lý dữ liệu và biến môi trường.
+    * `fastapi` & `uvicorn`: Chạy API service.
+    * `groq` & `openai`: Gọi LLM.
+    * `pandas`, `pyarrow`, `numpy` & `python-dotenv`: Quản lý dữ liệu và biến môi trường.
 
 ---
 
@@ -70,6 +79,47 @@ Hệ thống hỗ trợ chế độ Hybrid giữa Groq (tốc độ cao) và Ope
 GROQ_API_KEY=your_groq_key_here
 # HOẶC
 OPENAI_API_KEY=your_openai_key_here
+
+# Mặc định nếu request không truyền model
+LLM_MODEL="meta-llama/llama-4-scout-17b-16e-instruct"
+# Tuỳ chọn khác:
+# LLM_MODEL="llama-3.3-70b-versatile"
+```
+
+Khi gọi API có thể chọn model theo từng request:
+
+```json
+{
+  "query": "Soạn quyết định bổ nhiệm công chức lãnh đạo, quản lý",
+  "extras": "Người được bổ nhiệm: Ông Nguyễn Văn A",
+  "model": "17b",
+  "call_llm": true
+}
+```
+
+Giá trị hợp lệ cho `model`: `"17b"`, `"70b"`, hoặc full model id:
+`"meta-llama/llama-4-scout-17b-16e-instruct"` / `"llama-3.3-70b-versatile"`.
+
+---
+
+## ▶️ Chạy API service
+
+```bash
+cd RAG
+uvicorn main:app --host 0.0.0.0 --port 8001
+```
+
+Ví dụ gọi legal QA bằng model 70b:
+
+```bash
+curl -X POST http://localhost:8001/api/v1/rag/legal_qa \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Điều kiện bổ nhiệm công chức lãnh đạo, quản lý là gì?",
+    "legal_top_k": 5,
+    "model": "70b",
+    "call_llm": true
+  }'
 ```
 
 ---
