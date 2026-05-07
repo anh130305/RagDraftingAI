@@ -119,18 +119,24 @@ Thời gian nghỉ: Từ ngày 01/08/2025 đến hết ngày 10/08/2025
 # Kịch Bản TEST Chuẩn
 
 DEFAULT_QUERIES = {
-    "draft"   : "Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý theo quy định của luật cán bộ, công chức.",
-    "legal_qa": "Trình bày điều kiện cấp giấy phép kinh doanh?",
+    "draft"   : {
+        Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý theo quy định của luật cán bộ, công chức.
+    }
+
+    "legal_qa": {
+        Trình bày điều kiện cấp giấy phép kinh doanh?
+    },
 }
 DEFAULT_EXTRAS = {
-    "draft"   : (
-        "Cơ quan ban hành: Sở Nội vụ tỉnh Bình Dương.\n"
-        "Viết tắt cơ quan ban hành: SNV.\n"
-        "Cơ quan chủ quản: UBND tỉnh Bình Dương.\n"
-        "Số quyết định: 45. Ngày ký: 20/01/2026.\n"
-        "Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai.\n"
-        "Đối tượng bổ nhiệm: Ông Nguyễn Văn Hùng.\n"
-        "Chức vụ bổ nhiệm: Trưởng phòng Hành chính - Tổng hợp.\n"
-    ),
+    "draft"   : {
+Cơ quan ban hành: Sở Nội vụ tỉnh Bình Dương.
+Viết tắt cơ quan ban hành: SNV.
+Cơ quan chủ quản: UBND tỉnh Bình Dương.
+Số quyết định: 45. Ngày ký: 20/01/2026.
+Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai.
+Đối tượng bổ nhiệm: Ông Nguyễn Văn Hùng.
+Chức vụ bổ nhiệm: Trưởng phòng Hành chính - Tổng hợp.
+    },
+
     "legal_qa": "",
 }

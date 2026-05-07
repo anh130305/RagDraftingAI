@@ -33,7 +33,13 @@ import { useConfirm } from '../lib/ConfirmContext';
 import * as api from '../lib/api';
 import type { ChatSession } from '../lib/api';
 import { useTheme } from '../lib/ThemeContext';
-import { readChatProcessingState, subscribeChatProcessingState } from '../lib/chatActivityStore';
+import {
+  clearChatProcessingStateForSession,
+  readChatProcessingState,
+  subscribeChatAssistantResponseReady,
+  subscribeChatMessagesUpdated,
+  subscribeChatProcessingState,
+} from '../lib/chatActivityStore';
 import '../styles/chat-auth.css';
 import FullScreenLoader from './FullScreenLoader';
 import DocumentPreviewModal from './DocumentPreviewModal';
@@ -41,6 +47,7 @@ import DocumentPreviewModal from './DocumentPreviewModal';
 type UserNav = 'chat' | 'settings';
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'rag_ai_sidebar_collapsed_v1';
+const PROCESSING_RECONCILE_GRACE_MS = 2000;
 
 interface UserShellProps {
   children: React.ReactNode;
@@ -78,6 +85,8 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
   const [fileTab, setFileTab] = useState<'uploaded' | 'created'>('uploaded');
   const [previewFile, setPreviewFile] = useState<{ name: string; url: string; fileType?: string | null } | null>(null);
   const [chatProcessingState, setChatProcessingState] = useState(readChatProcessingState);
+  const lastReconciledBusyKeyRef = useRef<string | null>(null);
+  const notifiedAssistantResponseRef = useRef<Set<string>>(new Set());
   const [animatedProcessingPreview, setAnimatedProcessingPreview] = useState('');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -104,11 +113,77 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
 
   useEffect(() => {
     let isMounted = true;
+    const initialProcessingState = readChatProcessingState();
+    let lastBusySessionId = initialProcessingState.busySessionId;
+    let refreshHistoryTimer: number | null = null;
+    setChatProcessingState(initialProcessingState);
+
+    const notifyAssistantResponseReady = (detail: { sessionId: string; messageId?: string | null }) => {
+      if (!detail.sessionId || detail.sessionId === sessionId) return;
+
+      const notificationKey = detail.messageId
+        ? `${detail.sessionId}:${detail.messageId}`
+        : detail.sessionId;
+      if (notifiedAssistantResponseRef.current.has(notificationKey)) return;
+
+      notifiedAssistantResponseRef.current.add(notificationKey);
+      showToast('AI đã phản hồi.', 'success');
+    };
+
+    const reconcileProcessingState = async (nextSessions: ChatSession[]) => {
+      const state = readChatProcessingState();
+      const busySessionId = state.busySessionId;
+      if (!busySessionId) return;
+
+      if (Date.now() - state.updatedAt < PROCESSING_RECONCILE_GRACE_MS) return;
+
+      const busySessionExists = nextSessions.some((session) => session.id === busySessionId);
+      if (!busySessionExists) {
+        clearChatProcessingStateForSession(busySessionId);
+        return;
+      }
+
+      if (busySessionId === sessionId) return;
+
+      const reconcileKey = `${busySessionId}:${state.updatedAt}`;
+      if (lastReconciledBusyKeyRef.current === reconcileKey) return;
+      lastReconciledBusyKeyRef.current = reconcileKey;
+
+      try {
+        const busyMessages = await api.getMessages(busySessionId);
+        if (!isMounted) return;
+
+        const currentState = readChatProcessingState();
+        if (currentState.busySessionId !== busySessionId) return;
+
+        const latestMessage = busyMessages[busyMessages.length - 1];
+        if (!latestMessage || latestMessage.role === 'assistant') {
+          if (latestMessage?.role === 'assistant') {
+            notifyAssistantResponseReady({
+              sessionId: busySessionId,
+              messageId: latestMessage.id,
+            });
+          }
+          clearChatProcessingStateForSession(busySessionId);
+        }
+      } catch (err: any) {
+        if (!isMounted) return;
+
+        const currentState = readChatProcessingState();
+        if (currentState.busySessionId === busySessionId && err?.status === 404) {
+          clearChatProcessingStateForSession(busySessionId);
+        }
+      }
+    };
+
     const fetchHistory = async () => {
       if (!user) return;
       try {
         const data = await api.listSessions();
-        if (isMounted) setSessions(data);
+        if (isMounted) {
+          setSessions(data);
+          void reconcileProcessingState(data);
+        }
       } catch (err) {
         if (isMounted) console.error('Failed to fetch chat history:', err);
       } finally {
@@ -116,23 +191,45 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
       }
     };
 
+    const scheduleFetchHistory = () => {
+      if (refreshHistoryTimer !== null) {
+        window.clearTimeout(refreshHistoryTimer);
+      }
+
+      refreshHistoryTimer = window.setTimeout(() => {
+        refreshHistoryTimer = null;
+        void fetchHistory();
+      }, 150);
+    };
+
     fetchHistory();
 
-    window.addEventListener('chat_activity_updated', fetchHistory);
-    return () => {
-      isMounted = false;
-      window.removeEventListener('chat_activity_updated', fetchHistory);
-    };
-  }, [user, sessionId]);
+    const unsubscribeMessagesUpdated = subscribeChatMessagesUpdated(() => {
+      scheduleFetchHistory();
+    });
+    const unsubscribeAssistantResponseReady = subscribeChatAssistantResponseReady((detail) => {
+      notifyAssistantResponseReady(detail);
+    });
+    const unsubscribeProcessingState = subscribeChatProcessingState((state) => {
+      if (!isMounted) return;
 
-  useEffect(() => {
-    setChatProcessingState(readChatProcessingState());
-    const unsubscribe = subscribeChatProcessingState((state) => {
       setChatProcessingState(state);
+      if (state.busySessionId !== lastBusySessionId) {
+        lastBusySessionId = state.busySessionId;
+        scheduleFetchHistory();
+      }
     });
 
-    return unsubscribe;
-  }, []);
+    return () => {
+      isMounted = false;
+      if (refreshHistoryTimer !== null) {
+        window.clearTimeout(refreshHistoryTimer);
+      }
+      unsubscribeMessagesUpdated();
+      unsubscribeAssistantResponseReady();
+      unsubscribeProcessingState();
+    };
+  }, [user, sessionId, showToast]);
 
   useEffect(() => {
     try {
@@ -206,6 +303,7 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
 
       if (isConfirmed) {
         await api.deleteSession(id);
+        clearChatProcessingStateForSession(id);
         setSessions(prev => prev.filter(s => s.id !== id));
         if (sessionId === id) navigate('/chat');
         showToast('Đã xóa hội thoại thành công', 'success');
