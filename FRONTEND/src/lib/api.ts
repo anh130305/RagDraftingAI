@@ -648,7 +648,11 @@ export function createSession(title?: string) {
 export function listSessions(includeArchived = false) {
   const params = new URLSearchParams();
   if (includeArchived) params.set('include_archived', 'true');
-  return request<ChatSession[]>(`/api/v1/chat/sessions?${params}`);
+  const query = params.toString();
+  return request<ChatSession[]>(
+    query ? `/api/v1/chat/sessions?${query}` : '/api/v1/chat/sessions',
+    { cache: 'no-store' },
+  );
 }
 
 export function getSession(id: string) {
@@ -752,6 +756,7 @@ export async function* streamMessage(
 export function getMessages(sessionId: string) {
   return request<ChatMessage[]>(
     `/api/v1/chat/sessions/${sessionId}/messages`,
+    { cache: 'no-store' },
   );
 }
 

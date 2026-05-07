@@ -30,9 +30,6 @@ interface ChatComposerProps {
   disabled?: boolean;
   value?: string;
   onValueChange?: (val: string) => void;
-  onUploadFile?: (file: File) => void | Promise<void>;
-  onUploadImage?: (file: File) => void | Promise<void>;
-  chatSessionId?: string;
 }
 
 type AttachmentKind = 'image' | 'document';
@@ -65,9 +62,6 @@ export default function ChatComposer({
   disabled = false,
   value = '',
   onValueChange,
-  onUploadFile,
-  onUploadImage,
-  chatSessionId,
 }: ChatComposerProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -531,10 +525,10 @@ export default function ChatComposer({
     try {
       const resolvedSessionId = await onSend?.(finalMessageWithAttachments, mode, finalExtras);
 
-      // Use the session ID returned by onSend (the true session after possible creation),
-      // falling back to the prop value if the session already existed.
-      const uploadSessionId = (resolvedSessionId as string | undefined) || chatSessionId;
+      const uploadSessionId = resolvedSessionId as string | undefined;
       if (filesToUpload.length > 0) {
+        if (!uploadSessionId) return;
+
         filesToUpload.forEach(file => {
           api.uploadDocument(file, file.name, uploadSessionId)
             .then((doc) => {

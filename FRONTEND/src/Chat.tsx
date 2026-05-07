@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import * as api from './lib/api';
-import type { ChatMessage, ChatStreamEvent } from './lib/api';
+import type { ChatMessage } from './lib/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useToast } from './lib/ToastContext';
@@ -28,7 +28,10 @@ import ChatComposer from './components/ChatComposer';
 import DocumentPreviewModal from './components/DocumentPreviewModal';
 import {
   clearChatProcessingState,
+  emitChatAssistantResponseReady,
+  emitChatMessagesUpdated,
   readChatProcessingState,
+  subscribeChatMessagesUpdated,
   subscribeChatProcessingState,
   writeChatProcessingState,
 } from './lib/chatActivityStore';
@@ -110,17 +113,18 @@ export default function Chat() {
   const autoResumeAttemptedUserMessageIdRef = useRef<string | null>(null);
   const pollingTerminatedUserMessageIdRef = useRef<string | null>(null);
   const pendingPollingRequestRef = useRef<{ sid: string; targetUserMessageId: string | null } | null>(null);
+  const hydratedBusySessionIdRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isMountedRef = useRef(true);
   const activeSessionIdRef = useRef<string | null>(sessionId || null);
-  const streamAbortRef = useRef<AbortController | null>(null);
+  const activeBusySessionIdRef = useRef<string | null>(null);
+  const processingTargetUserMessageIdRef = useRef<string | null>(null);
 
   // Local submit state must take precedence so the status appears instantly on send,
   // even if a stale restored busy session exists in storage.
   const activeBusySessionId = submittingSessionId || sendingSessionId;
   const isBusyCurrentSession = activeBusySessionId === currentSessionKey;
   const isBusyAnotherSession = !!activeBusySessionId && activeBusySessionId !== currentSessionKey;
-  const hasStreamingAssistantInView = !!sessionId
-    && messages.some((m) => m.id === `streaming-assistant-${sessionId}`);
   const composerStatus = isBusyAnotherSession
     ? 'AI đang bận xử lý ở một đoạn chat khác...'
     : undefined;
@@ -136,10 +140,14 @@ export default function Chat() {
 
   useEffect(() => {
     const persisted = readChatProcessingState();
+    hydratedBusySessionIdRef.current = persisted.busySessionId;
+    activeBusySessionIdRef.current = persisted.busySessionId;
     setSendingSessionId(persisted.busySessionId);
     setStatusText(persisted.busySessionId ? (persisted.statusText || 'AI đang suy nghĩ...') : '');
 
     const unsubscribe = subscribeChatProcessingState((state) => {
+      hydratedBusySessionIdRef.current = state.busySessionId;
+      activeBusySessionIdRef.current = state.busySessionId;
       setSendingSessionId(state.busySessionId);
       setStatusText(state.busySessionId ? (state.statusText || 'AI đang suy nghĩ...') : '');
     });
@@ -147,22 +155,61 @@ export default function Chat() {
     return unsubscribe;
   }, []);
 
-  const abortActiveStream = () => {
-    streamAbortRef.current?.abort();
-    streamAbortRef.current = null;
+  const isViewingSession = (sid: string) => (
+    isMountedRef.current && activeSessionIdRef.current === sid
+  );
+
+  const normalizeStatusPreview = (value: string) => {
+    const previewText = value || 'AI đang suy nghĩ...';
+    return previewText.length > 240 ? previewText.slice(-240) : previewText;
+  };
+
+  const updateProcessingState = (
+    busySessionId: string,
+    status: string,
+    targetUserMessageId: string | null = processingTargetUserMessageIdRef.current,
+  ) => {
+    const statusPreview = normalizeStatusPreview(status);
+    activeBusySessionIdRef.current = busySessionId;
+    processingTargetUserMessageIdRef.current = targetUserMessageId;
+    hydratedBusySessionIdRef.current = busySessionId;
+
+    writeChatProcessingState({
+      busySessionId,
+      targetUserMessageId,
+      statusText: statusPreview,
+    });
+
+    if (!isMountedRef.current) return;
+    setSendingSessionId(busySessionId);
+    setStatusText(statusPreview);
+  };
+
+  const clearProcessingStateForSession = (sid?: string) => {
+    const current = readChatProcessingState();
+    const shouldClear = !sid || current.busySessionId === sid;
+    if (!shouldClear) return;
+
+    clearChatProcessingState();
+    activeBusySessionIdRef.current = null;
+    processingTargetUserMessageIdRef.current = null;
+    hydratedBusySessionIdRef.current = null;
+
+    if (!isMountedRef.current) return;
+    setSendingSessionId(null);
+    setSubmittingSessionId(null);
+    setStatusText('');
   };
 
   const removeOptimisticMessage = (optimisticMessageId: string | null) => {
     if (!optimisticMessageId) return;
+    if (!isMountedRef.current) return;
     setMessages((prev) => prev.filter((message) => message.id !== optimisticMessageId));
-  };
-
-  const removeStreamingAssistantMessage = (streamingAssistantId: string) => {
-    setMessages((prev) => prev.filter((message) => message.id !== streamingAssistantId));
   };
 
   const replaceOptimisticMessage = (optimisticMessageId: string | null, nextMessage: ChatMessage) => {
     if (!optimisticMessageId) return;
+    if (!isMountedRef.current) return;
     setMessages((prev) => {
       const withoutOptimistic = prev.filter((message) => message.id !== optimisticMessageId);
       if (withoutOptimistic.some((message) => message.id === nextMessage.id)) {
@@ -174,9 +221,7 @@ export default function Chat() {
 
   const clearSendRuntimeState = () => {
     stopPolling();
-    abortActiveStream();
-    setSendingSessionId(null);
-    setStatusText('');
+    clearProcessingStateForSession();
   };
 
   // Look up file URL from DB and open preview
@@ -283,22 +328,38 @@ export default function Chat() {
 
   // ── Load messages when sessionId changes ───────────────────
   useEffect(() => {
-    if (sessionId) {
-      const loadMessages = async () => {
-        setIsLoading(true);
-        try {
-          const data = await api.getMessages(sessionId);
-          setMessages(data);
-        } catch (err) {
-          console.error('Failed to load messages:', err);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      loadMessages();
-    } else {
+    if (!sessionId) {
       setMessages([]);
+      setIsLoading(false);
+      return;
     }
+
+    let isCancelled = false;
+
+    const loadMessages = async (showOverlay = true) => {
+      if (showOverlay) setIsLoading(true);
+      try {
+        const data = await api.getMessages(sessionId);
+        if (!isCancelled) setMessages(data);
+      } catch (err) {
+        if (!isCancelled) console.error('Failed to load messages:', err);
+      } finally {
+        if (!isCancelled && showOverlay) setIsLoading(false);
+      }
+    };
+
+    void loadMessages();
+
+    const unsubscribeMessagesUpdated = subscribeChatMessagesUpdated((detail) => {
+      if (detail.sessionId === sessionId) {
+        void loadMessages(false);
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+      unsubscribeMessagesUpdated();
+    };
   }, [sessionId]);
 
   const stopPolling = (options: { drainPending?: boolean } = {}) => {
@@ -306,25 +367,24 @@ export default function Chat() {
       window.clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
+    const pending = options.drainPending ? pendingPollingRequestRef.current : null;
+    pendingPollingRequestRef.current = null;
     pollingRetryRef.current = 0;
     pollingInFlightRef.current = false;
     pollingActiveRef.current = false;
     pollingSessionIdRef.current = null;
     pollingTargetUserMessageIdRef.current = null;
 
-    if (options.drainPending && pendingPollingRequestRef.current) {
-      const pending = pendingPollingRequestRef.current;
-      pendingPollingRequestRef.current = null;
+    if (pending) {
       window.setTimeout(() => {
         startPolling(pending.sid, pending.targetUserMessageId || undefined);
       }, 0);
     }
   };
 
-  const clearPollingUiState = (options: { drainPending?: boolean } = {}) => {
+  const clearPollingUiState = (options: { drainPending?: boolean } = {}, sid?: string) => {
     stopPolling(options);
-    setStatusText('');
-    setSendingSessionId(null);
+    clearProcessingStateForSession(sid);
   };
 
   useEffect(() => {
@@ -348,9 +408,9 @@ export default function Chat() {
     stopPolling();
     pollingActiveRef.current = true;
     pollingSessionIdRef.current = sid;
-    setSendingSessionId(sid);
     pollingRetryRef.current = 0;
     pollingTargetUserMessageIdRef.current = targetUserMessageId || null;
+    processingTargetUserMessageIdRef.current = targetUserMessageId || null;
 
     const maxRetries = 150; // 150 retries * 2s = 300s max wait
     const statuses = [
@@ -363,11 +423,15 @@ export default function Chat() {
     const tick = async () => {
       if (pollingInFlightRef.current) return;
       pollingInFlightRef.current = true;
-      setStatusText(statuses[pollingRetryRef.current % statuses.length]);
+      updateProcessingState(
+        sid,
+        statuses[pollingRetryRef.current % statuses.length],
+        pollingTargetUserMessageIdRef.current,
+      );
 
       try {
         const updatedMessages = await api.getMessages(sid);
-        if (activeSessionIdRef.current === sid) {
+        if (isViewingSession(sid)) {
           setMessages(updatedMessages);
         }
 
@@ -376,31 +440,32 @@ export default function Chat() {
           .find((m) => m.role === 'user')?.id || null;
 
         const targetId = pollingTargetUserMessageIdRef.current;
-        const hasAssistantAfterTarget = (() => {
+        const assistantMessageAfterTarget = (() => {
           if (!targetId) {
             const lastMsg = updatedMessages[updatedMessages.length - 1];
-            return !!lastMsg && lastMsg.role === 'assistant';
+            return lastMsg?.role === 'assistant' ? lastMsg : null;
           }
 
           const targetIndex = updatedMessages.findIndex((m) => m.id === targetId);
-          if (targetIndex === -1) return false;
+          if (targetIndex === -1) return null;
 
           return updatedMessages
             .slice(targetIndex + 1)
-            .some((m) => m.role === 'assistant');
+            .find((m) => m.role === 'assistant') || null;
         })();
 
-        if (hasAssistantAfterTarget) {
+        if (assistantMessageAfterTarget) {
           pollingTerminatedUserMessageIdRef.current = null;
-          clearPollingUiState({ drainPending: true });
-          window.dispatchEvent(new Event('chat_activity_updated'));
+          clearPollingUiState({ drainPending: true }, sid);
+          emitChatMessagesUpdated(sid);
+          emitChatAssistantResponseReady(sid, assistantMessageAfterTarget.id);
           return;
         }
 
         pollingRetryRef.current += 1;
         if (pollingRetryRef.current >= maxRetries) {
           pollingTerminatedUserMessageIdRef.current = targetId || latestUserMessageId;
-          clearPollingUiState({ drainPending: true });
+          clearPollingUiState({ drainPending: true }, sid);
           showToast('Quá thời gian phản hồi. Vui lòng thử lại.', 'warning');
         }
       } catch (err) {
@@ -408,7 +473,7 @@ export default function Chat() {
         pollingRetryRef.current += 1;
         if (pollingRetryRef.current >= maxRetries) {
           pollingTerminatedUserMessageIdRef.current = pollingTargetUserMessageIdRef.current;
-          clearPollingUiState({ drainPending: true });
+          clearPollingUiState({ drainPending: true }, sid);
           showToast('Không thể đồng bộ phản hồi từ máy chủ. Vui lòng thử lại.', 'error');
         }
       } finally {
@@ -424,12 +489,13 @@ export default function Chat() {
 
   // ── Handle sending message ──────────────────────────────────
   const handleSend = async (content: string, mode: 'qa' | 'generate' = 'qa', extras?: string): Promise<string | undefined> => {
-    if (activeBusySessionId) return;
+    if (activeBusySessionIdRef.current) return;
 
     let currentId = sessionId;
     let optimisticMessageId: string | null = null;
 
     // Clear thanh nhập Input ngay sau khi sendMessage
+    activeBusySessionIdRef.current = currentSessionKey;
     setComposerValue('');
     setSubmittingSessionId(currentSessionKey);
     setStatusText('Đang gửi tin nhắn...');
@@ -445,9 +511,11 @@ export default function Chat() {
         const title = content.length > 30 ? `${content.slice(0, 30)}...` : content;
         const newSession = await api.createSession(title);
         currentId = newSession.id;
-        setSubmittingSessionId(currentId);
-        navigate(`/chat/${currentId}`, { replace: true });
-        window.dispatchEvent(new Event('chat_activity_updated'));
+        if (isMountedRef.current) setSubmittingSessionId(currentId);
+        activeBusySessionIdRef.current = currentId;
+        activeSessionIdRef.current = currentId;
+        if (isMountedRef.current) navigate(`/chat/${currentId}`, { replace: true });
+        emitChatMessagesUpdated(currentId);
       }
 
       if (!currentId) {
@@ -455,6 +523,7 @@ export default function Chat() {
       }
 
       const resolvedSessionId = currentId;
+      activeSessionIdRef.current = resolvedSessionId;
 
       // Render ngay lập tức để UI phản hồi tức thì, không phụ thuộc độ trễ API
       optimisticMessageId = `temp-${Date.now()}`;
@@ -468,175 +537,80 @@ export default function Chat() {
         token_count: null,
         created_at: new Date().toISOString(),
       };
-      setMessages((prev) => [...prev, optimisticMessage]);
-      window.dispatchEvent(new Event('chat_activity_updated'));
+      if (isViewingSession(resolvedSessionId)) {
+        setMessages((prev) => [...prev, optimisticMessage]);
+      }
+      emitChatMessagesUpdated(resolvedSessionId);
 
       // Gửi tin nhắn thực tế để backend lưu và xử lý AI trong nền
       if (mode === 'qa') {
-        abortActiveStream();
-        const streamAbortController = new AbortController();
-        streamAbortRef.current = streamAbortController;
-
-        const streamingAssistantId = `streaming-assistant-${resolvedSessionId}`;
-        const streamingCreatedAt = new Date().toISOString();
-        let streamedText = '';
-        let streamDone = false;
-
-        // Avoid stale temporary stream bubbles from previous failed attempts.
-        removeStreamingAssistantMessage(streamingAssistantId);
-
-        setSendingSessionId(resolvedSessionId);
-        setStatusText('AI đang suy nghĩ...');
-
+        updateProcessingState(resolvedSessionId, 'Đang gửi tin nhắn...', optimisticMessageId);
         pollingTerminatedUserMessageIdRef.current = null;
         autoResumeAttemptedUserMessageIdRef.current = null;
 
-        try {
-          for await (const event of api.streamMessage(
-            resolvedSessionId,
-            content,
-            mode,
-            extras,
-            streamAbortController.signal,
-          )) {
-            const streamEvent = event as ChatStreamEvent;
-
-            if (streamEvent.type === 'user_message') {
-              if (activeSessionIdRef.current === resolvedSessionId) {
-                replaceOptimisticMessage(optimisticMessageId, streamEvent.message);
-              }
-              continue;
-            }
-
-            if (streamEvent.type === 'token') {
-              if (!streamEvent.delta) continue;
-
-              streamedText += streamEvent.delta;
-              setStatusText(streamedText);
-
-              if (activeSessionIdRef.current === resolvedSessionId) {
-                setMessages((prev) => {
-                  const existingIndex = prev.findIndex((m) => m.id === streamingAssistantId);
-                  if (existingIndex === -1) {
-                    return [
-                      ...prev,
-                      {
-                        id: streamingAssistantId,
-                        session_id: resolvedSessionId,
-                        role: 'assistant',
-                        content: streamedText,
-                        mode: 'qa',
-                        feedback: null,
-                        token_count: null,
-                        created_at: streamingCreatedAt,
-                      },
-                    ];
-                  }
-
-                  const updated = [...prev];
-                  updated[existingIndex] = {
-                    ...updated[existingIndex],
-                    content: streamedText,
-                  };
-                  return updated;
-                });
-              }
-              continue;
-            }
-
-            if (streamEvent.type === 'assistant_message') {
-              if (activeSessionIdRef.current === resolvedSessionId) {
-                setMessages((prev) => {
-                  const withoutTemp = prev.filter((message) => message.id !== streamingAssistantId);
-                  if (withoutTemp.some((message) => message.id === streamEvent.message.id)) {
-                    return withoutTemp;
-                  }
-                  return [...withoutTemp, streamEvent.message];
-                });
-              }
-              setStatusText('');
-              continue;
-            }
-
-            if (streamEvent.type === 'error') {
-              throw new Error(streamEvent.error || 'Streaming thất bại.');
-            }
-
-            if (streamEvent.type === 'done') {
-              streamDone = true;
-              break;
-            }
-          }
-        } catch (err: any) {
-          removeStreamingAssistantMessage(streamingAssistantId);
-          if (err?.name === 'AbortError') {
-            removeOptimisticMessage(optimisticMessageId);
-            clearSendRuntimeState();
-            return;
-          }
-          throw err;
+        const userMessage = await api.sendMessage(resolvedSessionId, combinedContent, mode, extras);
+        processingTargetUserMessageIdRef.current = userMessage.id;
+        if (isViewingSession(resolvedSessionId)) {
+          replaceOptimisticMessage(optimisticMessageId, userMessage);
         }
-
-        if (!streamDone) {
-          removeStreamingAssistantMessage(streamingAssistantId);
-          throw new Error('Luồng phản hồi bị ngắt trước khi hoàn tất.');
-        }
-        clearSendRuntimeState();
+        emitChatMessagesUpdated(resolvedSessionId);
+        updateProcessingState(resolvedSessionId, 'AI đang suy nghĩ...', userMessage.id);
+        startPolling(resolvedSessionId, userMessage.id);
+        return resolvedSessionId;
       } else {
         // Send combinedContent (includes file blocks & Thông tin bổ sung heading) so the DB
         // stores the full display content — file chips will appear correctly in history on reload.
         const userMessage = await api.sendMessage(resolvedSessionId, combinedContent, mode, extras);
-        replaceOptimisticMessage(optimisticMessageId, userMessage);
-
-        // Mode 'generate' (Drafting)
-        setStatusText('Đang thực hiện soạn thảo văn bản...');
-        try {
-          const draftRes = await api.generateDraftDocx({
-            query: content,
-            extras: extras,
-            session_id: resolvedSessionId,
-          });
-
-          if (draftRes.status === 'ok') {
-            // Add assistant response manually for drafting as it doesn't go through chat polling
-            const assistantMsg: ChatMessage = {
-              id: `draft-${Date.now()}`,
-              session_id: resolvedSessionId,
-              role: 'assistant',
-              content: `Tôi đã soạn thảo xong bản thảo "${draftRes.meta.form_type}" dựa trên yêu cầu của bạn.`,
-              feedback: null,
-              token_count: null,
-              created_at: new Date().toISOString(),
-            };
-
-            if (draftRes.document) {
-              assistantMsg.content += `\n\n[Tệp đính kèm: ${draftRes.document.title}]`;
-            }
-
-            setMessages((prev) => [...prev, assistantMsg]);
-            setStatusText('');
-          }
-        } catch (err: any) {
-          showToast(`Lỗi khi soạn thảo: ${err.message}`, 'error');
-        } finally {
-          clearSendRuntimeState();
+        if (isViewingSession(resolvedSessionId)) {
+          replaceOptimisticMessage(optimisticMessageId, userMessage);
         }
-      }
+        emitChatMessagesUpdated(resolvedSessionId);
+        updateProcessingState(resolvedSessionId, 'Đang thực hiện soạn thảo văn bản...', userMessage.id);
 
-      // Cập nhật sidebar
-      window.dispatchEvent(new Event('chat_activity_updated'));
-      return resolvedSessionId;
+        void (async () => {
+          try {
+            const draftRes = await api.generateDraftDocx({
+              query: content,
+              extras: extras,
+              session_id: resolvedSessionId,
+            });
+
+            if (draftRes.status === 'ok') {
+              const assistantMsg: ChatMessage = {
+                id: `draft-${Date.now()}`,
+                session_id: resolvedSessionId,
+                role: 'assistant',
+                content: `Tôi đã soạn thảo xong bản thảo "${draftRes.meta.form_type}" dựa trên yêu cầu của bạn.`,
+                feedback: null,
+                token_count: null,
+                created_at: new Date().toISOString(),
+              };
+
+              if (draftRes.document) {
+                assistantMsg.content += `\n\n[Tệp đính kèm: ${draftRes.document.title}]`;
+              }
+
+              if (isViewingSession(resolvedSessionId)) {
+                setMessages((prev) => [...prev, assistantMsg]);
+              }
+              emitChatMessagesUpdated(resolvedSessionId);
+              emitChatAssistantResponseReady(resolvedSessionId, assistantMsg.id);
+            }
+          } catch (err: any) {
+            showToast(`Lỗi khi soạn thảo: ${err.message}`, 'error');
+          } finally {
+            clearSendRuntimeState();
+          }
+        })();
+
+        return resolvedSessionId;
+      }
     } catch (err: any) {
       removeOptimisticMessage(optimisticMessageId);
       clearSendRuntimeState();
       if (err?.name !== 'AbortError') {
         console.error('Failed to send message:', err);
         showToast('Có lỗi xảy ra khi gửi tin nhắn.', 'system-error');
-      }
-    } finally {
-      setSubmittingSessionId(null);
-      if (!activeBusySessionId) {
-        abortActiveStream();
       }
     }
   };
@@ -662,6 +636,26 @@ export default function Chat() {
     startPolling(sessionId, lastMsg.id);
   }, [messages, isLoading, activeBusySessionId, sessionId]);
 
+  useEffect(() => {
+    if (!sessionId || isLoading) return;
+    if (submittingSessionId || pollingActiveRef.current) return;
+    if (hydratedBusySessionIdRef.current !== sessionId) return;
+    if (messages.length === 0) return;
+
+    const lastMsg = messages[messages.length - 1];
+    if (!lastMsg) return;
+
+    if (lastMsg.role === 'assistant') {
+      clearProcessingStateForSession(sessionId);
+      return;
+    }
+
+    if (lastMsg.role === 'user' && lastMsg.mode === 'qa') {
+      hydratedBusySessionIdRef.current = null;
+      startPolling(sessionId, lastMsg.id);
+    }
+  }, [messages, isLoading, sessionId, submittingSessionId]);
+
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopyStatus(id);
@@ -676,26 +670,12 @@ export default function Chat() {
     if (activeBusySessionId) return; // Prevent spam clicks
     if (messages.length > 0) {
       const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
-      if (lastUserMsg) handleSend(lastUserMsg.content);
+      if (lastUserMsg) {
+        const reloadMode = lastUserMsg.mode === 'generate' ? 'generate' : 'qa';
+        void handleSend(lastUserMsg.content, reloadMode);
+      }
     }
   };
-
-  useEffect(() => {
-    if (activeBusySessionId) {
-      const previewText = statusText || 'AI đang suy nghĩ...';
-      const normalizedPreview = previewText.length > 240
-        ? previewText.slice(-240)
-        : previewText;
-
-      writeChatProcessingState({
-        busySessionId: activeBusySessionId,
-        statusText: normalizedPreview,
-      });
-      return;
-    }
-
-    clearChatProcessingState();
-  }, [activeBusySessionId, statusText]);
 
   const handleFeedback = async (messageId: string, feedback: 'like' | 'dislike') => {
     // Optimistic UI update
@@ -719,10 +699,15 @@ export default function Chat() {
   };
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     return () => {
+      isMountedRef.current = false;
+      lookupAbortRef.current.aborted = true;
       pendingPollingRequestRef.current = null;
-      stopPolling();
-      abortActiveStream();
+      if (!readChatProcessingState().busySessionId) {
+        stopPolling();
+      }
     };
   }, []);
 
@@ -995,7 +980,6 @@ export default function Chat() {
             value={composerValue}
             onValueChange={setComposerValue}
             statusMessage={composerStatus}
-            chatSessionId={sessionId}
           />
         </div>
         {/* Subtle Ambient Background Decorations */}
@@ -1039,4 +1023,3 @@ export default function Chat() {
     </>
   );
 }
-
