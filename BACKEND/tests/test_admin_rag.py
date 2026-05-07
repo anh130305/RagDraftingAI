@@ -3,7 +3,7 @@ from unittest.mock import patch, AsyncMock
 from uuid import uuid4
 
 class TestAdminRAG:
-    @patch("app.api.v1.routes.admin.rag_client.status", new_callable=AsyncMock)
+    @patch("app.api.v1.routes.admin.rag_client.db_status", new_callable=AsyncMock)
     def test_rag_status(self, mock_status, client, admin_auth):
         mock_status.return_value = {"status": "ok"}
         resp = client.get("/api/v1/admin/rag/status", headers=admin_auth)
@@ -38,3 +38,9 @@ class TestAdminRAG:
         assert resp.status_code == 200
         assert resp.json() == {"status": "rebuilding"}
 
+    @patch("app.api.v1.routes.admin.rag_client.rebuild_bm25_status", new_callable=AsyncMock)
+    def test_rag_rebuild_bm25_status(self, mock_status, client, admin_auth):
+        mock_status.return_value = {"status": "idle", "running": False}
+        resp = client.get("/api/v1/admin/rag/rebuild-bm25/status", headers=admin_auth)
+        assert resp.status_code == 200
+        assert resp.json() == {"status": "idle", "running": False}
