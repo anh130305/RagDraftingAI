@@ -566,6 +566,8 @@ def init_retriever(
             print("init_retriever: Đã khởi tạo trước đó — bỏ qua.")
             return
         current_embed_model = _embed_model
+        current_chroma_client = _chroma_client
+        current_reranker = _reranker
 
     _dev = device or DEVICE
 
@@ -624,10 +626,14 @@ def init_retriever(
         embed_model = current_embed_model
 
     print("Connecting to ChromaDB...")
-    chroma_client = chromadb.PersistentClient(
-        path=str(CHROMA_DIR),
-        settings=Settings(anonymized_telemetry=False),
-    )
+    if current_chroma_client is None:
+        chroma_client = chromadb.PersistentClient(
+            path=str(CHROMA_DIR),
+            settings=Settings(anonymized_telemetry=False),
+        )
+    else:
+        print("init_retriever: Dùng ChromaDB client đã inject từ app_state, bỏ qua tạo client mới.")
+        chroma_client = current_chroma_client
     col_legal_all = chroma_client.get_collection("legal_chunks")
     col_forms     = chroma_client.get_collection("forms_chunks")
     col_examples  = chroma_client.get_collection("examples_chunks")
@@ -643,10 +649,14 @@ def init_retriever(
             stacklevel=2,
         )
 
-    print("Loading reranker...")
-    reranker = CrossEncoder(
-        RERANK_MODEL_NAME, device=_dev, cache_folder=str(MODEL_RERANK), max_length=512, local_files_only=True
-    )
+    if current_reranker is None:
+        print("Loading reranker...")
+        reranker = CrossEncoder(
+            RERANK_MODEL_NAME, device=_dev, cache_folder=str(MODEL_RERANK), max_length=512, local_files_only=True
+        )
+    else:
+        print("init_retriever: Dùng reranker đã load, bỏ qua load lại.")
+        reranker = current_reranker
 
     retriever_legal = HybridRetrieverV5(
         bm25_index=bm25_legal, bm25_ids=ids_legal,
@@ -676,6 +686,7 @@ def init_retriever(
         _COMPILED_FORM_PATTERNS = compiled_form_patterns
         _expand_index = expand_index
         _embed_model = embed_model
+        _chroma_client = chroma_client
         _reranker = reranker
         _col_forms = col_forms
         _retriever_legal = retriever_legal
