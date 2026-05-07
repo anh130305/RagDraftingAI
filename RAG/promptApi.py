@@ -79,17 +79,43 @@ _LLM_CONFIG = {
     "temperature" : 0.1,
 }
 
+GROQ_MODEL_17B = "meta-llama/llama-4-scout-17b-16e-instruct"
+GROQ_MODEL_70B = "llama-3.3-70b-versatile"
+DEFAULT_LLM_MODEL = GROQ_MODEL_17B
+_GROQ_MODEL_ALIASES = {
+    "17b": GROQ_MODEL_17B,
+    "llama-4-scout-17b": GROQ_MODEL_17B,
+    GROQ_MODEL_17B: GROQ_MODEL_17B,
+    "70b": GROQ_MODEL_70B,
+    "llama-3.3-70b": GROQ_MODEL_70B,
+    GROQ_MODEL_70B: GROQ_MODEL_70B,
+}
+
+
+def resolve_llm_model(model: Optional[str] = None) -> str:
+    """
+    Chuẩn hoá lựa chọn model Groq.
+    Hỗ trợ: "17b", "70b", hoặc full model id. Mặc định: 17b.
+    """
+    requested = (model or DEFAULT_LLM_MODEL).strip().strip("\"'")
+    key = requested.lower()
+    if key not in _GROQ_MODEL_ALIASES:
+        allowed = ", ".join(sorted({"17b", "70b", GROQ_MODEL_17B, GROQ_MODEL_70B}))
+        raise ValueError(f"Model không hợp lệ: {model!r}. Chọn một trong: {allowed}")
+    return _GROQ_MODEL_ALIASES[key]
+
 
 # ═══════════════════════════════════════════════════════════════
 # LLM CALLER (nội bộ)
 # ═══════════════════════════════════════════════════════════════
-def _call_llm(messages: List[Dict[str, str]]) -> Optional[str]:
+def _call_llm(messages: List[Dict[str, str]], model: Optional[str] = None) -> Optional[str]:
     """
     Gọi LLM với messages đã build. Ưu tiên Groq → OpenAI.
     Trả None nếu không có API key hoặc gọi thất bại.
     """
     groq_key   = os.environ.get("GROQ_API_KEY", "")
     openai_key = os.environ.get("OPENAI_API_KEY", "")
+    groq_model = resolve_llm_model(model)
 
     if not groq_key and not openai_key:
         logger.warning("Không có LLM API key — trả messages thô trong meta['messages'].")
@@ -101,7 +127,7 @@ def _call_llm(messages: List[Dict[str, str]]) -> Optional[str]:
             from groq import Groq
             client   = Groq(api_key=groq_key)
             response = client.chat.completions.create(
-                model       = _LLM_CONFIG["groq_model"],
+                model       = groq_model,
                 messages    = messages,
                 max_tokens  = _LLM_CONFIG["max_tokens"],
                 temperature = _LLM_CONFIG["temperature"],
@@ -134,13 +160,14 @@ def _call_llm(messages: List[Dict[str, str]]) -> Optional[str]:
     return None
 
 
-def _stream_llm(messages: List[Dict[str, str]]) -> Iterator[str]:
+def _stream_llm(messages: List[Dict[str, str]], model: Optional[str] = None) -> Iterator[str]:
     """
     Stream token từ LLM. Ưu tiên Groq → OpenAI.
     Raise RuntimeError nếu không stream được.
     """
     groq_key = os.environ.get("GROQ_API_KEY", "")
     openai_key = os.environ.get("OPENAI_API_KEY", "")
+    groq_model = resolve_llm_model(model)
 
     if not groq_key and not openai_key:
         raise RuntimeError("Không có LLM API key để stream.")
@@ -152,7 +179,7 @@ def _stream_llm(messages: List[Dict[str, str]]) -> Iterator[str]:
 
             client = Groq(api_key=groq_key)
             stream = client.chat.completions.create(
-                model=_LLM_CONFIG["groq_model"],
+                model=groq_model,
                 messages=messages,
                 max_tokens=_LLM_CONFIG["max_tokens"],
                 temperature=_LLM_CONFIG["temperature"],
@@ -277,6 +304,7 @@ class PromptAPI:
         extras            : Optional[str] = None,
         legal_type_filter : Optional[str] = None,
         call_llm          : bool = True,
+        model             : Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Soạn thảo văn bản hành chính.
@@ -330,6 +358,15 @@ class PromptAPI:
         """
         t0 = time.time()
         resolved_extras = _clean_extras(extras)
+        try:
+            selected_model = resolve_llm_model(model)
+        except ValueError as e:
+            return {
+                "status": "error",
+                "mode": "draft",
+                "error": str(e),
+                "meta": {"query": query, "extras": resolved_extras, "elapsed_s": 0},
+            }
 
         # Token validation (Limit: 5000)
         total_text = query + (resolved_extras or "")
@@ -339,7 +376,7 @@ class PromptAPI:
                 "status": "error",
                 "mode": "draft",
                 "error": f"Tổng đầu vào quá dài (~{total_tokens} tokens). Giới hạn tối đa là {USER_TOKEN_LIMIT} tokens.",
-                "meta": {"query": query, "extras": resolved_extras, "elapsed_s": 0}
+                "meta": {"query": query, "extras": resolved_extras, "llm_model": selected_model, "elapsed_s": 0}
             }
 
         try:
@@ -373,6 +410,7 @@ class PromptAPI:
                 "form_id"       : form_meta.get("form_id", ""),
                 "form_type"     : form_meta.get("form_type", ""),
                 "legal_sources" : legal_sources,
+                "llm_model"     : selected_model,
             }
 
             # 4. Gọi LLM (nếu bật)
@@ -380,7 +418,7 @@ class PromptAPI:
                 meta["messages"] = messages
                 return {"status": "prompt_only", "mode": "draft", "fields": {}, "meta": meta}
 
-            raw = _call_llm(messages)
+            raw = _call_llm(messages, model=selected_model)
             if raw is None:
                 meta["messages"] = messages
                 return {"status": "prompt_only", "mode": "draft", "fields": {}, "meta": meta}
@@ -403,7 +441,7 @@ class PromptAPI:
                 "status": "error",
                 "mode"  : "draft",
                 "error" : str(e),
-                "meta"  : {"query": query, "extras": resolved_extras, "elapsed_s": round(time.time() - t0, 2)},
+                "meta"  : {"query": query, "extras": resolved_extras, "llm_model": selected_model, "elapsed_s": round(time.time() - t0, 2)},
             }
 
     # ───────────────────────────────────────────────────────────
@@ -416,6 +454,7 @@ class PromptAPI:
         legal_top_k       : Optional[int] = None,
         legal_type_filter : Optional[str] = None,
         call_llm          : bool = True,
+        model             : Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Hỏi đáp pháp luật hành chính Việt Nam.
@@ -470,6 +509,15 @@ class PromptAPI:
         t0      = time.time()
         top_k   = legal_top_k if legal_top_k is not None else 5
         resolved_extras = _clean_extras(extras)
+        try:
+            selected_model = resolve_llm_model(model)
+        except ValueError as e:
+            return {
+                "status": "error",
+                "mode": "legal_qa",
+                "error": str(e),
+                "meta": {"query": query, "extras": resolved_extras, "elapsed_s": 0},
+            }
 
         # Token validation (Limit: 5000)
         total_text = query + (resolved_extras or "")
@@ -479,7 +527,7 @@ class PromptAPI:
                 "status": "error",
                 "mode": "legal_qa",
                 "error": f"Tổng đầu vào quá dài (~{total_tokens} tokens). Giới hạn tối đa là {USER_TOKEN_LIMIT} tokens.",
-                "meta": {"query": query, "extras": resolved_extras, "elapsed_s": 0}
+                "meta": {"query": query, "extras": resolved_extras, "llm_model": selected_model, "elapsed_s": 0}
             }
 
         try:
@@ -510,6 +558,7 @@ class PromptAPI:
                 "elapsed_s"      : round(time.time() - t0, 2),
                 "n_legal_chunks" : len(legal_chunks),
                 "legal_sources"  : legal_sources,
+                "llm_model"      : selected_model,
             }
 
             # 4. Gọi LLM (nếu bật)
@@ -517,7 +566,7 @@ class PromptAPI:
                 meta["messages"] = messages
                 return {"status": "prompt_only", "mode": "legal_qa", "answer": "", "meta": meta}
 
-            raw = _call_llm(messages)
+            raw = _call_llm(messages, model=selected_model)
             if raw is None:
                 meta["messages"] = messages
                 return {"status": "prompt_only", "mode": "legal_qa", "answer": "", "meta": meta}
@@ -536,7 +585,7 @@ class PromptAPI:
                 "status": "error",
                 "mode"  : "legal_qa",
                 "error" : str(e),
-                "meta"  : {"query": query, "extras": resolved_extras, "elapsed_s": round(time.time() - t0, 2)},
+                "meta"  : {"query": query, "extras": resolved_extras, "llm_model": selected_model, "elapsed_s": round(time.time() - t0, 2)},
             }
 
     def legal_qa_stream(
@@ -546,6 +595,7 @@ class PromptAPI:
         legal_top_k: Optional[int] = None,
         legal_type_filter: Optional[str] = None,
         call_llm: bool = True,
+        model: Optional[str] = None,
     ) -> Iterator[Dict[str, Any]]:
         """
         Stream kết quả legal_qa theo NDJSON events:
@@ -557,6 +607,15 @@ class PromptAPI:
         t0 = time.time()
         top_k = legal_top_k if legal_top_k is not None else 5
         resolved_extras = _clean_extras(extras)
+        try:
+            selected_model = resolve_llm_model(model)
+        except ValueError as e:
+            yield {
+                "type": "error",
+                "error": str(e),
+                "meta": {"query": query, "extras": resolved_extras, "elapsed_s": 0},
+            }
+            return
 
         total_text = query + (resolved_extras or "")
         total_tokens = estimate_tokens(total_text)
@@ -564,7 +623,7 @@ class PromptAPI:
             yield {
                 "type": "error",
                 "error": f"Tổng đầu vào quá dài (~{total_tokens} tokens). Giới hạn tối đa là {USER_TOKEN_LIMIT} tokens.",
-                "meta": {"query": query, "extras": resolved_extras, "elapsed_s": 0},
+                "meta": {"query": query, "extras": resolved_extras, "llm_model": selected_model, "elapsed_s": 0},
             }
             return
 
@@ -594,6 +653,7 @@ class PromptAPI:
                 "elapsed_s": round(time.time() - t0, 2),
                 "n_legal_chunks": len(legal_chunks),
                 "legal_sources": legal_sources,
+                "llm_model": selected_model,
             }
 
             yield {"type": "meta", "meta": meta}
@@ -607,7 +667,7 @@ class PromptAPI:
                 return
 
             answer_parts: List[str] = []
-            for token in _stream_llm(messages):
+            for token in _stream_llm(messages, model=selected_model):
                 if not token:
                     continue
                 answer_parts.append(token)
@@ -636,6 +696,7 @@ class PromptAPI:
                 "meta": {
                     "query": query,
                     "extras": resolved_extras,
+                    "llm_model": selected_model,
                     "elapsed_s": round(time.time() - t0, 2),
                 },
             }
@@ -740,6 +801,8 @@ if __name__ == "__main__":
     parser.add_argument("--query",  type=str, default="")
     parser.add_argument("--extras", type=str, default="",
                         help="Thông tin bổ sung tách biệt với query chính")
+    parser.add_argument("--model", type=str, default="",
+                        help='LLM model: "17b", "70b", hoặc full model id. Mặc định: 17b')
     parser.add_argument("--no-reranker", action="store_true")
     parser.add_argument("--no-llm",      action="store_true",
                         help="Chỉ build prompt, không gọi LLM")
@@ -752,46 +815,52 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     DEFAULT_QUERIES = {
-        # "draft"   : "Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý theo quy định của luật cán bộ, công chức.",
-        "draft": "Soạn thảo biên bản họp Hội đồng kỷ luật công chức.",
+        "draft"   : "Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý theo quy định của luật cán bộ, công chức.",
+        # "draft": "Soạn thảo biên bản họp Hội đồng kỷ luật công chức.",
         "legal_qa": "Trình bày điều kiện cấp giấy phép kinh doanh?",
     }
     DEFAULT_EXTRAS = {
-        # "draft"   : (
-        #     "Cơ quan ban hành: Sở Nội vụ tỉnh Bình Dương.\n"
-        #     "Viết tắt cơ quan ban hành: SNV.\n"
-        #     "Cơ quan chủ quản: UBND tỉnh Bình Dương.\n"
-        #     "Số quyết định: 45. Ngày ký: 20/01/2026.\n"
-        #     "Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai.\n"
-        #     "Đối tượng bổ nhiệm: Ông Nguyễn Văn Hùng.\n"
-        #     "Chức vụ bổ nhiệm: Trưởng phòng Hành chính - Tổng hợp.\n"
-        # ),
-        "draft": (
-            "Cơ quan ban hành/ chủ quản: Sở Y tế tỉnh Phú Thọ.\n"
-            "Viết tắt cơ quan ban hành: SYT.\n"
-            "Đối tượng bị xem xét: Ông Nguyễn Văn Hải, chức vụ Chuyên viên phòng Tổ chức cán bộ.\n"
-            "Hành vi vi phạm: Vi phạm quy định về thời giờ làm việc, tự ý nghỉ việc không có lý do chính đáng "
-            "tổng cộng 05 ngày làm việc trong một tháng, gây ảnh hưởng đến tiến độ giải quyết hồ sơ công vụ.\n"
-            "Thời gian: 14h00 ngày 20/03/2026. Địa điểm: Phòng họp Ban Giám đốc Sở Y tế Phú Thọ.\n"
-            "Hội đồng kỷ luật: \n"
-            "1. BS. Nguyễn Đức Thắng (Chủ tịch Hội đồng - Giám đốc Sở)\n"
-            "2. Bà Trần Thị Lan (Thư ký Hội đồng - Trưởng phòng TC-CB)\n"
-            "3. Và 03 thành viên khác theo Quyết định số 45/QĐ-SYT ngày 10/03/2026.\n"
-            "Diễn biến chính: Hội đồng xác định hành vi của ông Hải là tái phạm sau khi đã bị nhắc nhở bằng văn bản. "
-            "Ông Hải thừa nhận khuyết điểm và hứa sửa chữa. \n"
-            "Kết quả: Hội đồng tiến hành bỏ phiếu kín. Kết quả 05/05 phiếu (100%) thống nhất kiến nghị hình thức Cảnh cáo."
+        "draft"   : (
+            "Cơ quan ban hành: Sở Nội vụ tỉnh Bình Dương.\n"
+            "Viết tắt cơ quan ban hành: SNV.\n"
+            "Cơ quan chủ quản: UBND tỉnh Bình Dương.\n"
+            "Số quyết định: 45. Ngày ký: 20/01/2026.\n"
+            "Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai.\n"
+            "Đối tượng bổ nhiệm: Ông Nguyễn Văn Hùng.\n"
+            "Chức vụ bổ nhiệm: Trưởng phòng Hành chính - Tổng hợp.\n"
         ),
+        # "draft": (
+        #     "Cơ quan ban hành/ chủ quản: Sở Y tế tỉnh Phú Thọ.\n"
+        #     "Viết tắt cơ quan ban hành: SYT.\n"
+        #     "Đối tượng bị xem xét: Ông Nguyễn Văn Hải, chức vụ Chuyên viên phòng Tổ chức cán bộ.\n"
+        #     "Hành vi vi phạm: Vi phạm quy định về thời giờ làm việc, tự ý nghỉ việc không có lý do chính đáng "
+        #     "tổng cộng 05 ngày làm việc trong một tháng, gây ảnh hưởng đến tiến độ giải quyết hồ sơ công vụ.\n"
+        #     "Thời gian: 14h00 ngày 20/03/2026. Địa điểm: Phòng họp Ban Giám đốc Sở Y tế Phú Thọ.\n"
+        #     "Hội đồng kỷ luật: \n"
+        #     "1. BS. Nguyễn Đức Thắng (Chủ tịch Hội đồng - Giám đốc Sở)\n"
+        #     "2. Bà Trần Thị Lan (Thư ký Hội đồng - Trưởng phòng TC-CB)\n"
+        #     "3. Và 03 thành viên khác theo Quyết định số 45/QĐ-SYT ngày 10/03/2026.\n"
+        #     "Diễn biến chính: Hội đồng xác định hành vi của ông Hải là tái phạm sau khi đã bị nhắc nhở bằng văn bản. "
+        #     "Ông Hải thừa nhận khuyết điểm và hứa sửa chữa. \n"
+        #     "Kết quả: Hội đồng tiến hành bỏ phiếu kín. Kết quả 05/05 phiếu (100%) thống nhất kiến nghị hình thức Cảnh cáo."
+        # ),
         "legal_qa": "",
     }
 
     query  = args.query  or DEFAULT_QUERIES[args.mode]
     extras = args.extras or DEFAULT_EXTRAS[args.mode] or None
+    try:
+        selected_model = resolve_llm_model(args.model)
+    except ValueError as e:
+        print(f"[ERROR] {e}", file=sys.stderr)
+        sys.exit(2)
 
     print(f"\n{'='*64}")
-    print(f"Mode  : {args.mode}")
-    print(f"Query : {query}")
+    print(f"Mode     : {args.mode}")
+    print(f"LLM model: {selected_model}")
+    print(f"Query    : {query}")
     if extras:
-        print(f"Extras: {extras}")
+        print(f"Extras   : {extras}")
     print(f"{'='*64}\n")
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
@@ -800,7 +869,12 @@ if __name__ == "__main__":
 
     # ── DRAFT mode ─────────────────────────────────────────────
     if args.mode == "draft":
-        result = api.draft(query, extras=extras, call_llm=not args.no_llm)
+        result = api.draft(
+            query,
+            extras=extras,
+            call_llm=not args.no_llm,
+            model=selected_model,
+        )
 
         if result["status"] == "ok":
             print("[OK] Fields trả về:")
@@ -841,13 +915,19 @@ if __name__ == "__main__":
         else:
             print(f"[ERROR] {result['error']}")
 
+        print(f"\nLLM model used: {result.get('meta', {}).get('llm_model', selected_model)}")
         print(
             f"\nMeta: {json.dumps({k: v for k, v in result['meta'].items() if k not in ('messages', 'llm_raw')}, ensure_ascii=False, indent=2)}"
         )
 
     # ── LEGAL QA mode ──────────────────────────────────────────
     else:
-        result = api.legal_qa(query, extras=extras, call_llm=not args.no_llm)
+        result = api.legal_qa(
+            query,
+            extras=extras,
+            call_llm=not args.no_llm,
+            model=selected_model,
+        )
 
         if result["status"] == "ok":
             print("[OK] Câu trả lời:\n")
@@ -857,6 +937,7 @@ if __name__ == "__main__":
         else:
             print(f"[ERROR] {result['error']}")
 
+        print(f"\nLLM model used: {result.get('meta', {}).get('llm_model', selected_model)}")
         print(
             f"\nMeta: {json.dumps({k: v for k, v in result['meta'].items() if k != 'messages'}, ensure_ascii=False, indent=2)}"
         )

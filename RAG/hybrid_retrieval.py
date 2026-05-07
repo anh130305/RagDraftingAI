@@ -544,6 +544,7 @@ _retriever_examples: Optional[HybridRetrieverV5] = None
 _col_forms:          Optional[object]             = None
 _reranker:           Optional[CrossEncoder]       = None
 _embed_model:        Optional[SentenceTransformer] = None
+_chroma_client:      Optional[chromadb.PersistentClient] = None
 _expand_index:       Dict[Tuple[str, str], List[Tuple[int, str]]] = {}
 _retriever_state_lock = RLock()
 
@@ -557,7 +558,7 @@ def init_retriever(
     Gọi 1 lần khi start application. Idempotent.
     """
     global _retriever_legal, _retriever_forms, _retriever_examples
-    global _col_forms, _reranker, _embed_model, _expand_index
+    global _col_forms, _reranker, _embed_model, _chroma_client, _expand_index
     global _COMPILED_FORM_PATTERNS
 
     with _retriever_state_lock:
