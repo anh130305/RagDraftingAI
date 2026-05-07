@@ -23,10 +23,12 @@ _db_mutation_lock = asyncio.Lock()
 _bm25_rebuild_task = None
 _bm25_rebuild_state = {
     "running": False,
+    "pending": False,
     "started_at": None,
     "finished_at": None,
     "error": None,
     "result": None,
+    "runs_completed": 0,
 }
 
 
@@ -43,7 +45,7 @@ async def startup_event():
       3. PromptAPI()          → wrap retriever (không load model lại)
       4. get_updater()        → DocumentUpdater nhận inject model + client từ bước 1
     """
-    global _prompt_api, _updater
+    global _prompt_api, _updater, api
 
     logger.info("=" * 60)
     logger.info("RAG Service: Khởi động...")
@@ -70,6 +72,7 @@ async def startup_event():
             examples_top_k    = 1,
             force_rebuild_bm25= False,
         )
+        api = _prompt_api
     else:
         logger.info(f"RAG Service running in '{RAG_SERVICE_MODE}' mode (PromptAPI disabled).")
 
@@ -185,16 +188,8 @@ async def db_check_doc(so_hieu: str, collection_key: str = "legal"):
     return _get_updater().check_doc(so_hieu, collection_key=collection_key)
 
 
-def _ensure_db_write_available() -> None:
-    if _bm25_rebuild_state.get("running"):
-        raise HTTPException(status_code=409, detail="BM25 rebuild is in progress. Please retry later.")
-    if _db_mutation_lock.locked():
-        raise HTTPException(status_code=409, detail="Another DB mutation is in progress. Please retry later.")
-
-
 @app.post("/api/v1/db/ingest")
 async def db_ingest(request: DBIngestRequest):
-    _ensure_db_write_available()
     async with _db_mutation_lock:
         return await asyncio.to_thread(
             _get_updater().ingest,
@@ -212,7 +207,6 @@ async def db_ingest(request: DBIngestRequest):
 
 @app.post("/api/v1/db/delete_doc")
 async def db_delete_doc(request: DBDeleteDocRequest):
-    _ensure_db_write_available()
     async with _db_mutation_lock:
         return await asyncio.to_thread(
             _get_updater().delete_doc,
@@ -224,7 +218,6 @@ async def db_delete_doc(request: DBDeleteDocRequest):
 
 @app.post("/api/v1/db/delete_article")
 async def db_delete_article(request: DBDeleteArticleRequest):
-    _ensure_db_write_available()
     async with _db_mutation_lock:
         return await asyncio.to_thread(
             _get_updater().delete_article,
@@ -237,7 +230,6 @@ async def db_delete_article(request: DBDeleteArticleRequest):
 
 @app.post("/api/v1/db/batch_delete")
 async def db_batch_delete(request: DBBatchDeleteRequest):
-    _ensure_db_write_available()
     async with _db_mutation_lock:
         result = await asyncio.to_thread(
             _get_updater().batch_delete,
@@ -251,29 +243,51 @@ async def db_batch_delete(request: DBBatchDeleteRequest):
 async def _run_bm25_rebuild() -> None:
     global _bm25_rebuild_state, _bm25_rebuild_task
     try:
-        _bm25_rebuild_state.update({
-            "running": True,
-            "started_at": time.time(),
-            "finished_at": None,
-            "error": None,
-            "result": None,
-        })
-        async with _db_mutation_lock:
-            result = await asyncio.to_thread(_get_updater().rebuild_bm25)
-        _bm25_rebuild_state.update({
-            "running": False,
-            "finished_at": time.time(),
-            "result": result,
-        })
-    except Exception as exc:
-        logger.exception("BM25 rebuild failed")
-        _bm25_rebuild_state.update({
-            "running": False,
-            "finished_at": time.time(),
-            "error": str(exc),
-        })
+        while True:
+            _bm25_rebuild_state.update({
+                "running": True,
+                "started_at": time.time(),
+                "finished_at": None,
+                "error": None,
+                "result": None,
+            })
+            try:
+                async with _db_mutation_lock:
+                    result = await asyncio.to_thread(_get_updater().rebuild_bm25)
+                _bm25_rebuild_state.update({
+                    "finished_at": time.time(),
+                    "result": result,
+                    "runs_completed": _bm25_rebuild_state.get("runs_completed", 0) + 1,
+                })
+            except Exception as exc:
+                logger.exception("BM25 rebuild failed")
+                _bm25_rebuild_state.update({
+                    "finished_at": time.time(),
+                    "error": str(exc),
+                })
+
+            if not _bm25_rebuild_state.get("pending"):
+                break
+
+            logger.info("BM25 rebuild was requested while running; starting one queued rebuild.")
+            _bm25_rebuild_state["pending"] = False
     finally:
+        _bm25_rebuild_state.update({
+            "running": False,
+            "finished_at": time.time(),
+        })
         _bm25_rebuild_task = None
+
+
+def _bm25_rebuild_status() -> Dict[str, Any]:
+    state = dict(_bm25_rebuild_state)
+    state["status"] = (
+        "running" if state.get("running")
+        else "queued" if state.get("pending")
+        else "failed" if state.get("error")
+        else "idle"
+    )
+    return state
 
 
 @app.post("/api/v1/db/rebuild_bm25")
@@ -285,12 +299,20 @@ async def db_rebuild_bm25():
         return {
             "status": "running",
             "message": "BM25 rebuild started in background.",
+            "state": _bm25_rebuild_status(),
         }
 
+    _bm25_rebuild_state["pending"] = True
     return {
-        "status": "running",
-        "message": "BM25 rebuild is already running.",
+        "status": "queued",
+        "message": "BM25 rebuild is already running; one follow-up rebuild is queued.",
+        "state": _bm25_rebuild_status(),
     }
+
+
+@app.get("/api/v1/db/rebuild_bm25/status")
+async def db_rebuild_bm25_status():
+    return _bm25_rebuild_status()
 
 
 @app.post("/api/v1/rag/draft")

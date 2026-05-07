@@ -524,10 +524,27 @@ async def rag_rebuild_bm25(
         raise HTTPException(status_code=503, detail=f"RAG service unavailable: {e}")
 
 
+@router.get("/rag/rebuild-bm25/status")
+async def rag_rebuild_bm25_status(
+    admin: User = Depends(require_admin),
+):
+    """Proxy: Get BM25 rebuild job state."""
+    try:
+        return await rag_client.rebuild_bm25_status()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail=f"RAG service unavailable: {e}")
+
+
 class RAGBatchDeleteRequest(BaseModel):
     so_hieu_list: List[str]
     dry_run: bool = False
     collection_key: str = "legal"
+
+
+class RAGDocumentBatchRequest(BaseModel):
+    document_ids: List[UUID]
 
 
 @router.post("/rag/batch-delete")
@@ -702,6 +719,118 @@ async def admin_ingest_doc(
     }
 
 
+def _document_so_hieu(doc) -> str:
+    return doc.title.rsplit('.', 1)[0] if '.' in doc.title else doc.title
+
+
+async def _extract_document_text_for_rag(doc) -> tuple[str, int]:
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.get(doc.file_path)
+        resp.raise_for_status()
+        file_bytes = resp.content
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Không thể tải file từ Cloudinary: {e}")
+
+    try:
+        from app.api.v1.routes.documents import _extract_text_from_bytes
+        ocr_text = await run_in_threadpool(lambda: _extract_text_from_bytes(
+            file_bytes,
+            filename=doc.title or "",
+            content_type=doc.file_type or "",
+        ))
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Lỗi trích xuất văn bản: {e}")
+
+    if not ocr_text or len(ocr_text.strip()) < 10:
+        raise HTTPException(
+            status_code=422,
+            detail="Không trích xuất được nội dung văn bản đủ dài. File có thể bị hỏng hoặc trống."
+        )
+
+    return ocr_text, len(ocr_text)
+
+
+def _batch_item(document_id, title: str, status: str, **extra):
+    return {
+        "document_id": str(document_id),
+        "title": title,
+        "status": status,
+        **extra,
+    }
+
+
+@router.post("/rag/ingest-docs")
+async def admin_ingest_docs_batch(
+    request: Request,
+    payload: RAGDocumentBatchRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Batch ingest multiple documents and trigger BM25 rebuild once."""
+    from app.models.document import Document
+
+    items = []
+    changed = False
+
+    for document_id in payload.document_ids:
+        doc = db.query(Document).filter(Document.id == document_id).first()
+        if not doc:
+            items.append(_batch_item(document_id, "", "error", error="Tài liệu không tồn tại"))
+            continue
+        if doc.rag_ingested:
+            items.append(_batch_item(document_id, doc.title, "skipped", reason="already_ingested"))
+            continue
+
+        try:
+            ocr_text, ocr_chars = await _extract_document_text_for_rag(doc)
+            so_hieu = _document_so_hieu(doc)
+            result = await rag_client.ingest(
+                ocr_text=ocr_text,
+                manual_so_hieu=so_hieu,
+                force_if_exists=True,
+            )
+
+            doc.rag_ingested = True
+            if result.get("chunks_created"):
+                doc.chunk_count = result["chunks_created"]
+            doc.status = "ready"
+            db.commit()
+            changed = True
+
+            items.append(_batch_item(
+                document_id,
+                doc.title,
+                "ok",
+                so_hieu=so_hieu,
+                ocr_chars=ocr_chars,
+                chunks_created=result.get("chunks_created", 0),
+            ))
+        except Exception as e:
+            db.rollback()
+            items.append(_batch_item(document_id, doc.title, "error", error=str(e)))
+
+    bm25_rebuild = "skipped"
+    if changed:
+        try:
+            await rag_client.rebuild_bm25()
+            bm25_rebuild = "started"
+        except Exception as e:
+            bm25_rebuild = f"failed: {e}"
+
+    background_tasks.add_task(
+        audit_service.log_action,
+        user_id=admin.id,
+        action=AuditAction.rag_ingest,
+        resource_type="document_batch",
+        ip_address=request.client.host if request.client else None,
+        detail={"batch_ingest": True, "count": len(payload.document_ids), "bm25_rebuild": bm25_rebuild},
+    )
+
+    return {"status": "ok", "items": items, "bm25_rebuild": bm25_rebuild}
+
+
 @router.post("/rag/uningest-doc/{document_id}")
 async def admin_uningest_doc(
     request: Request,
@@ -753,6 +882,72 @@ async def admin_uningest_doc(
     return {"status": "ok", "document_id": str(document_id), **result}
 
 
+@router.post("/rag/uningest-docs")
+async def admin_uningest_docs_batch(
+    request: Request,
+    payload: RAGDocumentBatchRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Remove multiple documents from ChromaDB and trigger BM25 rebuild once."""
+    from app.models.document import Document
+
+    items = []
+    changed = False
+
+    for document_id in payload.document_ids:
+        doc = db.query(Document).filter(Document.id == document_id).first()
+        if not doc:
+            items.append(_batch_item(document_id, "", "error", error="Tài liệu không tồn tại"))
+            continue
+        if not doc.rag_ingested:
+            items.append(_batch_item(document_id, doc.title, "skipped", reason="not_ingested"))
+            continue
+
+        so_hieu = _document_so_hieu(doc)
+        try:
+            result = await rag_client.delete_doc(so_hieu)
+            if result.get("protected"):
+                items.append(_batch_item(document_id, doc.title, "error", error=f'"{so_hieu}" nằm trong danh sách bảo vệ.'))
+                continue
+
+            doc.rag_ingested = False
+            doc.chunk_count = 0
+            doc.status = "pending"
+            db.commit()
+            changed = True
+            items.append(_batch_item(
+                document_id,
+                doc.title,
+                "ok",
+                so_hieu=so_hieu,
+                deleted_count=result.get("deleted_count", 0),
+            ))
+        except Exception as e:
+            db.rollback()
+            items.append(_batch_item(document_id, doc.title, "error", error=str(e)))
+
+    bm25_rebuild = "skipped"
+    if changed:
+        try:
+            await rag_client.rebuild_bm25()
+            bm25_rebuild = "started"
+        except Exception as e:
+            bm25_rebuild = f"failed: {e}"
+
+    background_tasks.add_task(
+        audit_service.log_action,
+        user_id=admin.id,
+        action=AuditAction.rag_delete,
+        resource_type="document_batch",
+        ip_address=request.client.host if request.client else None,
+        detail={"batch_uningest": True, "count": len(payload.document_ids), "bm25_rebuild": bm25_rebuild},
+    )
+
+    return {"status": "ok", "items": items, "bm25_rebuild": bm25_rebuild}
+
+
 @router.delete("/rag/hard-delete-doc/{document_id}")
 async def admin_hard_delete_doc(
     request: Request,
@@ -801,3 +996,76 @@ async def admin_hard_delete_doc(
     )
 
     return {"status": "ok", "document_id": str(document_id), "errors": errors}
+
+
+@router.post("/rag/hard-delete-docs")
+async def admin_hard_delete_docs_batch(
+    request: Request,
+    payload: RAGDocumentBatchRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Hard delete multiple docs; remove ChromaDB chunks once per doc and rebuild BM25 once."""
+    from app.models.document import Document
+
+    items = []
+    rag_changed = False
+
+    for document_id in payload.document_ids:
+        doc = db.query(Document).filter(Document.id == document_id).first()
+        if not doc:
+            items.append(_batch_item(document_id, "", "error", error="Tài liệu không tồn tại"))
+            continue
+
+        so_hieu = _document_so_hieu(doc)
+        errors = []
+
+        if doc.rag_ingested:
+            try:
+                await rag_client.delete_doc(so_hieu)
+                rag_changed = True
+            except Exception as e:
+                errors.append(f"ChromaDB: {e}")
+
+        if doc.cloudinary_public_id:
+            try:
+                from app.services import cloudinary_service
+                cloudinary_service.delete_from_cloudinary(doc.cloudinary_public_id)
+            except Exception as e:
+                errors.append(f"Cloudinary: {e}")
+
+        title = doc.title
+        try:
+            db.delete(doc)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            errors.append(f"PostgreSQL: {e}")
+
+        items.append(_batch_item(
+            document_id,
+            title,
+            "error" if errors else "ok",
+            so_hieu=so_hieu,
+            errors=errors,
+        ))
+
+    bm25_rebuild = "skipped"
+    if rag_changed:
+        try:
+            await rag_client.rebuild_bm25()
+            bm25_rebuild = "started"
+        except Exception as e:
+            bm25_rebuild = f"failed: {e}"
+
+    background_tasks.add_task(
+        audit_service.log_action,
+        user_id=admin.id,
+        action=AuditAction.rag_delete,
+        resource_type="document_batch",
+        ip_address=request.client.host if request.client else None,
+        detail={"batch_hard_delete": True, "count": len(payload.document_ids), "bm25_rebuild": bm25_rebuild},
+    )
+
+    return {"status": "ok", "items": items, "bm25_rebuild": bm25_rebuild}

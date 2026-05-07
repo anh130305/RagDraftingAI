@@ -13,6 +13,8 @@ interface RAGPanelProps {
   syncing?: boolean;
 }
 
+const RAG_SYNC_POLL_INTERVAL_MS = 5000;
+
 /* ────────────── Main Component ────────────── */
 export default function RAGPanel({ refreshSignal = 0, syncing = false }: RAGPanelProps) {
   // ── ChromaDB Status ──
@@ -45,7 +47,7 @@ export default function RAGPanel({ refreshSignal = 0, syncing = false }: RAGPane
 
     const timer = setInterval(() => {
       setRetryTick(tick => tick + 1);
-    }, 2000);
+    }, RAG_SYNC_POLL_INTERVAL_MS);
 
     return () => clearInterval(timer);
   }, [syncing]);

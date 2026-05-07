@@ -35,6 +35,7 @@ import pickle
 import unicodedata
 import warnings
 from pathlib import Path
+from threading import RLock
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -544,6 +545,7 @@ _col_forms:          Optional[object]             = None
 _reranker:           Optional[CrossEncoder]       = None
 _embed_model:        Optional[SentenceTransformer] = None
 _expand_index:       Dict[Tuple[str, str], List[Tuple[int, str]]] = {}
+_retriever_state_lock = RLock()
 
 
 def init_retriever(
@@ -558,14 +560,16 @@ def init_retriever(
     global _col_forms, _reranker, _embed_model, _expand_index
     global _COMPILED_FORM_PATTERNS
 
-    if _retriever_legal is not None and not force_rebuild_bm25:
-        print("init_retriever: Đã khởi tạo trước đó — bỏ qua.")
-        return
+    with _retriever_state_lock:
+        if _retriever_legal is not None and not force_rebuild_bm25:
+            print("init_retriever: Đã khởi tạo trước đó — bỏ qua.")
+            return
+        current_embed_model = _embed_model
 
     _dev = device or DEVICE
 
     # Compile regex patterns (KHÔNG gồm "quyet dinh" — xử lý động)
-    _COMPILED_FORM_PATTERNS = [
+    compiled_form_patterns = [
         (re.compile(pat, re.IGNORECASE), fids)
         for pat, fids in FORM_KEYWORD_MAP
     ]
@@ -599,23 +603,24 @@ def init_retriever(
     examples_meta = df_examples.set_index("chunk_id").to_dict(orient="index")
 
     print("Building expand index...")
-    _expand_index.clear()
+    expand_index: Dict[Tuple[str, str], List[Tuple[int, str]]] = {}
     for row in df_legal.itertuples(index=False):
         key = (row.doc_id, row.article)
-        if key not in _expand_index:
-            _expand_index[key] = []
-        _expand_index[key].append((row.chunk_index, row.text))
-    for key in _expand_index:
-        _expand_index[key].sort(key=lambda x: x[0])
-    print(f"  {len(_expand_index):,} (doc_id, article) pairs")
+        if key not in expand_index:
+            expand_index[key] = []
+        expand_index[key].append((row.chunk_index, row.text))
+    for key in expand_index:
+        expand_index[key].sort(key=lambda x: x[0])
+    print(f"  {len(expand_index):,} (doc_id, article) pairs")
 
-    if _embed_model is None:
+    if current_embed_model is None:
         print(f"Loading embedding model ({_dev})...")
-        _embed_model = SentenceTransformer(
+        embed_model = SentenceTransformer(
             EMBED_MODEL_NAME, device=_dev, cache_folder=str(MODEL_EMBED), local_files_only=True
         )
     else:
         print("init_retriever: Dùng embed model đã inject từ app_state, bỏ qua load.")
+        embed_model = current_embed_model
 
     print("Connecting to ChromaDB...")
     chroma_client = chromadb.PersistentClient(
@@ -623,9 +628,9 @@ def init_retriever(
         settings=Settings(anonymized_telemetry=False),
     )
     col_legal_all = chroma_client.get_collection("legal_chunks")
-    _col_forms    = chroma_client.get_collection("forms_chunks")
+    col_forms     = chroma_client.get_collection("forms_chunks")
     col_examples  = chroma_client.get_collection("examples_chunks")
-    print(f"  legal={col_legal_all.count():,}  forms={_col_forms.count()}  examples={col_examples.count()}")
+    print(f"  legal={col_legal_all.count():,}  forms={col_forms.count()}  examples={col_examples.count()}")
 
     _sample = col_legal_all.get(limit=1, include=["metadatas"])
     if _sample["metadatas"] and "article" not in _sample["metadatas"][0]:
@@ -638,33 +643,44 @@ def init_retriever(
         )
 
     print("Loading reranker...")
-    _reranker = CrossEncoder(
+    reranker = CrossEncoder(
         RERANK_MODEL_NAME, device=_dev, cache_folder=str(MODEL_RERANK), max_length=512, local_files_only=True
     )
 
-    _retriever_legal = HybridRetrieverV5(
+    retriever_legal = HybridRetrieverV5(
         bm25_index=bm25_legal, bm25_ids=ids_legal,
         bm25_to_chroma=bm25_to_chroma_legal,
         chroma_col=col_legal_all, meta_lookup=legal_meta,
-        embed_model=_embed_model, reranker=_reranker,
+        embed_model=embed_model, reranker=reranker,
         instruction=INSTRUCTIONS["legal"], collection_name="legal",
     )
-    _retriever_forms = HybridRetrieverV5(
+    retriever_forms = HybridRetrieverV5(
         bm25_index=bm25_forms, bm25_ids=ids_forms,
         bm25_to_chroma=bm25_to_chroma_forms,
-        chroma_col=_col_forms, meta_lookup=forms_meta,
-        embed_model=_embed_model, reranker=_reranker,
+        chroma_col=col_forms, meta_lookup=forms_meta,
+        embed_model=embed_model, reranker=reranker,
         instruction=INSTRUCTIONS["forms"], collection_name="forms",
         final_top_k=1, max_chunks_per_doc=1,
     )
-    _retriever_examples = HybridRetrieverV5(
+    retriever_examples = HybridRetrieverV5(
         bm25_index=bm25_examples, bm25_ids=ids_examples,
         bm25_to_chroma=bm25_to_chroma_examples,
         chroma_col=col_examples, meta_lookup=examples_meta,
-        embed_model=_embed_model, reranker=_reranker,
+        embed_model=embed_model, reranker=reranker,
         instruction=INSTRUCTIONS["examples"], collection_name="examples",
         final_top_k=1, max_chunks_per_doc=1,
     )
+
+    with _retriever_state_lock:
+        _COMPILED_FORM_PATTERNS = compiled_form_patterns
+        _expand_index = expand_index
+        _embed_model = embed_model
+        _reranker = reranker
+        _col_forms = col_forms
+        _retriever_legal = retriever_legal
+        _retriever_forms = retriever_forms
+        _retriever_examples = retriever_examples
+
     print("✅ Retriever v5 initialized.")
 
 
@@ -759,24 +775,25 @@ def retrieve_legal(
         use_reranker: Dùng CrossEncoder (chậm hơn, chính xác hơn)
         expand      : Ghép full điều luật từ parquet (recommended: True)
     """
-    _check_init()
-    _retriever_legal.final_top_k = top_k
-    results = _retriever_legal.retrieve(
-        query, type_filter=type_filter, use_reranker=use_reranker
-    )
-    if not expand:
-        return results
-
-    for r in results:
-        expanded_text, n_used = _expand_legal_chunk(
-            metadata=r["metadata"],
-            fallback_text=r["text"],
+    with _retriever_state_lock:
+        _check_init()
+        _retriever_legal.final_top_k = top_k
+        results = _retriever_legal.retrieve(
+            query, type_filter=type_filter, use_reranker=use_reranker
         )
-        r["text"]              = expanded_text
-        r["n_chunks_expanded"] = n_used
-        r["expanded_words"]    = len(expanded_text.split())
+        if not expand:
+            return results
 
-    return results
+        for r in results:
+            expanded_text, n_used = _expand_legal_chunk(
+                metadata=r["metadata"],
+                fallback_text=r["text"],
+            )
+            r["text"]              = expanded_text
+            r["n_chunks_expanded"] = n_used
+            r["expanded_words"]    = len(expanded_text.split())
+
+        return results
 
 
 def retrieve_forms(
@@ -790,70 +807,71 @@ def retrieve_forms(
     FIX 2: 1-candidate path dùng query() thay vì get() (semantic-relevant).
     FIX 5: detect_form_candidates() giờ phân biệt Form_02/Form_03 cho quyết định.
     """
-    _check_init()
-    form_candidates = detect_form_candidates(query)
+    with _retriever_state_lock:
+        _check_init()
+        form_candidates = detect_form_candidates(query)
 
-    if not form_candidates:
-        return _retriever_forms.retrieve(query, use_reranker=use_reranker)
+        if not form_candidates:
+            return _retriever_forms.retrieve(query, use_reranker=use_reranker)
 
-    if len(form_candidates) == 1:
-        # FIX 2: dense query để lấy chunk semantically relevant nhất
-        q_vec = _embed_model.encode(
-            [INSTRUCTIONS["forms"] + query],
-            normalize_embeddings=True,
-            convert_to_numpy=True,
-            show_progress_bar=False,
-        )[0]
-        res = _col_forms.query(
-            query_embeddings=[q_vec.tolist()],
-            n_results=1,
-            where={"form_id": form_candidates[0]},
-            include=["documents", "metadatas", "distances"],
+        if len(form_candidates) == 1:
+            # dense query để lấy chunk semantically relevant nhất
+            q_vec = _embed_model.encode(
+                [INSTRUCTIONS["forms"] + query],
+                normalize_embeddings=True,
+                convert_to_numpy=True,
+                show_progress_bar=False,
+            )[0]
+            res = _col_forms.query(
+                query_embeddings=[q_vec.tolist()],
+                n_results=1,
+                where={"form_id": form_candidates[0]},
+                include=["documents", "metadatas", "distances"],
+            )
+            if res["ids"] and res["ids"][0]:
+                return [{
+                    "chunk_id"    : res["ids"][0][0],
+                    "text"        : res["documents"][0][0],
+                    "metadata"    : res["metadatas"][0][0],
+                    "dense_dist"  : round(float(res["distances"][0][0]), 4),
+                    "rerank_score": 1.0,
+                    "source"      : "keyword_match",
+                    # FIX 5: ghi lại form được chọn để debug
+                    "detected_form": form_candidates[0],
+                }]
+            # form_id không tồn tại trong DB → fallback dense
+            return _retriever_forms.retrieve(query, use_reranker=use_reranker)
+
+        # Nhiều candidates (fallback Form_02 + Form_03) → fetch rồi rerank
+        res = _col_forms.get(
+            where={"form_id": {"$in": form_candidates}},
+            include=["documents", "metadatas"],
         )
-        if res["ids"] and res["ids"][0]:
-            return [{
-                "chunk_id"    : res["ids"][0][0],
-                "text"        : res["documents"][0][0],
-                "metadata"    : res["metadatas"][0][0],
-                "dense_dist"  : round(float(res["distances"][0][0]), 4),
-                "rerank_score": 1.0,
-                "source"      : "keyword_match",
-                # FIX 5: ghi lại form được chọn để debug
-                "detected_form": form_candidates[0],
-            }]
-        # form_id không tồn tại trong DB → fallback dense
-        return _retriever_forms.retrieve(query, use_reranker=use_reranker)
+        if not res["ids"]:
+            return _retriever_forms.retrieve(query, use_reranker=use_reranker)
 
-    # Nhiều candidates (fallback Form_02 + Form_03) → fetch rồi rerank
-    res = _col_forms.get(
-        where={"form_id": {"$in": form_candidates}},
-        include=["documents", "metadatas"],
-    )
-    if not res["ids"]:
-        return _retriever_forms.retrieve(query, use_reranker=use_reranker)
+        candidates_list = [
+            {
+                "chunk_id": cid,
+                "text": doc,
+                "metadata": meta,
+                "source": "keyword_match",
+                "detected_form": None,   # reranker sẽ chọn
+            }
+            for cid, doc, meta in zip(res["ids"], res["documents"], res["metadatas"])
+        ]
+        if use_reranker and len(candidates_list) > 1:
+            scores = _reranker.predict([(query, c["text"]) for c in candidates_list])
+            for c, s in zip(candidates_list, scores):
+                c["rerank_score"] = float(s)
+            candidates_list.sort(key=lambda x: x["rerank_score"], reverse=True)
+        else:
+            for c in candidates_list:
+                c["rerank_score"] = 1.0
 
-    candidates_list = [
-        {
-            "chunk_id": cid,
-            "text": doc,
-            "metadata": meta,
-            "source": "keyword_match",
-            "detected_form": None,   # reranker sẽ chọn
-        }
-        for cid, doc, meta in zip(res["ids"], res["documents"], res["metadatas"])
-    ]
-    if use_reranker and len(candidates_list) > 1:
-        scores = _reranker.predict([(query, c["text"]) for c in candidates_list])
-        for c, s in zip(candidates_list, scores):
-            c["rerank_score"] = float(s)
-        candidates_list.sort(key=lambda x: x["rerank_score"], reverse=True)
-    else:
-        for c in candidates_list:
-            c["rerank_score"] = 1.0
-
-    best = candidates_list[0]
-    best["detected_form"] = best["metadata"].get("form_id")
-    return [best]
+        best = candidates_list[0]
+        best["detected_form"] = best["metadata"].get("form_id")
+        return [best]
 
 
 def retrieve_examples(
@@ -869,20 +887,21 @@ def retrieve_examples(
     → examples được lấy đúng loại quyết định, không trộn lẫn.
     Ưu tiên: form_id truyền thẳng > keyword detect > fallback dense.
     """
-    _check_init()
-    _retriever_examples.final_top_k = top_k
+    with _retriever_state_lock:
+        _check_init()
+        _retriever_examples.final_top_k = top_k
 
-    if not form_id:
-        _candidates = detect_form_candidates(query)
-        # Nếu detect trả về 2 form (fallback) → chỉ lấy form_id đầu tiên
-        # để examples không quá loãng; reranker sẽ chọn đúng form
-        form_id = _candidates[0] if _candidates else None
+        if not form_id:
+            _candidates = detect_form_candidates(query)
+            # Nếu detect trả về 2 form (fallback) → chỉ lấy form_id đầu tiên
+            # để examples không quá loãng; reranker sẽ chọn đúng form
+            form_id = _candidates[0] if _candidates else None
 
-    return _retriever_examples.retrieve(
-        query,
-        form_candidates=[form_id] if form_id else None,
-        use_reranker=use_reranker,
-    )
+        return _retriever_examples.retrieve(
+            query,
+            form_candidates=[form_id] if form_id else None,
+            use_reranker=use_reranker,
+        )
 
 
 def retrieve_all(
@@ -905,30 +924,31 @@ def retrieve_all(
             "examples": top-k ví dụ cùng loại form (đúng Form_02/Form_03),
         }
     """
-    _check_init()
-    form_results = retrieve_forms(query)
+    with _retriever_state_lock:
+        _check_init()
+        form_results = retrieve_forms(query)
 
-    # FIX 5: ưu tiên detected_form (đã phân biệt cá biệt/gián tiếp)
-    # nếu không có thì fallback về form_id trong metadata
-    detected_form_id = None
-    if form_results:
-        detected_form_id = (
-            form_results[0].get("detected_form")
-            or form_results[0]["metadata"].get("form_id")
-        )
+        # ưu tiên detected_form (đã phân biệt cá biệt/gián tiếp)
+        # nếu không có thì fallback về form_id trong metadata
+        detected_form_id = None
+        if form_results:
+            detected_form_id = (
+                form_results[0].get("detected_form")
+                or form_results[0]["metadata"].get("form_id")
+            )
 
-    return {
-        "legal"   : retrieve_legal(
-            query, top_k=legal_top_k,
-            type_filter=legal_type_filter,
-            expand=expand_legal,
-        ),
-        "form"    : form_results,
-        "examples": retrieve_examples(
-            query, top_k=examples_top_k,
-            form_id=detected_form_id,
-        ),
-    }
+        return {
+            "legal"   : retrieve_legal(
+                query, top_k=legal_top_k,
+                type_filter=legal_type_filter,
+                expand=expand_legal,
+            ),
+            "form"    : form_results,
+            "examples": retrieve_examples(
+                query, top_k=examples_top_k,
+                form_id=detected_form_id,
+            ),
+        }
 
 
 # ============================================================

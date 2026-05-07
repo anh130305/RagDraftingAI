@@ -1,5 +1,6 @@
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-const DEFAULT_TIMEOUT = 60000; // 15 seconds
+const DEFAULT_TIMEOUT = 60000;
+const RAG_STATUS_TIMEOUT = 120000;
 const ABSOLUTE_HTTP_URL_REGEX = /^https?:\/\//i;
 
 export type DocumentPreviewKind = 'pdf' | 'word' | 'image' | 'other';
@@ -999,8 +1000,37 @@ export interface RAGDeleteArticleResponse {
   bm25_rebuild?: string;
 }
 
+export interface BM25RebuildState {
+  status: 'idle' | 'running' | 'queued' | 'failed';
+  running: boolean;
+  pending: boolean;
+  started_at: number | null;
+  finished_at: number | null;
+  error: string | null;
+  result: unknown;
+  runs_completed: number;
+}
+
+export interface RAGBatchItem {
+  document_id: string;
+  title: string;
+  status: 'ok' | 'error' | 'skipped';
+  reason?: string;
+  error?: string;
+  so_hieu?: string;
+  chunks_created?: number;
+  deleted_count?: number;
+  errors?: string[];
+}
+
+export interface RAGBatchResponse {
+  status: string;
+  items: RAGBatchItem[];
+  bm25_rebuild: string;
+}
+
 export function getRAGStatus() {
-  return request<RAGStatusResponse>('/api/v1/admin/rag/status');
+  return request<RAGStatusResponse>('/api/v1/admin/rag/status', {}, RAG_STATUS_TIMEOUT);
 }
 
 export function checkRAGDoc(so_hieu: string, collection_key: string = 'legal') {
@@ -1032,9 +1062,13 @@ export function deleteRAGArticle(data: RAGDeleteArticleRequest) {
 }
 
 export function rebuildBM25() {
-  return request<{ status: string; message: string }>('/api/v1/admin/rag/rebuild-bm25', {
+  return request<{ status: string; message: string; state?: BM25RebuildState }>('/api/v1/admin/rag/rebuild-bm25', {
     method: 'POST',
   });
+}
+
+export function getBM25RebuildStatus() {
+  return request<BM25RebuildState>('/api/v1/admin/rag/rebuild-bm25/status');
 }
 
 export interface OCRExtractResponse {
@@ -1060,6 +1094,13 @@ export function ingestDocToRAG(documentId: string) {
   }, 300000); // 5 min timeout for heavy OCR
 }
 
+export function batchIngestDocsToRAG(documentIds: string[]) {
+  return request<RAGBatchResponse>('/api/v1/admin/rag/ingest-docs', {
+    method: 'POST',
+    body: JSON.stringify({ document_ids: documentIds }),
+  }, 900000); // batch OCR + one BM25 rebuild
+}
+
 // Remove document from ChromaDB only (keep in Cloudinary)
 export function uningestDocFromRAG(documentId: string) {
   return request<{ status: string; deleted_count: number }>(`/api/v1/admin/rag/uningest-doc/${documentId}`, {
@@ -1067,9 +1108,23 @@ export function uningestDocFromRAG(documentId: string) {
   });
 }
 
+export function batchUningestDocsFromRAG(documentIds: string[]) {
+  return request<RAGBatchResponse>('/api/v1/admin/rag/uningest-docs', {
+    method: 'POST',
+    body: JSON.stringify({ document_ids: documentIds }),
+  }, 300000);
+}
+
 // Hard delete: remove from ChromaDB + Cloudinary + PostgreSQL
 export function hardDeleteDoc(documentId: string) {
   return request<{ status: string; errors: string[] }>(`/api/v1/admin/rag/hard-delete-doc/${documentId}`, {
     method: 'DELETE',
   });
+}
+
+export function batchHardDeleteDocs(documentIds: string[]) {
+  return request<RAGBatchResponse>('/api/v1/admin/rag/hard-delete-docs', {
+    method: 'POST',
+    body: JSON.stringify({ document_ids: documentIds }),
+  }, 300000);
 }

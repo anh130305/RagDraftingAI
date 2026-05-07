@@ -40,32 +40,6 @@ services:
       timeout: 20s
       retries: 30
 
-  rag_rebuild_service:
-    build:
-      context: ./RAG
-      dockerfile: Dockerfile
-    container_name: rag_ai_rebuild_service
-    restart: always
-    expose:
-      - "8002"
-    command: uvicorn main:app --host 0.0.0.0 --port 8002
-    volumes:
-      - ./RAG:/app
-      - huggingface_cache:/app/models
-    environment:
-      - RAG_SERVICE_MODE=rebuild_only
-    deploy:
-      resources:
-        limits:
-          memory: 12G
-        reservations:
-          memory: 6G
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8002/api/v1/rag/health" ]
-      interval: 20s
-      timeout: 20s
-      retries: 30
-
   backend:
     build:
       context: ./BACKEND
@@ -90,13 +64,10 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
       - RAG_SERVICE_URL=http://rag_service:8001
-      - RAG_REBUILD_SERVICE_URL=http://rag_rebuild_service:8002
     depends_on:
       DataBase:
         condition: service_healthy
       rag_service:
-        condition: service_started
-      rag_rebuild_service:
         condition: service_started
 
   frontend:

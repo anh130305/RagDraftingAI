@@ -3,7 +3,7 @@ import {
   Upload, Database, FileText, X, Trash2,
   CheckCircle2, AlertCircle, Clock, Search,
   HardDrive, Layers, Activity, RefreshCw, Shield,
-  Zap, ArrowDownToLine, XCircle, Loader2
+  Zap, ArrowDownToLine, XCircle, Loader2, Square, CheckSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -35,6 +35,8 @@ export default function KnowledgeBase() {
   // ── Action states ──
   const [ingestingId, setIngestingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [batchAction, setBatchAction] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [ragRefreshSignal, setRagRefreshSignal] = useState(0);
   const [ragSyncing, setRagSyncing] = useState(false);
 
@@ -64,6 +66,11 @@ export default function KnowledgeBase() {
     setRagRefreshSignal(signal => signal + 1);
   };
 
+  const finishRagSync = () => {
+    setRagSyncing(false);
+    window.setTimeout(refreshRagStatus, 0);
+  };
+
   useEffect(() => {
     fetchDocuments();
     timerRef.current = setInterval(fetchDocuments, 5000);
@@ -71,6 +78,14 @@ export default function KnowledgeBase() {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [fetchDocuments]);
+
+  useEffect(() => {
+    const validIds = new Set(documents.map(doc => doc.id));
+    setSelectedIds(prev => {
+      const next = new Set([...prev].filter(id => validIds.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [documents]);
 
   // ── Upload (multi-file) ──
   const handleFileDrop = (e: React.DragEvent) => {
@@ -179,12 +194,11 @@ export default function KnowledgeBase() {
       const res = await api.ingestDocToRAG(doc.id);
       showToast(`Ingest thành công "${doc.title}": ${res.chunks_created ?? 0} chunks`, 'success');
       await fetchDocuments();
-      refreshRagStatus();
     } catch (err: any) {
       showToast(err.message || 'Lỗi khi ingest', 'error');
     } finally {
       setIngestingId(null);
-      setRagSyncing(false);
+      finishRagSync();
     }
   };
 
@@ -204,12 +218,11 @@ export default function KnowledgeBase() {
       await api.uningestDocFromRAG(doc.id);
       showToast(`Đã gỡ "${doc.title}" khỏi Vector Database. File gốc vẫn còn.`, 'warning');
       await fetchDocuments();
-      refreshRagStatus();
     } catch (err: any) {
       showToast(err.message || 'Lỗi khi gỡ', 'error');
     } finally {
       setDeletingId(null);
-      setRagSyncing(false);
+      finishRagSync();
     }
   };
 
@@ -229,12 +242,11 @@ export default function KnowledgeBase() {
       await api.hardDeleteDoc(doc.id);
       showToast(`Đã xoá vĩnh viễn tài liệu "${doc.title}".`, 'success');
       await fetchDocuments();
-      refreshRagStatus();
     } catch (err: any) {
       showToast(err.message || 'Lỗi khi xoá', 'error');
     } finally {
       setDeletingId(null);
-      setRagSyncing(false);
+      finishRagSync();
     }
   };
 
@@ -260,6 +272,37 @@ export default function KnowledgeBase() {
     }
   };
 
+  const summarizeBatch = (items: api.RAGBatchItem[]) => {
+    const ok = items.filter(item => item.status === 'ok').length;
+    const skipped = items.filter(item => item.status === 'skipped').length;
+    const errors = items.filter(item => item.status === 'error').length;
+    return { ok, skipped, errors };
+  };
+
+  const runBatchAction = async (
+    action: string,
+    docsToProcess: DocumentResponse[],
+    runner: (ids: string[]) => Promise<api.RAGBatchResponse>,
+    successLabel: string,
+  ) => {
+    if (docsToProcess.length === 0) return;
+    setBatchAction(action);
+    setRagSyncing(true);
+    try {
+      const result = await runner(docsToProcess.map(doc => doc.id));
+      const { ok, skipped, errors } = summarizeBatch(result.items);
+      const toastType: 'warning' | 'success' = errors > 0 ? 'warning' : 'success';
+      showToast(`${successLabel}: ${ok} thành công${skipped ? `, ${skipped} bỏ qua` : ''}${errors ? `, ${errors} lỗi` : ''}`, toastType);
+      setSelectedIds(new Set());
+      await fetchDocuments();
+    } catch (err: any) {
+      showToast(err.message || 'Lỗi khi xử lý hàng loạt', 'error');
+    } finally {
+      setBatchAction(null);
+      finishRagSync();
+    }
+  };
+
   const formatSize = (bytes: number | null) => {
     if (!bytes) return 'N/A';
     const mb = bytes / (1024 * 1024);
@@ -274,6 +317,11 @@ export default function KnowledgeBase() {
   const notIngestedDocs = documents.filter(d =>
     !d.rag_ingested && d.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const visibleDocs = [...ingestedDocs, ...notIngestedDocs];
+  const selectedDocs = documents.filter(d => selectedIds.has(d.id));
+  const selectedIngestedDocs = selectedDocs.filter(d => d.rag_ingested);
+  const selectedNotIngestedDocs = selectedDocs.filter(d => !d.rag_ingested);
+  const allVisibleSelected = visibleDocs.length > 0 && visibleDocs.every(doc => selectedIds.has(doc.id));
 
   const stats = {
     total: documents.length,
@@ -282,12 +330,83 @@ export default function KnowledgeBase() {
     chunks: documents.reduce((acc, curr) => acc + (curr.chunk_count || 0), 0)
   };
 
+  const hasSelection = selectedDocs.length > 0;
+  const isBatchBusy = batchAction !== null;
+  const bulkDisabled = isBatchBusy || ragSyncing || isUploading;
+
+  const toggleDocSelection = (docId: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(docId)) next.delete(docId);
+      else next.add(docId);
+      return next;
+    });
+  };
+
+  const toggleVisibleSelection = () => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        visibleDocs.forEach(doc => next.delete(doc.id));
+      } else {
+        visibleDocs.forEach(doc => next.add(doc.id));
+      }
+      return next;
+    });
+  };
+
+  const handleBatchIngest = async () => {
+    const ok = await confirm({
+      title: 'Ingest hàng loạt',
+      message: `Nạp ${selectedNotIngestedDocs.length} tài liệu vào Vector Database và rebuild BM25 một lần sau khi hoàn tất?`,
+      confirmLabel: 'Ingest đã chọn',
+      variant: 'info',
+    });
+    if (!ok) return;
+    await runBatchAction('ingest', selectedNotIngestedDocs, api.batchIngestDocsToRAG, 'Ingest hàng loạt');
+  };
+
+  const handleBatchUningest = async () => {
+    const ok = await confirm({
+      title: 'Gỡ RAG hàng loạt',
+      message: `Gỡ ${selectedIngestedDocs.length} tài liệu khỏi Vector Database và rebuild BM25 một lần sau khi hoàn tất? File gốc vẫn giữ trên Cloudinary.`,
+      confirmLabel: 'Gỡ RAG đã chọn',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    await runBatchAction('uningest', selectedIngestedDocs, api.batchUningestDocsFromRAG, 'Gỡ RAG hàng loạt');
+  };
+
+  const handleBatchHardDelete = async () => {
+    const ok = await confirm({
+      title: 'Xoá hàng loạt',
+      message: `Xoá vĩnh viễn ${selectedDocs.length} tài liệu đã chọn khỏi RAG, Cloudinary và CSDL nếu có. Không thể hoàn tác.`,
+      confirmLabel: 'Xoá đã chọn',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    await runBatchAction('delete', selectedDocs, api.batchHardDeleteDocs, 'Xoá hàng loạt');
+  };
+
   // ── Render a document row ──
   const renderDocRow = (doc: DocumentResponse, isIngested: boolean) => {
-    const isLoading = ingestingId === doc.id || deletingId === doc.id;
+    const isSelected = selectedIds.has(doc.id);
+    const isLoading = ingestingId === doc.id || deletingId === doc.id || (isBatchBusy && isSelected);
     return (
-      <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-surface-high border border-transparent hover:border-outline-variant/30 transition-all group">
+      <div key={doc.id} className={cn(
+        "flex items-center justify-between p-3 rounded-lg hover:bg-surface-high border transition-all group",
+        isSelected ? "bg-primary/5 border-primary/20" : "border-transparent hover:border-outline-variant/30"
+      )}>
         <div className="flex items-center gap-3 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => toggleDocSelection(doc.id)}
+            className="p-1 rounded-md text-on-surface-variant hover:text-primary focus:text-primary transition-colors shrink-0"
+            title={isSelected ? 'Bỏ chọn' : 'Chọn tài liệu'}
+            disabled={isBatchBusy}
+          >
+            {isSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+          </button>
           <div className="w-10 h-10 rounded-lg bg-surface-highest flex items-center justify-center shrink-0 border border-outline-variant/30">
             <FileText className={cn("w-5 h-5", doc.title.endsWith('.pdf') ? "text-red-400" : "text-blue-400")} />
           </div>
@@ -463,20 +582,75 @@ export default function KnowledgeBase() {
         {/* Right: Document List — Split by ingest status */}
         <div className="lg:col-span-8 flex flex-col h-[800px] bg-surface rounded-xl border border-outline-variant overflow-hidden">
           {/* Header + Search */}
-          <div className="p-4 border-b border-outline-variant/50 flex flex-wrap items-center justify-between gap-4 bg-surface-low">
-            <h3 className="font-bold text-on-surface flex items-center gap-2">
-              Kho lưu trữ Tri thức chung
-            </h3>
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
-              <input
-                type="text"
-                placeholder="Tìm kiếm tri thức..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-1.5 rounded-lg border border-outline-variant bg-surface text-xs w-64 focus:ring-1 focus:ring-primary focus:border-primary transition-all outline-none"
-              />
+          <div className="border-b border-outline-variant/50 bg-surface-low">
+            <div className="p-4 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={toggleVisibleSelection}
+                  disabled={visibleDocs.length === 0 || isBatchBusy}
+                  className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-highest disabled:opacity-40 transition-colors"
+                  title={allVisibleSelected ? 'Bỏ chọn tất cả đang hiển thị' : 'Chọn tất cả đang hiển thị'}
+                >
+                  {allVisibleSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                </button>
+                <h3 className="font-bold text-on-surface flex items-center gap-2">
+                  Kho lưu trữ Tri thức chung
+                </h3>
+              </div>
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm tri thức..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-4 py-1.5 rounded-lg border border-outline-variant bg-surface text-xs w-64 focus:ring-1 focus:ring-primary focus:border-primary transition-all outline-none"
+                />
+              </div>
             </div>
+            {hasSelection && (
+              <div className="px-4 pb-4 flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold text-on-surface-variant mr-1">
+                  Đã chọn {selectedDocs.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleBatchIngest}
+                  disabled={bulkDisabled || selectedNotIngestedDocs.length === 0}
+                  className="px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-on-primary disabled:opacity-40 disabled:hover:bg-primary/10 disabled:hover:text-primary transition-all"
+                >
+                  {batchAction === 'ingest' ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                  Ingest {selectedNotIngestedDocs.length}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBatchUningest}
+                  disabled={bulkDisabled || selectedIngestedDocs.length === 0}
+                  className="px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 border border-yellow-500/25 text-yellow-600 hover:bg-yellow-500/10 disabled:opacity-40 transition-all"
+                >
+                  {batchAction === 'uningest' ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ArrowDownToLine className="w-3.5 h-3.5" />}
+                  Gỡ RAG {selectedIngestedDocs.length}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBatchHardDelete}
+                  disabled={bulkDisabled || selectedDocs.length === 0}
+                  className="px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 border border-error/25 text-error hover:bg-error/10 disabled:opacity-40 transition-all"
+                >
+                  {batchAction === 'delete' ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                  Xoá {selectedDocs.length}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds(new Set())}
+                  disabled={isBatchBusy}
+                  className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-on-surface-variant hover:bg-surface-highest disabled:opacity-40 transition-all"
+                >
+                  Bỏ chọn
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar">
