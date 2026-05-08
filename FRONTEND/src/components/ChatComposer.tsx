@@ -16,17 +16,20 @@ import {
   X,
   FileQuestion,
   FileEdit,
+  Cpu,
+  ChevronDown,
 } from 'lucide-react';
 import { useToast } from '../lib/ToastContext';
 import * as api from '../lib/api';
-import type { PromptTemplateResponse } from '../lib/api';
+import type { LLMModel, PromptTemplateResponse } from '../lib/api';
 import { AnimatePresence, motion } from 'motion/react';
+import { cn } from '../lib/utils';
 
 interface ChatComposerProps {
   placeholder?: string;
   note?: string;
   statusMessage?: string;
-  onSend?: (content: string, mode: 'qa' | 'generate', extras?: string) => string | undefined | void | Promise<string | undefined | void>;
+  onSend?: (content: string, mode: 'qa' | 'generate', extras?: string, llmModel?: LLMModel) => string | undefined | void | Promise<string | undefined | void>;
   disabled?: boolean;
   value?: string;
   onValueChange?: (val: string) => void;
@@ -92,6 +95,9 @@ export default function ChatComposer({
 
   // Mode and Extras state
   const [mode, setMode] = useState<'qa' | 'generate'>('qa');
+  const [llmModel, setLlmModel] = useState<LLMModel>('17b');
+  const [showModelPicker, setShowModelPicker] = useState(false);
+  const modelPickerRef = useRef<HTMLDivElement | null>(null);
   const [extras, setExtras] = useState('');
   const [showExtras, setShowExtras] = useState(false);
 
@@ -523,7 +529,7 @@ export default function ChatComposer({
     // Upload files to Cloudinary AFTER onSend so we have the resolved session ID
     // (onSend creates the session if it doesn't exist yet and returns its ID).
     try {
-      const resolvedSessionId = await onSend?.(finalMessageWithAttachments, mode, finalExtras);
+      const resolvedSessionId = await onSend?.(finalMessageWithAttachments, mode, finalExtras, llmModel);
 
       const uploadSessionId = resolvedSessionId as string | undefined;
       if (filesToUpload.length > 0) {
@@ -680,6 +686,7 @@ export default function ChatComposer({
       if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
         closeMenu();
         setShowPromptPicker(false);
+        setShowModelPicker(false);
       }
     };
 
@@ -687,6 +694,7 @@ export default function ChatComposer({
       if (event.key === 'Escape') {
         closeMenu();
         setShowPromptPicker(false);
+        setShowModelPicker(false);
       }
     };
 
@@ -1081,6 +1089,90 @@ export default function ChatComposer({
             onPaste={handlePaste}
             disabled={disabled}
           />
+          {/* LLM Model Picker */}
+          <div className="relative ml-2 shrink-0" ref={modelPickerRef}>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => setShowModelPicker(!showModelPicker)}
+              className={cn(
+                "flex h-9 items-center gap-1.5 rounded-full border px-3 transition-all duration-300",
+                "bg-surface-container-high/80 backdrop-blur-sm",
+                showModelPicker ? "border-primary/50 shadow-[0_0_12px_rgba(var(--primary-rgb),0.2)]" : "border-outline-variant/20 hover:border-outline-variant/40",
+                llmModel === '70b' ? "text-primary" : "text-on-surface-variant"
+              )}
+              title="Chọn model LLM"
+            >
+              {llmModel === '70b' ? <Sparkles className="w-3.5 h-3.5" /> : <Cpu className="w-3.5 h-3.5" />}
+              <span className="text-xs font-bold text-on-surface">
+                {llmModel === '17b' ? 'Base' : 'Pro'}
+              </span>
+              <ChevronDown className={cn("w-3 h-3 transition-transform duration-300 opacity-50", showModelPicker && "rotate-180 opacity-100")} />
+            </button>
+
+            <AnimatePresence>
+              {showModelPicker && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: -8, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                  className="absolute bottom-full right-0 mb-2 w-48 overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface/90 shadow-2xl backdrop-blur-xl z-[60]"
+                >
+                  <div className="p-1.5 flex flex-col gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLlmModel('17b');
+                        setShowModelPicker(false);
+                      }}
+                      className={cn(
+                        "flex w-full items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group text-left",
+                        llmModel === '17b' ? "bg-primary/10" : "hover:bg-surface-container-highest"
+                      )}
+                    >
+                      <div className={cn(
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+                        llmModel === '17b' ? "bg-primary/20 text-primary" : "bg-surface-container-high text-on-surface-variant group-hover:bg-surface-container-highest"
+                      )}>
+                        <Cpu className="w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className={cn("text-xs font-bold", llmModel === '17b' ? "text-primary" : "text-on-surface")}>Base</span>
+                        <span className="text-[10px] text-on-surface-variant/70 leading-tight">Nhanh & Hiệu quả</span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLlmModel('70b');
+                        setShowModelPicker(false);
+                      }}
+                      className={cn(
+                        "flex w-full items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group text-left relative overflow-hidden",
+                        llmModel === '70b' ? "bg-primary/10" : "hover:bg-surface-container-highest"
+                      )}
+                    >
+                      {llmModel === '70b' && (
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+                      )}
+                      <div className={cn(
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+                        llmModel === '70b' ? "bg-primary text-on-primary shadow-lg shadow-primary/20" : "bg-surface-container-high text-on-surface-variant group-hover:bg-surface-container-highest"
+                      )}>
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className={cn("text-xs font-bold", llmModel === '70b' ? "text-primary" : "text-on-surface")}>Pro</span>
+                        <span className="text-[10px] text-on-surface-variant/70 leading-tight">Thông minh & Chính xác</span>
+                      </div>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           <button
             className={`ml-2 rounded-full p-2 text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors disabled:pointer-events-none ${isListening ? 'text-primary bg-primary/10' : ''}`}
             type="button"

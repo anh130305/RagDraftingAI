@@ -11,7 +11,7 @@ class FakeAsyncClient:
         self.get_response = get_response
         self.calls = []
 
-    async def post(self, url, json):
+    async def post(self, url, json, timeout=None):
         self.calls.append(("post", url, json))
         return self.post_response
 
@@ -53,7 +53,23 @@ def test_answer_legal_question_success_payload_and_endpoint():
         "query": "Cau hoi",
         "extras": "Them",
         "call_llm": True,
+        "model": "17b",
     }
+
+
+def test_answer_legal_question_uses_selected_model():
+    request = httpx.Request("POST", "http://test/api/v1/rag/legal_qa")
+    response = httpx.Response(
+        status_code=200,
+        request=request,
+        json={"status": "ok", "answer": "OK", "meta": {"n_legal_chunks": 1}},
+    )
+    fake_client = FakeAsyncClient(post_response=response)
+    service = _make_service_with_client(fake_client)
+
+    asyncio.run(service.answer_legal_question("Cau hoi", llm_model="70b"))
+
+    assert fake_client.calls[0][2]["model"] == "70b"
 
 
 def test_answer_legal_question_http_error_extracts_detail():

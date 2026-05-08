@@ -17,10 +17,12 @@ import {
   Hexagon,
   Check,
   FileText,
+  Cpu,
 } from 'lucide-react';
+import { cn } from './lib/utils';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import * as api from './lib/api';
-import type { ChatMessage } from './lib/api';
+import type { ChatMessage, LLMModel } from './lib/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useToast } from './lib/ToastContext';
@@ -488,7 +490,12 @@ export default function Chat() {
   };
 
   // ── Handle sending message ──────────────────────────────────
-  const handleSend = async (content: string, mode: 'qa' | 'generate' = 'qa', extras?: string): Promise<string | undefined> => {
+  const handleSend = async (
+    content: string,
+    mode: 'qa' | 'generate' = 'qa',
+    extras?: string,
+    llmModel: LLMModel = '17b',
+  ): Promise<string | undefined> => {
     if (activeBusySessionIdRef.current) return;
 
     let currentId = sessionId;
@@ -533,6 +540,7 @@ export default function Chat() {
         role: 'user',
         content: combinedContent,
         mode,
+        llm_model: llmModel,
         feedback: null,
         token_count: null,
         created_at: new Date().toISOString(),
@@ -548,7 +556,7 @@ export default function Chat() {
         pollingTerminatedUserMessageIdRef.current = null;
         autoResumeAttemptedUserMessageIdRef.current = null;
 
-        const userMessage = await api.sendMessage(resolvedSessionId, combinedContent, mode, extras);
+        const userMessage = await api.sendMessage(resolvedSessionId, combinedContent, mode, extras, llmModel);
         processingTargetUserMessageIdRef.current = userMessage.id;
         if (isViewingSession(resolvedSessionId)) {
           replaceOptimisticMessage(optimisticMessageId, userMessage);
@@ -560,7 +568,7 @@ export default function Chat() {
       } else {
         // Send combinedContent (includes file blocks & Thông tin bổ sung heading) so the DB
         // stores the full display content — file chips will appear correctly in history on reload.
-        const userMessage = await api.sendMessage(resolvedSessionId, combinedContent, mode, extras);
+        const userMessage = await api.sendMessage(resolvedSessionId, combinedContent, mode, extras, llmModel);
         if (isViewingSession(resolvedSessionId)) {
           replaceOptimisticMessage(optimisticMessageId, userMessage);
         }
@@ -573,6 +581,7 @@ export default function Chat() {
               query: content,
               extras: extras,
               session_id: resolvedSessionId,
+              llm_model: llmModel,
             });
 
             if (draftRes.status === 'ok') {
@@ -581,6 +590,8 @@ export default function Chat() {
                 session_id: resolvedSessionId,
                 role: 'assistant',
                 content: `Tôi đã soạn thảo xong bản thảo "${draftRes.meta.form_type}" dựa trên yêu cầu của bạn.`,
+                mode: 'generate',
+                llm_model: llmModel,
                 feedback: null,
                 token_count: null,
                 created_at: new Date().toISOString(),
@@ -877,6 +888,21 @@ export default function Chat() {
                                     Hỏi đáp
                                   </>
                                 )}
+                              </div>
+                            )}
+                            {msg.llm_model && (
+                              <div className={cn(
+                                "mr-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 border transition-all duration-300",
+                                msg.llm_model === '70b'
+                                  ? "bg-primary/10 text-primary border-primary/20"
+                                  : "bg-surface-highest text-on-surface-variant border-outline-variant/30"
+                              )}>
+                                {msg.llm_model === '70b' ? (
+                                  <Sparkles className="w-2.5 h-2.5" />
+                                ) : (
+                                  <Cpu className="w-2.5 h-2.5" />
+                                )}
+                                {msg.llm_model === '17b' ? 'Base' : msg.llm_model === '70b' ? 'Pro' : msg.llm_model}
                               </div>
                             )}
 

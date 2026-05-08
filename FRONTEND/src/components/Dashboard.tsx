@@ -154,11 +154,21 @@ export default function Dashboard() {
 
   // Mode distribution data
   const md = monitoringStats?.summary.mode_distribution;
-  const modeDonutData = md
-    ? [
-      { name: 'Hỏi đáp', value: md.qa || 0, color: 'var(--primary)' },
-      { name: 'Soạn thảo', value: md.generate || 0, color: 'var(--secondary)' },
-    ].filter(d => d.value > 0)
+  const rawModeDonutData = [
+    { name: 'Hỏi đáp', value: md?.qa || 0, color: 'var(--primary)' },
+    { name: 'Soạn thảo', value: md?.generate || 0, color: 'var(--secondary)' },
+  ].filter(d => d.value > 0);
+  const modeDonutData = rawModeDonutData.length > 0
+    ? rawModeDonutData
+    : [{ name: 'Chưa có dữ liệu', value: 1, color: 'var(--surface-highest)' }];
+
+  const modelDist = monitoringStats?.summary.model_distribution;
+  const rawModelDonutData = [
+    { name: 'Base', value: modelDist?.['17b'] || 0, color: 'var(--primary)' },
+    { name: 'Pro', value: modelDist?.['70b'] || 0, color: 'var(--tertiary)' },
+  ].filter(d => d.value > 0);
+  const modelDonutData = rawModelDonutData.length > 0
+    ? rawModelDonutData
     : [{ name: 'Chưa có dữ liệu', value: 1, color: 'var(--surface-highest)' }];
 
   const topForms = monitoringStats?.summary.top_forms || [];
@@ -260,7 +270,10 @@ export default function Dashboard() {
                     <Tooltip
                       contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--outline-variant)', borderRadius: '12px', fontSize: '12px' }}
                       itemStyle={{ color: 'var(--primary)' }}
-                      formatter={(v: number) => [`${v.toFixed(1)}%`, 'VRAM']}
+                      formatter={(v) => [
+                        `${typeof v === 'number' ? v.toFixed(1) : '0.0'}%`,
+                        'VRAM',
+                      ]}
                     />
                     <Area type="monotone" dataKey="value" stroke="var(--primary)" strokeWidth={3}
                       fillOpacity={1} fill="url(#colorVram)" isAnimationActive={false} />
@@ -458,7 +471,7 @@ export default function Dashboard() {
             {/* Separator */}
             <div className="h-px w-full bg-outline-variant/20 my-6" />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {/* Chat Mode Distribution */}
               <div>
                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-4">Phân bổ chế độ Chat</h4>
@@ -498,6 +511,52 @@ export default function Dashboard() {
                             <span className="text-xs font-medium">Soạn thảo</span>
                           </div>
                           <span className="text-xs font-bold">{md?.generate || 0}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* LLM Model Distribution */}
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-4">Phân bổ model LLM</h4>
+                <div className="flex items-center gap-6">
+                  <div className="relative w-28 h-28 shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={modelDonutData} cx="50%" cy="50%"
+                          innerRadius={36} outerRadius={50}
+                          dataKey="value" startAngle={90} endAngle={450} paddingAngle={2}
+                        >
+                          {modelDonutData.map((entry, i) => (
+                            <Cell key={i} fill={entry.color} stroke="none" />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <Cpu className="w-5 h-5 text-on-surface-variant opacity-40" />
+                    </div>
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    {modelDonutData[0]?.name === 'Chưa có dữ liệu' ? (
+                      <p className="text-xs text-on-surface-variant italic">Chưa có dữ liệu model</p>
+                    ) : (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-primary" />
+                            <span className="text-xs font-medium">Base</span>
+                          </div>
+                          <span className="text-xs font-bold">{modelDist?.['17b'] || 0}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-tertiary" />
+                            <span className="text-xs font-medium">Pro</span>
+                          </div>
+                          <span className="text-xs font-bold">{modelDist?.['70b'] || 0}</span>
                         </div>
                       </>
                     )}

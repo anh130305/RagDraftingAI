@@ -33,7 +33,7 @@ def _latest_query_log(db, session_id):
 def test_generate_assistant_response_task_ok_path(db, normal_user, monkeypatch):
     session_id = _create_session_id(db, normal_user.id)
 
-    async def fake_answer_legal_question(query: str, extras=None):
+    async def fake_answer_legal_question(query: str, extras=None, llm_model="17b"):
         return {
             "status": "ok",
             "answer": "Tra loi phap ly hop le",
@@ -46,7 +46,7 @@ def test_generate_assistant_response_task_ok_path(db, normal_user, monkeypatch):
         fake_answer_legal_question,
     )
 
-    asyncio.run(chat_service.generate_assistant_response_task(session_id, "Cau hoi"))
+    asyncio.run(chat_service.generate_assistant_response_task(session_id, "Cau hoi", llm_model="70b"))
     db.expire_all()
 
     assistant = _latest_assistant_message(db, session_id)
@@ -54,8 +54,10 @@ def test_generate_assistant_response_task_ok_path(db, normal_user, monkeypatch):
 
     assert assistant is not None
     assert assistant.content == "Tra loi phap ly hop le"
+    assert assistant.llm_model == "70b"
 
     assert query_log is not None
+    assert query_log.llm_model == "70b"
     assert query_log.is_error is False
     assert query_log.chunk_found is True
 
@@ -63,7 +65,7 @@ def test_generate_assistant_response_task_ok_path(db, normal_user, monkeypatch):
 def test_generate_assistant_response_task_prompt_only_path(db, normal_user, monkeypatch):
     session_id = _create_session_id(db, normal_user.id)
 
-    async def fake_answer_legal_question(query: str, extras=None):
+    async def fake_answer_legal_question(query: str, extras=None, llm_model="17b"):
         return {
             "status": "prompt_only",
             "mode": "legal_qa",
@@ -95,7 +97,7 @@ def test_generate_assistant_response_task_prompt_only_path(db, normal_user, monk
 def test_generate_assistant_response_task_error_path(db, normal_user, monkeypatch):
     session_id = _create_session_id(db, normal_user.id)
 
-    async def fake_answer_legal_question(query: str, extras=None):
+    async def fake_answer_legal_question(query: str, extras=None, llm_model="17b"):
         return {
             "status": "error",
             "mode": "legal_qa",

@@ -144,6 +144,7 @@ def send_message(
             user_query=payload.content,
             mode=payload.mode,
             extras=payload.extras,
+            llm_model=payload.llm_model,
         )
 
     # Log the query event
@@ -154,7 +155,11 @@ def send_message(
         resource_type="chat_session",
         resource_id=session_id,
         ip_address=request.client.host if request.client else None,
-        detail={"query_length": len(payload.content), "mode": payload.mode},
+        detail={
+            "query_length": len(payload.content),
+            "mode": payload.mode,
+            "llm_model": payload.llm_model,
+        },
     )
     return msg
 
@@ -183,7 +188,12 @@ async def stream_message(
         resource_type="chat_session",
         resource_id=session_id,
         ip_address=request.client.host if request.client else None,
-        detail={"query_length": len(payload.content), "mode": payload.mode, "stream": True},
+        detail={
+            "query_length": len(payload.content),
+            "mode": payload.mode,
+            "llm_model": payload.llm_model,
+            "stream": True,
+        },
     )
 
     async def event_generator():
@@ -204,6 +214,7 @@ async def stream_message(
             async for event in chat_service.stream_assistant_response(
                 user_query=payload.content,
                 extras=payload.extras,
+                llm_model=payload.llm_model,
             ):
                 event_type = str(event.get("type", ""))
 
@@ -256,6 +267,7 @@ async def stream_message(
                     session_id,
                     assistant_text,
                     mode=payload.mode,
+                    llm_model=payload.llm_model,
                 )
                 yield _to_ndjson({
                     "type": "assistant_message",
@@ -274,6 +286,7 @@ async def stream_message(
                     session_id=session_id,
                     message_id=assistant_msg.id if assistant_msg else None,
                     response_time_ms=elapsed_ms,
+                    llm_model=payload.llm_model,
                     chunk_found=chunk_found,
                     is_error=bool(error_message),
                     error_message=error_message,

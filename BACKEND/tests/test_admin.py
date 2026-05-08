@@ -13,6 +13,8 @@ import pytest
 from unittest.mock import patch
 from uuid import uuid4
 
+from app.models.query_log import QueryLog
+
 
 class TestAdminListUsers:
     """GET /api/v1/admin/users"""
@@ -107,6 +109,20 @@ class TestAdminAuditLogs:
             params={"action": "upload_document", "skip": 0, "limit": 10},
         )
         assert resp.status_code == 200
+
+
+class TestAdminAIMonitoring:
+    def test_ai_monitoring_returns_model_distribution(self, client, admin_auth, db):
+        db.add(QueryLog(llm_model="17b", is_error=False, chunk_found=True, response_time_ms=120))
+        db.add(QueryLog(llm_model="70b", is_error=False, chunk_found=True, response_time_ms=220))
+        db.add(QueryLog(llm_model="70b", is_error=True, chunk_found=False, response_time_ms=300))
+        db.commit()
+
+        resp = client.get("/api/v1/admin/ai-monitoring", headers=admin_auth)
+
+        assert resp.status_code == 200
+        summary = resp.json()["summary"]
+        assert summary["model_distribution"] == {"17b": 1, "70b": 2}
 
 
 class TestAdminKnowledgeBaseUpload:

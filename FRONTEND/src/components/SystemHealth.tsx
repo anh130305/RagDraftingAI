@@ -302,9 +302,16 @@ export default function SystemHealth() {
                             </div>
                           )}
                           {log.detail && (
-                            <pre className="text-[10px] text-on-surface-variant bg-surface-low p-2 rounded-lg border border-outline-variant overflow-x-auto custom-scrollbar max-w-sm lg:max-w-md">
-                              {JSON.stringify(log.detail, null, 2)}
-                            </pre>
+                            <>
+                              {typeof log.detail === 'object' && log.detail !== null && 'llm_model' in log.detail && (
+                                <div className="inline-flex items-center gap-1 rounded-full border border-outline-variant/40 bg-surface-high px-2 py-0.5 text-[10px] font-bold text-on-surface">
+                                  Model LLM: {String((log.detail as Record<string, unknown>).llm_model)}
+                                </div>
+                              )}
+                              <pre className="text-[10px] text-on-surface-variant bg-surface-low p-2 rounded-lg border border-outline-variant overflow-x-auto custom-scrollbar max-w-sm lg:max-w-md">
+                                {JSON.stringify(log.detail, null, 2)}
+                              </pre>
+                            </>
                           )}
                           {!log.resource_type && !log.detail && (
                             <span className="text-on-surface-variant opacity-50 italic">-</span>

@@ -577,6 +577,7 @@ export interface DraftRequest {
   query: string;
   extras?: string;
   session_id?: string;
+  llm_model?: LLMModel;
 }
 
 export interface DraftMeta {
@@ -606,6 +607,8 @@ export function generateDraftDocx(data: DraftRequest) {
 
 /* ─── Chat ──────────────────────────────────────────────── */
 
+export type LLMModel = '17b' | '70b';
+
 export function getUserPromptTemplates() {
   return request<PromptTemplateListResponse>('/api/v1/chat/prompt-templates');
 }
@@ -626,6 +629,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   mode?: string;
+  llm_model?: LLMModel | null;
   feedback?: 'like' | 'dislike' | null;
   token_count: number | null;
   created_at: string;
@@ -673,13 +677,19 @@ export function deleteSession(id: string) {
   return request<void>(`/api/v1/chat/sessions/${id}`, { method: 'DELETE' });
 }
 
-export function sendMessage(sessionId: string, content: string, mode: 'qa' | 'generate' = 'qa', extras?: string) {
+export function sendMessage(
+  sessionId: string,
+  content: string,
+  mode: 'qa' | 'generate' = 'qa',
+  extras?: string,
+  llmModel: LLMModel = '17b',
+) {
   const timeoutMs = mode === 'qa' ? 180000 : 360000;
   return request<ChatMessage>(
     `/api/v1/chat/sessions/${sessionId}/messages`,
     {
       method: 'POST',
-      body: JSON.stringify({ content, mode, extras }),
+      body: JSON.stringify({ content, mode, extras, llm_model: llmModel }),
     },
     timeoutMs
   );
@@ -690,6 +700,7 @@ export async function* streamMessage(
   content: string,
   mode: 'qa' | 'generate' = 'qa',
   extras?: string,
+  llmModel: LLMModel = '17b',
   signal?: AbortSignal,
 ): AsyncGenerator<ChatStreamEvent> {
   const token = localStorage.getItem('access_token');
@@ -704,7 +715,7 @@ export async function* streamMessage(
   const response = await fetch(`${API_BASE}/api/v1/chat/sessions/${sessionId}/messages/stream`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ content, mode, extras }),
+    body: JSON.stringify({ content, mode, extras, llm_model: llmModel }),
     signal,
   });
 
@@ -915,6 +926,7 @@ export interface AIMonitoringResponse {
       total_feedback: number;
     };
     mode_distribution: Record<string, number>;
+    model_distribution: Record<string, number>;
     top_forms: Array<{ name: string; value: number }>;
   };
   trends: AIMonitoringTrend[];
