@@ -51,7 +51,8 @@ async def generate_draft(
     
     result = await rag_service.draft_document(
         query=payload.query,
-        extras=payload.extras
+        extras=payload.extras,
+        llm_model=payload.llm_model,
     )
     
     elapsed_ms = int((time.perf_counter() - start_time) * 1000)
@@ -70,6 +71,7 @@ async def generate_draft(
         qlog = QueryLog(
             session_id=session_uuid,
             response_time_ms=elapsed_ms,
+            llm_model=payload.llm_model,
             is_error=is_error,
             error_message=error_message
         )
@@ -103,7 +105,8 @@ async def generate_draft(
         detail={
             "query_length": len(payload.query),
             "mode": "preview",
-            "form_type": result.get("meta", {}).get("form_type")
+            "form_type": result.get("meta", {}).get("form_type"),
+            "llm_model": payload.llm_model,
         }
     )
     return result
@@ -189,6 +192,7 @@ async def generate_draft_docx(
                         session_id=session_uuid,
                         content=msg_content,
                         mode="generate",
+                        llm_model=payload.llm_model,
                     )
                 except Exception as e:
                     print(f"Failed to save assistant message: {e}")
@@ -222,7 +226,8 @@ async def generate_draft_docx(
             "query_length": len(payload.query),
             "form_type": result.get("meta", {}).get("form_type"),
             "form_id": result.get("meta", {}).get("form_id"),
-            "has_document": "document" in result
+            "has_document": "document" in result,
+            "llm_model": payload.llm_model,
         }
     )
     return result

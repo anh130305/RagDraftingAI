@@ -36,6 +36,7 @@ class ChatMessage(Base):
     )
     content = Column(String, nullable=False)
     mode = Column(String, nullable=True)  # 'qa' or 'generate'
+    llm_model = Column(String, nullable=True)  # '17b' or '70b'
     feedback = Column(String, nullable=True)  # 'like' or 'dislike'
     token_count = Column(Integer, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())

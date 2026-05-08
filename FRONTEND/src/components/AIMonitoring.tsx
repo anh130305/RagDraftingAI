@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   RefreshCw,
   TrendingUp,
+  Cpu,
 } from 'lucide-react';
 import { getAIMonitoringStats, AIMonitoringResponse } from '../lib/api';
 import { useToast } from '../lib/ToastContext';
@@ -70,6 +71,13 @@ export default function AIMonitoring() {
     { name: 'Không thích', value: stats?.summary.interaction_stats.dislikes || 0, color: COLORS.error },
     { name: 'Không ý kiến', value: (stats?.summary.total_queries || 0) - (stats?.summary.interaction_stats.total_feedback || 0), color: '#94a3b8' }
   ];
+  const rawModelData = [
+    { name: 'Base', value: stats?.summary.model_distribution?.['17b'] || 0, color: COLORS.primary },
+    { name: 'Pro', value: stats?.summary.model_distribution?.['70b'] || 0, color: COLORS.secondary },
+  ].filter(item => item.value > 0);
+  const modelData = rawModelData.length > 0
+    ? rawModelData
+    : [{ name: 'Chưa có dữ liệu', value: 1, color: '#94a3b8' }];
 
   return (
     <div className="space-y-6">
@@ -143,47 +151,47 @@ export default function AIMonitoring() {
         />
       </div>
 
-      {/* Main Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Latency Trend Chart */}
-        <div className="lg:col-span-2 p-6 glass-card rounded-2xl">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-bold flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary" />
-              Xu hướng độ trễ phản hồi ({days} ngày)
-            </h3>
-          </div>
-          <div className="h-[320px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={stats?.trends || []}>
-                <defs>
-                  <linearGradient id="colorLatency" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} opacity={0.4} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} label={{ value: 'ms', angle: -90, position: 'insideLeft', offset: 10 }} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                  itemStyle={{ fontWeight: 'bold' }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="avgLatency"
-                  name="Độ trễ"
-                  stroke={COLORS.primary}
-                  strokeWidth={3}
-                  fillOpacity={1}
-                  fill="url(#colorLatency)"
-                  animationDuration={1500}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+      {/* Latency Trend Chart - Full Width */}
+      <div className="p-6 glass-card rounded-2xl">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="font-bold flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            Xu hướng độ trễ phản hồi ({days} ngày)
+          </h3>
         </div>
+        <div className="h-[320px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={stats?.trends || []}>
+              <defs>
+                <linearGradient id="colorLatency" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.1} />
+                  <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} opacity={0.4} />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} label={{ value: 'ms', angle: -90, position: 'insideLeft', offset: 10 }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                itemStyle={{ fontWeight: 'bold' }}
+              />
+              <Area
+                type="monotone"
+                dataKey="avgLatency"
+                name="Độ trễ"
+                stroke={COLORS.primary}
+                strokeWidth={3}
+                fillOpacity={1}
+                fill="url(#colorLatency)"
+                animationDuration={1500}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
 
+      {/* Distribution Row: Feedback & Model Distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Feedback Chart */}
         <div className="p-6 glass-card rounded-2xl flex flex-col">
           <h3 className="font-bold mb-6 flex items-center gap-2">
@@ -226,7 +234,56 @@ export default function AIMonitoring() {
             ))}
           </div>
         </div>
+
+        {/* LLM Model Usage Chart */}
+        <div className="p-6 glass-card rounded-2xl flex flex-col">
+          <h3 className="font-bold mb-6 flex items-center gap-2">
+            <Cpu className="w-4 h-4 text-primary" />
+            Phân bổ model LLM
+          </h3>
+          <div className="flex-1 min-h-[250px] relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={modelData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {modelData.map((entry, index) => (
+                    <Cell key={`model-cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <Cpu className="w-5 h-5 text-on-surface-variant opacity-60" />
+              <span className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider mt-1">Model</span>
+            </div>
+          </div>
+          <div className="space-y-2 mt-4">
+            {modelData[0]?.name === 'Chưa có dữ liệu' ? (
+              <p className="text-sm text-on-surface-variant italic">Chưa có request nào ghi nhận model LLM.</p>
+            ) : (
+              modelData.map((item) => (
+                <div key={item.name} className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span className="text-sm font-bold">{item.name}</span>
+                  </div>
+                  <span className="text-sm font-bold">{item.value}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
+
+
 
       {/* Row 3: Success vs Error Bar Chart */}
       <div className="p-6 glass-card rounded-2xl">

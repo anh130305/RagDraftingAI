@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { 
-  Users, ShieldCheck, Zap, Filter, UserPlus, Search, 
+import {
+  Users, ShieldCheck, Zap, Filter, UserPlus, Search,
   MoreVertical, Edit2, Trash2, ChevronLeft, ChevronRight,
   CheckCircle2, XCircle
 } from 'lucide-react';
@@ -11,27 +11,27 @@ import { useToast } from '../lib/ToastContext';
 import type { UserResponse } from '../lib/api';
 
 const permissions = [
-  { 
-    role: 'Admin', 
-    color: 'primary', 
+  {
+    role: 'Admin',
+    color: 'primary',
     items: [
       { label: 'Truy cập Cấu hình Toàn cục', active: true },
       { label: 'Quản lý Thanh toán & Người dùng', active: true },
       { label: 'Triển khai Model', active: true },
     ]
   },
-  { 
-    role: 'Moderator', 
-    color: 'secondary', 
+  {
+    role: 'Moderator',
+    color: 'secondary',
     items: [
       { label: 'Xem Phân tích Toàn cục', active: true },
       { label: 'Dán nhãn dữ liệu', active: true },
       { label: 'Cấu hình Hệ thống', active: false },
     ]
   },
-  { 
-    role: 'User', 
-    color: 'tertiary', 
+  {
+    role: 'User',
+    color: 'tertiary',
     items: [
       { label: 'Bảng điều khiển Cá nhân', active: true },
       { label: 'Sử dụng Model và Chat', active: true },
@@ -45,11 +45,11 @@ export default function UserManagement() {
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Stats
   const activeCount = users.filter(u => u.is_active).length;
   const adminCount = users.filter(u => u.role === 'admin').length;
-  
+
   const fetchUsers = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -79,7 +79,7 @@ export default function UserManagement() {
 
   const handleStatusToggle = async (userId: string, currentStatus: boolean) => {
     try {
-       // Optimistic update
+      // Optimistic update
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: !currentStatus } : u));
       await api.updateAdminUser(userId, { is_active: !currentStatus });
     } catch (err: any) {
@@ -89,7 +89,7 @@ export default function UserManagement() {
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8"
@@ -151,7 +151,7 @@ export default function UserManagement() {
             </div>
           ) : error ? (
             <div className="flex items-center justify-center h-[400px] text-error font-medium">
-               {error}
+              {error}
             </div>
           ) : (
             <table className="w-full text-left border-collapse">
@@ -178,7 +178,7 @@ export default function UserManagement() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <select 
+                      <select
                         value={user.role}
                         onChange={(e) => handleRoleChange(user.id, e.target.value)}
                         className="bg-surface-low border-none rounded-lg px-3 py-1.5 text-xs font-bold text-on-surface focus:ring-2 focus:ring-primary focus:outline-none appearance-none cursor-pointer hover:bg-surface-high transition-colors shadow-sm capitalize"
@@ -190,12 +190,12 @@ export default function UserManagement() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex justify-center">
-                        <button 
+                        <button
                           onClick={() => handleStatusToggle(user.id, user.is_active)}
                           className={cn(
-                          "relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 border shadow-inner",
-                          user.is_active ? "bg-primary border-primary/20" : "bg-surface-highest border-outline-variant/50"
-                        )}>
+                            "relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 border shadow-inner",
+                            user.is_active ? "bg-primary border-primary/20" : "bg-surface-highest border-outline-variant/50"
+                          )}>
                           <span className={cn(
                             "inline-block h-3.5 w-3.5 transform rounded-full bg-surface shadow-sm transition duration-200 ease-in-out",
                             user.is_active ? "translate-x-5" : "translate-x-0.5"
@@ -214,7 +214,7 @@ export default function UserManagement() {
             </table>
           )}
         </div>
-        
+
         {/* Pagination Status */}
         <div className="px-6 py-3 bg-surface-low flex items-center justify-between border-t border-outline-variant/30">
           <p className="text-[11px] text-on-surface-variant font-medium">
@@ -232,7 +232,7 @@ export default function UserManagement() {
       </div>
 
       {/* Permissions Matrix */}
-      <div>
+      {/* <div>
         <h3 className="text-xl font-bold font-headline text-on-surface mb-4">Tổng quan Phân quyền (Tham khảo)</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {permissions.map((perm) => (
@@ -255,8 +255,8 @@ export default function UserManagement() {
               </ul>
             </div>
           ))}
-        </div>
-      </div>
-    </motion.div>
+        </div>igt
+    </div>*/}
+    </motion.div >
   );
 }

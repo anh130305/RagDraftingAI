@@ -68,9 +68,10 @@ def test_generate_docx_persists_assistant_message(client, normal_auth, monkeypat
 
     captured = {}
 
-    def fake_create_assistant_response(db, session_id, content, mode="qa"):
+    def fake_create_assistant_response(db, session_id, content, mode="qa", llm_model="17b"):
         captured["session_id"] = str(session_id)
         captured["mode"] = mode
+        captured["llm_model"] = llm_model
         captured["content"] = content
         return None
 
@@ -93,6 +94,7 @@ def test_generate_docx_persists_assistant_message(client, normal_auth, monkeypat
         json={
             "query": "Soan cong van thong bao",
             "session_id": session_id,
+            "llm_model": "70b",
         },
     )
 
@@ -103,6 +105,7 @@ def test_generate_docx_persists_assistant_message(client, normal_auth, monkeypat
 
     assert captured["session_id"] == session_id
     assert captured["mode"] == "generate"
+    assert captured["llm_model"] == "70b"
     assert "Tệp đính kèm" in captured["content"]
 
 

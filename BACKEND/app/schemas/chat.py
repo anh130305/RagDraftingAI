@@ -44,6 +44,7 @@ class ChatMessageCreate(BaseModel):
     content: str = Field(..., min_length=1)
     mode: str = Field("qa")
     extras: Optional[str] = Field(None, description="Optional extra context or instructions")
+    llm_model: Literal["17b", "70b"] = Field("17b", description="LLM model alias")
 
 class ChatMessageFeedbackUpdate(BaseModel):
     """PUT /chat/messages/{id}/feedback"""
@@ -56,6 +57,7 @@ class ChatMessageResponse(BaseModel):
     role: MessageRole
     content: str
     mode: Optional[str] = None
+    llm_model: Optional[Literal["17b", "70b"]] = None
     feedback: Optional[str] = None
     token_count: Optional[int] = None
     created_at: datetime

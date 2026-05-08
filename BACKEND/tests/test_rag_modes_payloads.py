@@ -68,6 +68,7 @@ def test_qa_mode_payload_mapping():
         "query": "Trình bày điều kiện cấp giấy phép kinh doanh?",
         "extras": None,
         "call_llm": True,
+        "model": "17b",
     }
 
     # 4. OUTPUT CUỐI CÙNG MÀ USER NHẬN ĐƯỢC
@@ -114,6 +115,7 @@ def test_draft_mode_payload_mapping():
         "query": "Soạn công văn của Cục Văn thư và Lưu trữ Nhà nước gửi các Bộ về hướng dẫn thi hành Luật Lưu trữ",
         "extras": "Ngày ký: 05/01/2025\nNgười ký: Cục trưởng Đặng Thanh Tùng\nSố CV: 12/VTLT-NV",
         "call_llm": True,
+        "model": "17b",
     }
 
     # 4. OUTPUT RAG TRẢ VỀ CHO BACKEND XỬ LÝ TIẾP

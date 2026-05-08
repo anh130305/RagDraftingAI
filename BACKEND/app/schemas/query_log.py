@@ -14,6 +14,7 @@ class QueryLogResponse(BaseModel):
     session_id: Optional[UUID] = None
     message_id: Optional[UUID] = None
     response_time_ms: Optional[int] = None
+    llm_model: Optional[str] = None
     chunk_found: bool
     created_at: datetime
 

@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Literal
 from pydantic import BaseModel, Field
 from app.schemas.document import DocumentResponse
 
@@ -14,6 +14,7 @@ class DraftRequest(BaseModel):
         json_schema_extra={"example": "Ngày ký: 05/01/2025\nNgười ký: Cục trưởng"},
     )
     session_id: Optional[str] = Field(None, description="ID của phiên chat để gắn tài liệu vào")
+    llm_model: Literal["17b", "70b"] = Field("17b", description="LLM model alias")
 
 class DraftMeta(BaseModel):
     query: str

@@ -126,6 +126,7 @@ def add_message(
             "role": MessageRole.user,
             "content": storage_content,
             "mode": payload.mode,
+            "llm_model": payload.llm_model,
         },
     )
     
@@ -140,7 +141,8 @@ def create_assistant_response(
     db: Session,
     session_id: UUID,
     content: str = "OKE! Tôi đã xử lý xong yêu cầu của bạn.",
-    mode: str = "qa"
+    mode: str = "qa",
+    llm_model: str = "17b",
 ) -> ChatMessageResponse:
     """Internal helper to create an assistant message in the database."""
     msg = message_repo.create(
@@ -150,6 +152,7 @@ def create_assistant_response(
             "role": MessageRole.assistant,
             "content": content,
             "mode": mode,
+            "llm_model": llm_model,
         },
     )
     
@@ -166,6 +169,7 @@ async def generate_assistant_response_task(
     user_query: str,
     mode: str = "qa",
     extras: Optional[str] = None,
+    llm_model: str = "17b",
 ):
     """
     Background task to simulate RAG/LLM processing and save assistant response.
@@ -188,7 +192,11 @@ async def generate_assistant_response_task(
         from app.services.rag_service import rag_service
         
         # We can pass extras if we want to add constraints
-        result = await rag_service.answer_legal_question(query=user_query, extras=extras)
+        result = await rag_service.answer_legal_question(
+            query=user_query,
+            extras=extras,
+            llm_model=llm_model,
+        )
         
         if result["status"] == "ok":
             content = result["answer"]
@@ -206,14 +214,26 @@ async def generate_assistant_response_task(
             error_message = result.get("error")
 
         # ── Create the assistant message ──
-        assistant_msg = create_assistant_response(db, session_id, content, mode=mode)
+        assistant_msg = create_assistant_response(
+            db,
+            session_id,
+            content,
+            mode=mode,
+            llm_model=llm_model,
+        )
         
     except Exception as e:
         is_error = True
         error_message = str(e)
         logger.error(f"Error in background task: {e}")
         # Optionally create a fallback error message in the chat
-        create_assistant_response(db, session_id, "Xin lỗi, đã có lỗi hệ thống xảy ra khi xử lý yêu cầu của bạn.", mode=mode)
+        create_assistant_response(
+            db,
+            session_id,
+            "Xin lỗi, đã có lỗi hệ thống xảy ra khi xử lý yêu cầu của bạn.",
+            mode=mode,
+            llm_model=llm_model,
+        )
     finally:
         end_time = time.perf_counter()
         response_time_ms = int((end_time - start_time) * 1000)
@@ -224,6 +244,7 @@ async def generate_assistant_response_task(
                 session_id=session_id,
                 message_id=assistant_msg.id if assistant_msg else None,
                 response_time_ms=response_time_ms,
+                llm_model=llm_model,
                 chunk_found=chunk_found,
                 is_error=is_error,
                 error_message=error_message
@@ -267,6 +288,7 @@ def update_message_feedback(
 async def stream_assistant_response(
     user_query: str,
     extras: Optional[str] = None,
+    llm_model: str = "17b",
 ) -> AsyncGenerator[Dict[str, object], None]:
     """Proxy token stream events from RAG service for legal QA."""
     from app.services.rag_service import rag_service
@@ -274,5 +296,6 @@ async def stream_assistant_response(
     async for event in rag_service.stream_legal_question(
         query=user_query,
         extras=extras,
+        llm_model=llm_model,
     ):
         yield event

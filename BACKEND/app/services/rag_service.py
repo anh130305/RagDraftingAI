@@ -98,7 +98,12 @@ class RAGService:
         except httpx.HTTPError as e:
             return {"status": "error", "message": str(e)}
 
-    async def answer_legal_question(self, query: str, extras: Optional[str] = None) -> Dict[str, Any]:
+    async def answer_legal_question(
+        self,
+        query: str,
+        extras: Optional[str] = None,
+        llm_model: str = "17b",
+    ) -> Dict[str, Any]:
         """Call the RAG legal_qa mode via API."""
         try:
             response = await self._client.post(
@@ -107,6 +112,7 @@ class RAGService:
                     "query": query,
                     "extras": extras,
                     "call_llm": True,
+                    "model": llm_model,
                 },
                 timeout=httpx.Timeout(180.0, connect=10.0, read=180.0),
             )
@@ -124,7 +130,7 @@ class RAGService:
                 "mode": "legal_qa",
                 "error": detail,
                 "http_status": e.response.status_code,
-                "meta": {"query": query, "extras": extras},
+                "meta": {"query": query, "extras": extras, "llm_model": llm_model},
             }
         except httpx.HTTPError as e:
             logger.error("RAG API transport error (legal_qa): %s", e)
@@ -132,13 +138,14 @@ class RAGService:
                 "status": "error",
                 "mode": "legal_qa",
                 "error": str(e),
-                "meta": {"query": query, "extras": extras}
+                "meta": {"query": query, "extras": extras, "llm_model": llm_model}
             }
 
     async def stream_legal_question(
         self,
         query: str,
         extras: Optional[str] = None,
+        llm_model: str = "17b",
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """Stream legal QA tokens via RAG NDJSON endpoint."""
         try:
@@ -149,6 +156,7 @@ class RAGService:
                     "query": query,
                     "extras": extras,
                     "call_llm": True,
+                    "model": llm_model,
                 },
                 timeout=httpx.Timeout(180.0, connect=10.0, read=180.0),
             ) as response:
@@ -178,14 +186,14 @@ class RAGService:
                 "type": "error",
                 "error": detail,
                 "http_status": e.response.status_code,
-                "meta": {"query": query, "extras": extras},
+                "meta": {"query": query, "extras": extras, "llm_model": llm_model},
             }
         except httpx.HTTPError as e:
             logger.error("RAG API transport error (legal_qa_stream): %s", e)
             yield {
                 "type": "error",
                 "error": str(e),
-                "meta": {"query": query, "extras": extras},
+                "meta": {"query": query, "extras": extras, "llm_model": llm_model},
             }
         except asyncio.CancelledError:
             logger.info("RAG stream cancelled by downstream client")
@@ -194,7 +202,8 @@ class RAGService:
     async def draft_document(
         self, 
         query: str, 
-        extras: Optional[str] = None
+        extras: Optional[str] = None,
+        llm_model: str = "17b",
     ) -> Dict[str, Any]:
         """Call the RAG draft mode via API."""
         try:
@@ -204,6 +213,7 @@ class RAGService:
                     "query": query,
                     "extras": extras,
                     "call_llm": True,
+                    "model": llm_model,
                 },
                 timeout=httpx.Timeout(360.0, connect=10.0, read=360.0),
             )
@@ -221,7 +231,7 @@ class RAGService:
                 "mode": "draft",
                 "error": detail,
                 "http_status": e.response.status_code,
-                "meta": {"query": query, "extras": extras},
+                "meta": {"query": query, "extras": extras, "llm_model": llm_model},
             }
         except httpx.HTTPError as e:
             logger.error("RAG API transport error (draft): %s", e)
@@ -229,7 +239,7 @@ class RAGService:
                 "status": "error",
                 "mode": "draft",
                 "error": str(e),
-                "meta": {"query": query, "extras": extras}
+                "meta": {"query": query, "extras": extras, "llm_model": llm_model}
             }
 
     def get_template_docx_path(self, form_id: str) -> Path:

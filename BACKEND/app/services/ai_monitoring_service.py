@@ -61,6 +61,35 @@ def get_ai_monitoring_stats(db: Session, days: int = 7) -> dict[str, Any]:
         # Fallback if column doesn't exist yet or other DB issue
         pass
 
+    # ── 3b. LLM model distribution (17b vs 70b) ──
+    model_distribution = {}
+    try:
+        model_stats = db.query(
+            QueryLog.llm_model,
+            func.count(QueryLog.id),
+        ).filter(QueryLog.created_at >= start_date)\
+         .filter(QueryLog.llm_model.is_not(None))\
+         .group_by(QueryLog.llm_model).all()
+        model_distribution = {str(row[0]): row[1] for row in model_stats if row[0]}
+    except Exception:
+        pass
+
+    if not model_distribution:
+        try:
+            audit_rows = db.query(AuditLog.detail)\
+                .filter(AuditLog.created_at >= start_date)\
+                .filter(AuditLog.action.in_([AuditAction.query, AuditAction.draft_document]))\
+                .filter(AuditLog.detail.is_not(None)).all()
+            for (detail,) in audit_rows:
+                if not isinstance(detail, dict):
+                    continue
+                llm_model = detail.get("llm_model")
+                if llm_model:
+                    key = str(llm_model)
+                    model_distribution[key] = model_distribution.get(key, 0) + 1
+        except Exception:
+            pass
+
     # ── 4. Top Document Types (from AuditLog) ──
     top_forms = []
     try:
@@ -120,6 +149,7 @@ def get_ai_monitoring_stats(db: Session, days: int = 7) -> dict[str, Any]:
                 "total_feedback": total_feedback
             },
             "mode_distribution": mode_distribution,
+            "model_distribution": model_distribution,
             "top_forms": top_forms
         },
         "trends": time_series,

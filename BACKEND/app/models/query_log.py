@@ -6,7 +6,7 @@ Full query text and retrieved chunk IDs live in the RAG service.
 
 import uuid
 
-from sqlalchemy import Column, Integer, Boolean, DateTime, ForeignKey, func, Text
+from sqlalchemy import Column, Integer, Boolean, DateTime, ForeignKey, func, Text, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -29,6 +29,7 @@ class QueryLog(Base):
         nullable=True,
     )
     response_time_ms = Column(Integer, nullable=True)
+    llm_model = Column(String, nullable=True)
     chunk_found = Column(Boolean, nullable=False, default=False)
     is_error = Column(Boolean, nullable=False, default=False)
     error_message = Column(Text, nullable=True)
