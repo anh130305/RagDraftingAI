@@ -1220,14 +1220,21 @@ def get_updater(**kwargs) -> DocumentUpdater:
 # ============================================================
 # CLI
 # ============================================================
-def _run_ingest_interactive(updater: "DocumentUpdater", file_path: str, ministry: str, rebuild_bm25: bool = False) -> None:
+def _run_ingest_interactive(
+    updater: "DocumentUpdater",
+    file_path: str,
+    ministry: str,
+    rebuild_bm25: bool = False,
+    delete_abolished: Optional[bool] = None,
+) -> None:
     """
     Ingest văn bản OCR từ file với flow giữ nguyên logic notebook Cell 2b + Cell 10:
       1. Load file → hiển thị preview
       2. Auto-detect + confirm số hiệu (có thể sửa)
       3. Dry-run preview (luôn safe)
-      4. Double confirm trước khi thực thi thật
-      5. Rebuild BM25 sau khi ingest thành công
+      4. Chọn có xoá văn bản bị phát hiện bãi bỏ hay không
+      5. Double confirm trước khi thực thi thật
+      6. Rebuild BM25 sau khi ingest thành công
     """
     import sys
 
@@ -1306,13 +1313,28 @@ def _run_ingest_interactive(updater: "DocumentUpdater", file_path: str, ministry
     print(f"║  Tên văn bản    : {ten_vb_final[:40]:<40}║")
     print(f"║  Chunks sẽ thêm : {n_chunks:<40}║")
     print(f"║  Đã có trong DB : {'⚠️  CÓ (sẽ upsert đè)' if already_exist else '✅ Chưa có':<40}║")
-    print(f"║  VB bãi bỏ (xoá): {str(abolished_nos)[:40]:<40}║")
+    print(f"║  VB bãi bỏ       : {str(abolished_nos)[:40]:<40}║")
     print("╚══════════════════════════════════════════════════════════╝")
 
     if report_preview.get("errors"):
         print(f"\n❌ Lỗi ở bước xem trước: {report_preview['errors']}")
         print("   Kiểm tra lại input. Pipeline dừng — chưa có gì thay đổi.")
         return
+
+    if delete_abolished is None:
+        if abolished_nos:
+            delete_answer = input(
+                "\n🗑️  Có xoá các văn bản bị phát hiện bãi bỏ khỏi DB không? "
+                "Nhập XOÁ để xoá (Enter để giữ lại): "
+            ).strip()
+            delete_abolished = delete_answer.upper() in ("XOÁ", "XOA", "Y", "YES", "OK")
+        else:
+            delete_abolished = False
+
+    print(
+        "\n   Tuỳ chọn xoá VB bãi bỏ: "
+        f"{'CÓ xoá khỏi DB' if delete_abolished else 'KHÔNG xoá, chỉ ghi nhận/dry-run'}"
+    )
 
     answer = input("\n▶ Thực thi thật? Nhập ĐỒNG Ý để xác nhận (Enter để huỷ): ").strip()
 
@@ -1325,7 +1347,7 @@ def _run_ingest_interactive(updater: "DocumentUpdater", file_path: str, ministry
     report = updater.ingest(
         ocr_text        = raw_ocr_text,
         ministry        = ministry,
-        dry_run_delete  = False,
+        dry_run_delete  = not delete_abolished,
         skip_upsert     = False,
         force_if_exists = True,
         only_new_chunks = False,
@@ -1343,6 +1365,7 @@ def _run_ingest_interactive(updater: "DocumentUpdater", file_path: str, ministry
     print(f"  Upsert        : {report['upsert_result'].get('upserted', 0)} chunks")
     print(f"  Skip (đã có)  : {report['upsert_result'].get('skipped', 0)} chunks")
     print(f"  VB bãi bỏ     : {len(report['abolished_found'])}")
+    print(f"  Xoá VB bãi bỏ : {'Có' if delete_abolished else 'Không'}")
     deleted_total = sum(r.get("deleted_count", 0) for r in report["delete_results"])
     print(f"  Chunks đã xoá : {deleted_total}")
     all_errors = report.get("errors", []) + report.get("upsert_result", {}).get("errors", [])
@@ -1412,6 +1435,20 @@ if __name__ == "__main__":
         "--dry-run", action="store_true",
         help="Xem trước, không thực hiện thật (dùng cho --mode delete)",
     )
+    delete_group = parser.add_mutually_exclusive_group()
+    delete_group.add_argument(
+        "--delete-abolished",
+        dest="delete_abolished",
+        action="store_true",
+        help="Khi ingest: xoá các văn bản bị phát hiện bãi bỏ khỏi DB sau khi upsert thành công",
+    )
+    delete_group.add_argument(
+        "--keep-abolished",
+        dest="delete_abolished",
+        action="store_false",
+        help="Khi ingest: giữ lại các văn bản bị phát hiện bãi bỏ (không xoá khỏi DB)",
+    )
+    parser.set_defaults(delete_abolished=None)
     args = parser.parse_args()
 
     updater = DocumentUpdater()
@@ -1424,7 +1461,12 @@ if __name__ == "__main__":
         if not file_path:
             print("❌ Đường dẫn file không được để trống.")
             sys.exit(1)
-        _run_ingest_interactive(updater, file_path, ministry=args.ministry)
+        _run_ingest_interactive(
+            updater,
+            file_path,
+            ministry=args.ministry,
+            delete_abolished=args.delete_abolished,
+        )
 
     elif args.mode == "status":
         print("\n📊 ChromaDB Status:")
