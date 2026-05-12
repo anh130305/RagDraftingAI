@@ -81,7 +81,7 @@ _LLM_CONFIG = {
 
 GROQ_MODEL_17B = "meta-llama/llama-4-scout-17b-16e-instruct"
 GROQ_MODEL_70B = "llama-3.3-70b-versatile"
-DEFAULT_LLM_MODEL = GROQ_MODEL_17B
+DEFAULT_LLM_MODEL = GROQ_MODEL_70B
 _GROQ_MODEL_ALIASES = {
     "17b": GROQ_MODEL_17B,
     "llama-4-scout-17b": GROQ_MODEL_17B,
@@ -817,7 +817,9 @@ if __name__ == "__main__":
     DEFAULT_QUERIES = {
         "draft"   : "Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý theo quy định của luật cán bộ, công chức.",
         # "draft": "Soạn thảo biên bản họp Hội đồng kỷ luật công chức.",
-        "legal_qa": "Trình bày điều kiện cấp giấy phép kinh doanh?",
+        # "legal_qa": "Trình bày điều kiện cấp giấy phép kinh doanh",
+        "legal_qa": "Trình bày quy định về xử phạt cán bộ",
+        # "legal_qa": "Trình bày phân loại mức độ rủi ro của trí tuệ nhân tạo",
     }
     DEFAULT_EXTRAS = {
         "draft"   : (
