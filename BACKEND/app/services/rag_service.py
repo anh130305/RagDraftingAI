@@ -102,7 +102,7 @@ class RAGService:
         self,
         query: str,
         extras: Optional[str] = None,
-        llm_model: str = "17b",
+        llm_model: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Call the RAG legal_qa mode via API."""
         try:
@@ -145,7 +145,7 @@ class RAGService:
         self,
         query: str,
         extras: Optional[str] = None,
-        llm_model: str = "17b",
+        llm_model: Optional[str] = None,
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """Stream legal QA tokens via RAG NDJSON endpoint."""
         try:
@@ -203,7 +203,7 @@ class RAGService:
         self, 
         query: str, 
         extras: Optional[str] = None,
-        llm_model: str = "17b",
+        llm_model: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Call the RAG draft mode via API."""
         try:

@@ -92,12 +92,24 @@ _GROQ_MODEL_ALIASES = {
 }
 
 
-def resolve_llm_model(model: Optional[str] = None) -> str:
+def resolve_llm_model(model: Optional[str] = None, mode: Optional[str] = None) -> str:
     """
     Chuẩn hoá lựa chọn model Groq.
-    Hỗ trợ: "17b", "70b", hoặc full model id. Mặc định: 17b.
+    - Nếu không chỉ định model:
+        - Mode 'draft'     -> 70B
+        - Mode 'legal_qa'  -> 17B
+        - Khác            -> DEFAULT_LLM_MODEL
+    Hỗ trợ: "17b", "70b", hoặc full model id.
     """
-    requested = (model or DEFAULT_LLM_MODEL).strip().strip("\"'")
+    if not model:
+        if mode == "draft":
+            model = GROQ_MODEL_70B
+        elif mode == "legal_qa":
+            model = GROQ_MODEL_17B
+        else:
+            model = DEFAULT_LLM_MODEL
+
+    requested = model.strip().strip("\"'")
     key = requested.lower()
     if key not in _GROQ_MODEL_ALIASES:
         allowed = ", ".join(sorted({"17b", "70b", GROQ_MODEL_17B, GROQ_MODEL_70B}))
@@ -359,7 +371,7 @@ class PromptAPI:
         t0 = time.time()
         resolved_extras = _clean_extras(extras)
         try:
-            selected_model = resolve_llm_model(model)
+            selected_model = resolve_llm_model(model, mode="draft")
         except ValueError as e:
             return {
                 "status": "error",
@@ -510,7 +522,7 @@ class PromptAPI:
         top_k   = legal_top_k if legal_top_k is not None else 5
         resolved_extras = _clean_extras(extras)
         try:
-            selected_model = resolve_llm_model(model)
+            selected_model = resolve_llm_model(model, mode="legal_qa")
         except ValueError as e:
             return {
                 "status": "error",
@@ -608,7 +620,7 @@ class PromptAPI:
         top_k = legal_top_k if legal_top_k is not None else 5
         resolved_extras = _clean_extras(extras)
         try:
-            selected_model = resolve_llm_model(model)
+            selected_model = resolve_llm_model(model, mode="legal_qa")
         except ValueError as e:
             yield {
                 "type": "error",
