@@ -42,9 +42,9 @@ class ChatSessionResponse(BaseModel):
 class ChatMessageCreate(BaseModel):
     """POST /chat/sessions/{id}/messages"""
     content: str = Field(..., min_length=1)
-    mode: str = Field("qa")
+    mode: Literal["qa", "generate"] = Field("qa")
     extras: Optional[str] = Field(None, description="Optional extra context or instructions")
-    llm_model: Literal["17b", "70b"] = Field("17b", description="LLM model alias")
+    llm_model: Optional[Literal["17b", "70b"]] = Field(None, description="LLM model alias")
 
 class ChatMessageFeedbackUpdate(BaseModel):
     """PUT /chat/messages/{id}/feedback"""

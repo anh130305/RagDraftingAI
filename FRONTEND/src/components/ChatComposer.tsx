@@ -747,7 +747,12 @@ export default function ChatComposer({
       <div className="flex items-center gap-2 mb-2 px-1">
         <button
           type="button"
-          onClick={() => { setMode('qa'); setShowExtras(false); setExtras(''); }}
+          onClick={() => { 
+            setMode('qa'); 
+            setShowExtras(false); 
+            setExtras(''); 
+            setLlmModel('17b'); // Tự động đổi sang 17B khi chọn QA
+          }}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${mode === 'qa'
             ? 'bg-primary text-on-primary shadow-sm'
             : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-highest'
@@ -758,7 +763,10 @@ export default function ChatComposer({
         </button>
         <button
           type="button"
-          onClick={() => setMode('generate')}
+          onClick={() => {
+            setMode('generate');
+            setLlmModel('70b'); // Tự động đổi sang 70B khi chọn Soạn thảo
+          }}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${mode === 'generate'
             ? 'bg-secondary text-on-secondary shadow-sm'
             : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-highest'

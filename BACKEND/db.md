@@ -12,7 +12,8 @@ CREATE TYPE audit_action AS ENUM (
     'query', 'create_session', 'delete_session', 'update_user',
     'download_document', 'storage_error',
     'draft_document',
-    'create_template', 'update_template', 'delete_template', 'use_template'
+    'create_template', 'update_template', 'delete_template', 'use_template',
+    'rag_ingest', 'rag_delete'
 );
 
 
@@ -108,7 +109,9 @@ CREATE TABLE chat_messages (
     session_id  UUID         NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
     role        message_role NOT NULL,
     content     TEXT         NOT NULL,
-    feedback    TEXT,
+    mode        VARCHAR(20),                -- 'qa' hoặc 'generate'
+    llm_model   VARCHAR(50),                -- Ví dụ: '17b', '70b'
+    feedback    TEXT,                       -- 'like' hoặc 'dislike'
     token_count INTEGER,
     created_at  TIMESTAMP    NOT NULL DEFAULT NOW()
 );
@@ -127,11 +130,12 @@ CREATE TABLE documents (
     file_path            TEXT       NOT NULL,
     cloudinary_public_id TEXT,
     session_id           UUID       REFERENCES chat_sessions(id) ON DELETE SET NULL,
-    file_type            VARCHAR(20),
+    file_type            TEXT,
     file_size            BIGINT,
     status               doc_status NOT NULL DEFAULT 'pending',
     uploaded_by          UUID       REFERENCES users(id) ON DELETE SET NULL,
     chunk_count          INTEGER    NOT NULL DEFAULT 0,
+    rag_ingested         BOOLEAN    NOT NULL DEFAULT FALSE,
     error_message        TEXT,
     created_at           TIMESTAMP  NOT NULL DEFAULT NOW(),
     updated_at           TIMESTAMP  NOT NULL DEFAULT NOW()
@@ -148,26 +152,7 @@ CREATE TRIGGER trg_documents_updated_at
 
 
 -- ============================================================
--- 6. DOCUMENT_CHUNKS  — đã thu gọn
---    content / chunk_size / metadata thuộc RAG service
--- ============================================================
-
-CREATE TABLE document_chunks (
-    id               UUID      PRIMARY KEY DEFAULT gen_random_uuid(),
-    document_id      UUID      NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-    vectordb_point_id  UUID      UNIQUE,
-    chunk_index      INTEGER   NOT NULL,
-    page_number      INTEGER,
-    created_at       TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_chunks_document_id     ON document_chunks(document_id);
-CREATE INDEX idx_chunks_vectordb_point_id ON document_chunks(vectordb_point_id);
-CREATE INDEX idx_chunks_doc_order       ON document_chunks(document_id, chunk_index);
-
-
--- ============================================================
--- 7. QUERY_LOGS  — rút gọn
+-- 6. QUERY_LOGS  — rút gọn
 --    query_text / retrieved_chunk_ids / relevance_scores thuộc RAG service
 -- ============================================================
 
@@ -176,6 +161,7 @@ CREATE TABLE query_logs (
     session_id       UUID      REFERENCES chat_sessions(id) ON DELETE SET NULL,
     message_id       UUID      REFERENCES chat_messages(id) ON DELETE SET NULL,
     response_time_ms INTEGER,
+    llm_model        VARCHAR(50),
     chunk_found      BOOLEAN   NOT NULL DEFAULT FALSE,
     is_error         BOOLEAN   NOT NULL DEFAULT FALSE,
     error_message    TEXT,
@@ -187,19 +173,20 @@ CREATE INDEX idx_query_logs_created_at  ON query_logs(created_at DESC);
 
 
 -- ============================================================
--- 8. PROMPT_TEMPLATES
+-- 7. PROMPT_TEMPLATES
 -- ============================================================
 
 CREATE TABLE prompt_templates (
-    id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    name        VARCHAR(100) NOT NULL,
-    description TEXT,
-    content     TEXT         NOT NULL,
-    is_default  BOOLEAN      NOT NULL DEFAULT FALSE,
-    is_active   BOOLEAN      NOT NULL DEFAULT TRUE,
-    created_by  UUID         REFERENCES users(id) ON DELETE SET NULL,
-    created_at  TIMESTAMP    NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMP    NOT NULL DEFAULT NOW()
+    id                 UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    name               VARCHAR(100) NOT NULL,
+    description        TEXT,
+    query              TEXT         NOT NULL, -- Trước đây là 'content'
+    extra_instructions TEXT,
+    mode               VARCHAR(20)  NOT NULL DEFAULT 'qa',
+    is_active          BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_by         UUID         REFERENCES users(id) ON DELETE SET NULL,
+    created_at         TIMESTAMP    NOT NULL DEFAULT NOW(),
+    updated_at         TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_prompt_tpl_active ON prompt_templates(is_active);
