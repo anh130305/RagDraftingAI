@@ -34,6 +34,50 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 # ============================================================
+# 0. CONVERSATION HISTORY HELPERS
+# ============================================================
+
+def _estimate_tokens(text: str) -> int:
+    """Ước lượng token cho tiếng Việt (~3 chars/token)."""
+    return int(len(text) / 3.0) if text else 0
+
+
+def _trim_history_to_budget(
+    history: List[Dict[str, str]],
+    max_tokens: int = 2000,
+    max_messages: int = 6,
+) -> List[Dict[str, str]]:
+    """
+    Giữ lại N messages GẦN NHẤT sao cho tổng token ≤ budget.
+
+    - max_messages: Giới hạn cứng (mặc định 6 = 3 cặp user-assistant).
+    - max_tokens  : Ngân sách token tối đa cho toàn bộ history.
+    - Ưu tiên giữ messages gần nhất (recency > completeness).
+    - Đảm bảo kết quả bắt đầu bằng role "user" (không cắt giữa cặp).
+    """
+    if not history:
+        return []
+
+    recent = history[-max_messages:]
+
+    # Trim theo token budget — duyệt ngược (mới nhất trước)
+    result: List[Dict[str, str]] = []
+    current_tokens = 0
+    for msg in reversed(recent):
+        msg_tokens = _estimate_tokens(msg.get("content", ""))
+        if current_tokens + msg_tokens > max_tokens:
+            break
+        result.insert(0, msg)
+        current_tokens += msg_tokens
+
+    # Đảm bảo bắt đầu bằng "user" (bỏ "assistant" mồ côi ở đầu)
+    while result and result[0].get("role") == "assistant":
+        result.pop(0)
+
+    return result
+
+
+# ============================================================
 # 1. SKILL LOADER
 # ============================================================
 
@@ -594,6 +638,7 @@ def build_legal_qa_messages(
     query: str,
     retrieved_legal: List[Dict],
     extra_instructions: Optional[str] = None,
+    history: Optional[List[Dict[str, str]]] = None,
 ) -> List[Dict[str, str]]:
     """
     Xây dựng messages cho chế độ HỎI LUẬT (không cần form/example).
@@ -602,16 +647,25 @@ def build_legal_qa_messages(
         query            : Câu hỏi pháp luật (tiếng Việt)
         retrieved_legal  : List[Dict] từ retrieve_legal() với top_k=5
         extra_instructions: Hướng dẫn bổ sung tuỳ chọn
+        history          : Lịch sử hội thoại [{"role": ..., "content": ...}, ...]
 
     Returns:
-        [{"role": "system", "content": ...}, {"role": "user", "content": ...}]
+        [{"role": "system", ...}, ...history..., {"role": "user", "content": ...}]
     """
     legal_ctx   = _format_legal_context(retrieved_legal)
     user_prompt = build_legal_qa_user_prompt(query, legal_ctx, extra_instructions)
-    return [
+
+    messages: List[Dict[str, str]] = [
         {"role": "system", "content": get_system_prompt_legal_qa()},
-        {"role": "user",   "content": user_prompt},
     ]
+
+    # Inject conversation history (trimmed theo token budget)
+    if history:
+        trimmed = _trim_history_to_budget(history, max_tokens=2000, max_messages=6)
+        messages.extend(trimmed)
+
+    messages.append({"role": "user", "content": user_prompt})
+    return messages
 
 
 # ============================================================

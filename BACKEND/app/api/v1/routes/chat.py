@@ -181,6 +181,18 @@ async def stream_message(
 
     user_msg = chat_service.add_message(db, session_id, current_user.id, payload)
 
+    # ── Load conversation history for multi-turn context ──
+    from app.repositories.chat_repo import message_repo
+    previous_messages = message_repo.get_by_session(db, session_id)
+    history = [
+        {"role": msg.role.value, "content": msg.content}
+        for msg in previous_messages
+        if msg.role.value in ("user", "assistant")
+    ]
+    # Remove the last message (the current user query just saved)
+    if history and history[-1]["role"] == "user":
+        history = history[:-1]
+
     background_tasks.add_task(
         audit_service.log_action,
         user_id=current_user.id,
@@ -215,6 +227,7 @@ async def stream_message(
                 user_query=payload.content,
                 extras=payload.extras,
                 llm_model=payload.llm_model,
+                history=history,
             ):
                 event_type = str(event.get("type", ""))
 
