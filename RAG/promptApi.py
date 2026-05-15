@@ -467,6 +467,7 @@ class PromptAPI:
         legal_type_filter : Optional[str] = None,
         call_llm          : bool = True,
         model             : Optional[str] = None,
+        history           : Optional[List[Dict[str, str]]] = None,
     ) -> Dict[str, Any]:
         """
         Hỏi đáp pháp luật hành chính Việt Nam.
@@ -557,6 +558,7 @@ class PromptAPI:
                 query,
                 legal_chunks,
                 extra_instructions=resolved_extras,
+                history=history,
             )
 
             # 3. Meta
@@ -608,6 +610,7 @@ class PromptAPI:
         legal_type_filter: Optional[str] = None,
         call_llm: bool = True,
         model: Optional[str] = None,
+        history: Optional[List[Dict[str, str]]] = None,
     ) -> Iterator[Dict[str, Any]]:
         """
         Stream kết quả legal_qa theo NDJSON events:
@@ -652,6 +655,7 @@ class PromptAPI:
                 query,
                 legal_chunks,
                 extra_instructions=resolved_extras,
+                history=history,
             )
 
             legal_sources = [

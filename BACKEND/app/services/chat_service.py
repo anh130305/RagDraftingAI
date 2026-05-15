@@ -190,12 +190,24 @@ async def generate_assistant_response_task(
     try:
         # Use the actual RAG service for legal QA
         from app.services.rag_service import rag_service
-        
+
+        # ── Load conversation history from DB ──
+        previous_messages = message_repo.get_by_session(db, session_id)
+        history = [
+            {"role": msg.role.value, "content": msg.content}
+            for msg in previous_messages
+            if msg.role.value in ("user", "assistant")
+        ]
+        # Remove the last message (the current user query just saved)
+        if history and history[-1]["role"] == "user":
+            history = history[:-1]
+
         # We can pass extras if we want to add constraints
         result = await rag_service.answer_legal_question(
             query=user_query,
             extras=extras,
             llm_model=llm_model,
+            history=history,
         )
         
         if result["status"] == "ok":
@@ -289,6 +301,7 @@ async def stream_assistant_response(
     user_query: str,
     extras: Optional[str] = None,
     llm_model: str = "17b",
+    history: Optional[list] = None,
 ) -> AsyncGenerator[Dict[str, object], None]:
     """Proxy token stream events from RAG service for legal QA."""
     from app.services.rag_service import rag_service
@@ -297,5 +310,6 @@ async def stream_assistant_response(
         query=user_query,
         extras=extras,
         llm_model=llm_model,
+        history=history,
     ):
         yield event

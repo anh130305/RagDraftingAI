@@ -126,6 +126,7 @@ class LegalQARequest(BaseModel):
     legal_type_filter: Optional[str] = None
     call_llm: bool = True
     model: Optional[str] = None
+    history: Optional[List[Dict[str, Any]]] = None
 
 
 class DBCheckRequest(BaseModel):
@@ -352,6 +353,7 @@ async def legal_qa(request: LegalQARequest):
             legal_type_filter=request.legal_type_filter,
             call_llm=request.call_llm,
             model=request.model,
+            history=request.history,
         )
         return result
     except Exception as e:
@@ -373,6 +375,7 @@ def legal_qa_stream(request: LegalQARequest):
                 legal_type_filter=request.legal_type_filter,
                 call_llm=request.call_llm,
                 model=request.model,
+                history=request.history,
             ):
                 yield json.dumps(event, ensure_ascii=False) + "\n"
         except (asyncio.CancelledError, GeneratorExit):
