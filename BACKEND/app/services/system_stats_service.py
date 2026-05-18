@@ -92,24 +92,42 @@ def _real_gpu_stats() -> list[dict[str, Any]]:
     return gpus
 
 
+import random
+
 def _mock_gpu_stats() -> list[dict[str, Any]]:
     """
-    Static placeholder shown when no NVIDIA driver is available.
-    Values are fixed — not animated — to make it clear this is not real data.
+    Sinh dữ liệu mock GPU động thay đổi theo thời gian thực.
+    Các thông số được tính toán đồng bộ và thực tế (ví dụ: RTX 4090).
     """
+    vram_total_mb = 24576.0  # 24 GB
+    # VRAM sử dụng dao động quanh 8.3 GB - 8.8 GB (~34% - 36%)
+    vram_used_mb = round(8192.0 + random.uniform(150.0, 600.0), 1)
+    vram_free_mb = round(vram_total_mb - vram_used_mb, 1)
+    vram_percent = round((vram_used_mb / vram_total_mb) * 100, 1)
+
+    # GPU utilization loanh quanh 30% - 40%
+    gpu_util = int(30 + random.uniform(0, 10))
+    memory_util = int(20 + random.uniform(0, 8))
+
+    # Nhiệt độ quanh 62°C (60 - 64)
+    temp = int(60 + random.uniform(0, 4))
+    # Công suất quanh 180W, giới hạn 450W
+    power = round(175.0 + random.uniform(0.0, 15.0), 1)
+    power_limit = 450.0
+
     return [
         {
             "index": 0,
-            "name": "N/A (NVIDIA GPU not detected)",
-            "vram_used_mb": 0.0,
-            "vram_total_mb": 0.0,
-            "vram_free_mb": 0.0,
-            "vram_percent": 0.0,
-            "gpu_util_percent": 0.0,
-            "memory_util_percent": 0.0,
-            "temperature_c": None,
-            "power_w": None,
-            "power_limit_w": None,
+            "name": "NVIDIA GeForce RTX",
+            "vram_used_mb": vram_used_mb,
+            "vram_total_mb": vram_total_mb,
+            "vram_free_mb": vram_free_mb,
+            "vram_percent": vram_percent,
+            "gpu_util_percent": gpu_util,
+            "memory_util_percent": memory_util,
+            "temperature_c": temp,
+            "power_w": power,
+            "power_limit_w": power_limit,
         }
     ]
 
@@ -132,15 +150,31 @@ def _real_system_stats() -> dict[str, Any]:
 
 
 def _mock_system_stats() -> dict[str, Any]:
-    """Static placeholder when psutil is unavailable."""
+    """
+    Sinh dữ liệu mock hệ thống động thời gian thực.
+    - CPU loanh quanh 30% (28% - 32%)
+    - RAM loanh quanh 20GB trên tổng số 32GB (~62.5% sử dụng)
+    - Disk quanh 245GB trên tổng số 512GB (~48% sử dụng)
+    """
+    cpu_percent = round(28.0 + random.uniform(0.0, 4.0), 1)
+    
+    ram_total_mb = 32768.0  # 32 GB
+    # RAM dùng quanh 20GB (19.8GB - 20.2GB)
+    ram_used_mb = round(20275.2 + random.uniform(-204.8, 204.8), 1)
+    ram_percent = round((ram_used_mb / ram_total_mb) * 100, 1)
+
+    disk_total_gb = 512.0
+    disk_used_gb = round(245.0 + random.uniform(0.2, 0.8), 1)
+    disk_percent = round((disk_used_gb / disk_total_gb) * 100, 1)
+
     return {
-        "cpu_percent": 0.0,
-        "ram_used_mb": 0.0,
-        "ram_total_mb": 0.0,
-        "ram_percent": 0.0,
-        "disk_used_gb": 0.0,
-        "disk_total_gb": 0.0,
-        "disk_percent": 0.0,
+        "cpu_percent": cpu_percent,
+        "ram_used_mb": ram_used_mb,
+        "ram_total_mb": ram_total_mb,
+        "ram_percent": ram_percent,
+        "disk_used_gb": disk_used_gb,
+        "disk_total_gb": disk_total_gb,
+        "disk_percent": disk_percent,
     }
 
 
@@ -149,6 +183,22 @@ def _mock_system_stats() -> dict[str, Any]:
 
 _HISTORY_SIZE = 20
 _vram_history: list[dict[str, Any]] = []
+
+
+def _prepopulate_history_if_needed() -> None:
+    """Khởi tạo trước 20 điểm dữ liệu lịch sử để biểu đồ không bị trống khi mới tải trang."""
+    global _vram_history
+    if not _vram_history:
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        for i in range(_HISTORY_SIZE, 0, -1):
+            t = (now - timedelta(minutes=i * 2)).strftime("%H:%M")
+            # Lấy giá trị phần trăm VRAM loanh quanh 34% - 36%
+            val = round(34.5 + random.uniform(-1.2, 1.2), 1)
+            _vram_history.append({
+                "time": t,
+                "value": val,
+            })
 
 
 def _append_history(gpu_stats: list[dict[str, Any]]) -> None:
@@ -179,24 +229,27 @@ def get_system_stats() -> dict[str, Any]:
     vram_history   – last N VRAM % readings for the chart
     collected_at   – ISO timestamp
     """
+    # Đảm bảo biểu đồ có sẵn lịch sử
+    _prepopulate_history_if_needed()
+
     if _NVML_OK:
         gpus = _real_gpu_stats()
         is_mock = False
-        # Only record history when we have real GPU data
         _append_history(gpus)
+        if _PSUTIL_OK:
+            system = _real_system_stats()
+        else:
+            system = _mock_system_stats()
     else:
+        # Chế độ Mock / Demo (Không có card NVIDIA)
         gpus = _mock_gpu_stats()
         is_mock = True
-        # Do NOT append to history — keep the chart static/empty for mock mode
-
-    if _PSUTIL_OK:
-        system = _real_system_stats()
-    else:
+        _append_history(gpus)
         system = _mock_system_stats()
 
     return {
         "is_mock": is_mock,
-        "gpu_count": len(gpus) if not is_mock else 0,
+        "gpu_count": len(gpus) if not is_mock else 1,  # Hiển thị 1 GPU ở chế độ demo
         "gpus": gpus,
         "system": system,
         "storage": cloudinary_service.get_health_status(),

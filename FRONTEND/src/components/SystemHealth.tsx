@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, FileText, UserPlus, Trash2, Database, KeyRound, Download,
   Cloud, AlertCircle
 } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, parseUTC } from '../lib/utils';
 import * as api from '../lib/api';
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -277,7 +277,7 @@ export default function SystemHealth() {
                     <tr key={log.id} className="hover:bg-surface-highest/30 transition-colors group">
                       <td className="px-5 py-3 align-top">
                         <div className="font-mono text-xs text-on-surface-variant mt-1.5 whitespace-nowrap">
-                          {new Date(log.created_at).toLocaleString('vi-VN')}
+                          {parseUTC(log.created_at).toLocaleString('vi-VN')}
                         </div>
                       </td>
                       <td className="px-5 py-3 align-top">

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_admin
 from app.models.user import User
+from app.models.document import DocStatus
 from app.models.audit_log import AuditAction
 from app.models.chat_message import ChatMessage, MessageRole
 from app.schemas.user import UserResponse, AdminUserUpdate
@@ -33,7 +34,7 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 
 @router.get("/ai-monitoring")
 def get_ai_monitoring(
-    days: int = Query(7, ge=1, le=365),
+    days: int = Query(30, ge=1, le=365),
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
@@ -645,6 +646,10 @@ async def admin_ingest_doc(
     if doc.rag_ingested:
         raise HTTPException(status_code=409, detail="Tài liệu này đã được ingest vào ChromaDB")
 
+    # Ngay lập tức đánh dấu đang xử lý để FE có thể nhận biết khi navigate lại
+    doc.status = DocStatus.processing
+    db.commit()
+
     # Step 1: Download file from Cloudinary (async)
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -652,6 +657,9 @@ async def admin_ingest_doc(
         resp.raise_for_status()
         file_bytes = resp.content
     except Exception as e:
+        doc.status = DocStatus.failed
+        doc.error_message = f"Không thể tải file từ Cloudinary: {str(e)[:200]}"
+        db.commit()
         raise HTTPException(status_code=502, detail=f"Không thể tải file từ Cloudinary: {e}")
 
     # Step 2: OCR / extract text (offload CPU-bound work)
@@ -663,9 +671,15 @@ async def admin_ingest_doc(
             content_type=doc.file_type or "",
         ))
     except Exception as e:
+        doc.status = DocStatus.failed
+        doc.error_message = f"Lỗi trích xuất văn bản: {str(e)[:200]}"
+        db.commit()
         raise HTTPException(status_code=422, detail=f"Lỗi trích xuất văn bản: {e}")
 
     if not ocr_text or len(ocr_text.strip()) < 10:
+        doc.status = DocStatus.failed
+        doc.error_message = "Không trích xuất được nội dung văn bản đủ dài."
+        db.commit()
         raise HTTPException(
             status_code=422,
             detail="Không trích xuất được nội dung văn bản đủ dài. File có thể bị hỏng hoặc trống."
@@ -682,21 +696,32 @@ async def admin_ingest_doc(
             force_if_exists=True,
         )
     except httpx.HTTPStatusError as e:
+        doc.status = DocStatus.failed
+        doc.error_message = f"RAG service error: {e.response.status_code}"
+        db.commit()
         raise HTTPException(status_code=e.response.status_code, detail=str(e))
     except httpx.RequestError as e:
+        doc.status = DocStatus.failed
+        doc.error_message = f"RAG service unavailable: {str(e)[:200]}"
+        db.commit()
         raise HTTPException(status_code=503, detail=f"RAG service unavailable: {e}")
+    except Exception as e:
+        doc.status = DocStatus.failed
+        doc.error_message = f"RAG ingest failed: {str(e)[:200]}"
+        db.commit()
+        raise HTTPException(status_code=500, detail=f"RAG ingest failed: {e}")
 
     # Step 4: Auto rebuild BM25
     try:
         await rag_client.rebuild_bm25()
-    except Exception:
-        pass  # Non-critical
+    except Exception as e:
+        _rag_logger.warning(f"BM25 rebuild failed after single ingest: {e}")
 
     # Step 5: Mark document as ingested
     doc.rag_ingested = True
     if result.get("chunks_created"):
         doc.chunk_count = result["chunks_created"]
-    doc.status = "ready"
+    doc.status = DocStatus.ready
     db.commit()
 
     # Audit log
@@ -784,6 +809,10 @@ async def admin_ingest_docs_batch(
             continue
 
         try:
+            # Mark as processing so FE can detect via polling
+            doc.status = DocStatus.processing
+            db.commit()
+
             ocr_text, ocr_chars = await _extract_document_text_for_rag(doc)
             so_hieu = _document_so_hieu(doc)
             result = await rag_client.ingest(
@@ -795,7 +824,7 @@ async def admin_ingest_docs_batch(
             doc.rag_ingested = True
             if result.get("chunks_created"):
                 doc.chunk_count = result["chunks_created"]
-            doc.status = "ready"
+            doc.status = DocStatus.ready
             db.commit()
             changed = True
 
@@ -809,6 +838,9 @@ async def admin_ingest_docs_batch(
             ))
         except Exception as e:
             db.rollback()
+            doc.status = DocStatus.failed
+            doc.error_message = str(e)[:200]
+            db.commit()
             items.append(_batch_item(document_id, doc.title, "error", error=str(e)))
 
     bm25_rebuild = "skipped"

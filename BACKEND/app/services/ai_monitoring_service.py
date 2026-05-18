@@ -15,7 +15,7 @@ from app.models.query_log import QueryLog
 from app.models.chat_message import ChatMessage
 from app.models.audit_log import AuditLog, AuditAction
 
-def get_ai_monitoring_stats(db: Session, days: int = 7) -> dict[str, Any]:
+def get_ai_monitoring_stats(db: Session, days: int = 30) -> dict[str, Any]:
     """
     Collects and returns aggregated AI performance metrics for a specific period.
     """

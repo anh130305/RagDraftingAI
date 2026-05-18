@@ -1071,8 +1071,19 @@ export default function ChatComposer({
                     }}
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-semibold text-on-surface truncate">{tpl.name}</span>
+                      <div className="flex items-center justify-between gap-1.5 w-full">
+                        <span className="text-sm font-semibold text-on-surface truncate flex-1">{tpl.name}</span>
+                        {tpl.mode === 'generate' ? (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest bg-primary/10 text-primary border border-primary/20 shrink-0">
+                            <FileEdit className="w-2.5 h-2.5" />
+                            Soạn thảo
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest bg-secondary/10 text-secondary border border-secondary/20 shrink-0">
+                            <FileQuestion className="w-2.5 h-2.5" />
+                            Hỏi đáp
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-on-surface-variant mt-0.5 line-clamp-2 leading-relaxed">
                         {tpl.description || tpl.query.slice(0, 80) + '...'}
