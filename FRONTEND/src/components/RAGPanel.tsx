@@ -13,7 +13,7 @@ interface RAGPanelProps {
   syncing?: boolean;
 }
 
-const RAG_SYNC_POLL_INTERVAL_MS = 5000;
+const RAG_SYNC_POLL_INTERVAL_MS = 30000;
 
 /* ────────────── Main Component ────────────── */
 export default function RAGPanel({ refreshSignal = 0, syncing = false }: RAGPanelProps) {

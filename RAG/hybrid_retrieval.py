@@ -28,6 +28,7 @@ Requirements:
 
 from __future__ import annotations
 
+import gc
 import hashlib
 import re
 import time
@@ -329,6 +330,9 @@ def _build_bm25_index(
     chunk_ids     = df["chunk_id"].tolist()
     corpus_tokens = [tokenize_for_bm25(t) for t in df[text_col]]
     bm25 = BM25Okapi(corpus_tokens)
+    # Giải phóng corpus_tokens ngay — chiếm ~1.6GB cho 213K docs
+    del corpus_tokens
+    gc.collect()
     with open(save_path, "wb") as f:
         pickle.dump(bm25, f, protocol=pickle.HIGHEST_PROTOCOL)
     with open(meta_path, "wb") as f:
@@ -569,6 +573,17 @@ def init_retriever(
         current_chroma_client = _chroma_client
         current_reranker = _reranker
 
+        # ── MEM OPT: Khi rebuild, giải phóng dữ liệu cũ TRƯỚC khi tạo mới ──
+        # Tiết kiệm ~3-4GB vì không giữ song song cũ + mới.
+        # Search sẽ tạm không khả dụng trong thời gian rebuild (~2-3 phút).
+        if force_rebuild_bm25:
+            print("init_retriever: Giải phóng dữ liệu cũ để tiết kiệm RAM...")
+            _retriever_legal = None
+            _retriever_forms = None
+            _retriever_examples = None
+            _expand_index = {}
+            gc.collect()
+
     _dev = device or DEVICE
 
     # Compile regex patterns (KHÔNG gồm "quyet dinh" — xử lý động)
@@ -580,30 +595,23 @@ def init_retriever(
     for d in [BM25_DIR, MODEL_EMBED, MODEL_RERANK]:
         d.mkdir(parents=True, exist_ok=True)
 
+    # ── Load & process LEGAL (lớn nhất, ~213K chunks) ─────────────────────
     print("Loading chunk files...")
-    df_legal    = pd.read_parquet(CHUNK_DIR / "legal_chunks.parquet")
-    df_forms    = pd.read_parquet(CHUNK_DIR / "forms_chunks.parquet")
-    df_examples = pd.read_parquet(CHUNK_DIR / "examples_chunks.parquet")
-    print(f"  legal={len(df_legal):,}  forms={len(df_forms)}  examples={len(df_examples)}")
+    df_legal = pd.read_parquet(CHUNK_DIR / "legal_chunks.parquet")
+    print(f"  legal={len(df_legal):,}")
 
     assert "article" in df_legal.columns, \
         "legal_chunks.parquet thiếu cột 'article' — expand sẽ không hoạt động."
 
-    bm25_legal,    ids_legal    = _build_bm25_index(df_legal,    "text", BM25_DIR / "bm25_legal_v2.pkl",    "legal",    force_rebuild_bm25)
-    bm25_forms,    ids_forms    = _build_bm25_index(df_forms,    "text", BM25_DIR / "bm25_forms_v2.pkl",    "forms",    force_rebuild_bm25)
-    bm25_examples, ids_examples = _build_bm25_index(df_examples, "text", BM25_DIR / "bm25_examples_v2.pkl", "examples", force_rebuild_bm25)
+    bm25_legal, ids_legal = _build_bm25_index(
+        df_legal, "text", BM25_DIR / "bm25_legal_v2.pkl", "legal", force_rebuild_bm25,
+    )
 
     print("Building ChromaDB ID maps (FIX 1)...")
     t0 = time.time()
-    bm25_to_chroma_legal    = _build_chroma_id_map(df_legal)
-    bm25_to_chroma_forms    = _build_chroma_id_map(df_forms)
-    bm25_to_chroma_examples = _build_chroma_id_map(df_examples)
-    print(f"  legal={len(bm25_to_chroma_legal):,}  forms={len(bm25_to_chroma_forms)}  "
-          f"examples={len(bm25_to_chroma_examples)}  ({time.time()-t0:.1f}s)")
+    bm25_to_chroma_legal = _build_chroma_id_map(df_legal)
 
-    legal_meta    = df_legal.set_index("chunk_id").to_dict(orient="index")
-    forms_meta    = df_forms.set_index("chunk_id").to_dict(orient="index")
-    examples_meta = df_examples.set_index("chunk_id").to_dict(orient="index")
+    legal_meta = df_legal.set_index("chunk_id").to_dict(orient="index")
 
     print("Building expand index...")
     expand_index: Dict[Tuple[str, str], List[Tuple[int, str]]] = {}
@@ -615,6 +623,34 @@ def init_retriever(
     for key in expand_index:
         expand_index[key].sort(key=lambda x: x[0])
     print(f"  {len(expand_index):,} (doc_id, article) pairs")
+
+    # ── MEM OPT: Xóa DataFrame legal ngay sau khi đã trích hết dữ liệu ──
+    del df_legal
+    gc.collect()
+
+    # ── Load & process FORMS + EXAMPLES (nhỏ) ────────────────────────────
+    df_forms    = pd.read_parquet(CHUNK_DIR / "forms_chunks.parquet")
+    df_examples = pd.read_parquet(CHUNK_DIR / "examples_chunks.parquet")
+    print(f"  forms={len(df_forms)}  examples={len(df_examples)}")
+
+    bm25_forms, ids_forms = _build_bm25_index(
+        df_forms, "text", BM25_DIR / "bm25_forms_v2.pkl", "forms", force_rebuild_bm25,
+    )
+    bm25_examples, ids_examples = _build_bm25_index(
+        df_examples, "text", BM25_DIR / "bm25_examples_v2.pkl", "examples", force_rebuild_bm25,
+    )
+
+    bm25_to_chroma_forms    = _build_chroma_id_map(df_forms)
+    bm25_to_chroma_examples = _build_chroma_id_map(df_examples)
+    print(f"  legal={len(bm25_to_chroma_legal):,}  forms={len(bm25_to_chroma_forms)}  "
+          f"examples={len(bm25_to_chroma_examples)}  ({time.time()-t0:.1f}s)")
+
+    forms_meta    = df_forms.set_index("chunk_id").to_dict(orient="index")
+    examples_meta = df_examples.set_index("chunk_id").to_dict(orient="index")
+
+    # ── MEM OPT: Xóa DataFrames nhỏ ──
+    del df_forms, df_examples
+    gc.collect()
 
     if current_embed_model is None:
         print(f"Loading embedding model ({_dev})...")
@@ -693,6 +729,7 @@ def init_retriever(
         _retriever_forms = retriever_forms
         _retriever_examples = retriever_examples
 
+    gc.collect()
     print("✅ Retriever v5 initialized.")
 
 

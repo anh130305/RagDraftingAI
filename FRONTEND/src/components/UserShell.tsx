@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { parseUTC } from '../lib/utils';
 
 import {
   Bell,
@@ -779,7 +780,7 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                                 <div className="flex items-center gap-2 mt-1 text-[11px] font-mono text-on-surface-variant">
                                   <span>{file.file_size ? (file.file_size / 1024).toFixed(0) + ' KB' : 'Unknown'}</span>
                                   <span>•</span>
-                                  <span>{new Date(file.created_at).toLocaleDateString()}</span>
+                                  <span>{parseUTC(file.created_at).toLocaleDateString()}</span>
                                 </div>
                               </div>
                               <a

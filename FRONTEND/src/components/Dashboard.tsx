@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  AreaChart, Area, XAxis, Tooltip, ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts';
 import {
@@ -21,7 +21,7 @@ import type {
 
 // ── constants ─────────────────────────────────────────────────────────────────
 const POLL_SYSTEM_MS = 5_000;    // system stats: 5s when real GPU
-const POLL_SYSTEM_MOCK = 60_000;   // system stats: 60s in mock mode
+const POLL_SYSTEM_MOCK = 5_000;   // system stats: 5s in mock mode (dynamic demo)
 const POLL_DASHBOARD_MS = 30_000;   // dashboard stats: every 30s
 const CHART_HISTORY = 20;
 
@@ -93,7 +93,7 @@ export default function Dashboard() {
       setStats(data);
       setError(null);
       setConnected(true);
-      if (!data.is_mock && data.vram_history.length > 0) {
+      if (data.vram_history && data.vram_history.length > 0) {
         setHistory(data.vram_history.slice(-CHART_HISTORY));
       }
       const d = new Date(data.collected_at);
@@ -112,7 +112,7 @@ export default function Dashboard() {
     try {
       const [ds, ms] = await Promise.all([
         api.getDashboardStats(),
-        api.getAIMonitoringStats()
+        api.getAIMonitoringStats(30)
       ]);
       setDashStats(ds);
       setMonitoringStats(ms);
@@ -233,15 +233,15 @@ export default function Dashboard() {
               <div>
                 <h3 className="text-lg font-bold font-headline">Sử dụng VRAM &amp; GPU</h3>
                 <p className="text-xs text-on-surface-variant">
-                  {isMock ? 'Không phát hiện NVIDIA GPU trên máy chủ này' : primaryGpu?.name}
+                  {primaryGpu ? primaryGpu.name : 'Không phát hiện NVIDIA GPU trên máy chủ này'}
                 </p>
               </div>
               <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">
-                {isMock ? 'N/A' : `Hiện tại: ${fmt(vramPct, '%')}`}
+                {primaryGpu ? `Hiện tại: ${fmt(vramPct, '%')}` : 'N/A'}
               </span>
             </div>
 
-            {isMock ? (
+            {history.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-3 text-on-surface-variant/50">
                 <svg className="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
                   <rect x="2" y="6" width="20" height="12" rx="2" />
@@ -267,6 +267,7 @@ export default function Dashboard() {
                       tick={{ fill: 'var(--on-surface-variant)', fontSize: 10, fontWeight: 700 }}
                       interval="preserveStartEnd"
                     />
+                    <YAxis domain={[0, 100]} hide={true} />
                     <Tooltip
                       contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--outline-variant)', borderRadius: '12px', fontSize: '12px' }}
                       itemStyle={{ color: 'var(--primary)' }}
@@ -311,7 +312,7 @@ export default function Dashboard() {
             <div className="mb-4">
               <div className="flex justify-between text-xs mb-1">
                 <span className="text-on-surface-variant flex items-center gap-1"><Zap className="w-3.5 h-3.5" /> GPU Util</span>
-                <span className="font-bold">{isMock ? 'N/A' : fmt(gpuUtil, '%')}</span>
+                <span className="font-bold">{primaryGpu ? fmt(gpuUtil, '%') : 'N/A'}</span>
               </div>
               <MiniGauge percent={gpuUtil} color="var(--secondary)" />
             </div>
@@ -427,7 +428,7 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <h4 className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Độ phản hồi</h4>
-                      <p className="text-xs text-on-surface-variant/60 font-medium">Trung bình 7 ngày</p>
+                      <p className="text-xs text-on-surface-variant/60 font-medium">Trung bình 30 ngày</p>
                     </div>
                   </div>
                   <div className="text-xl font-extrabold text-on-surface pr-2">
@@ -673,8 +674,8 @@ export default function Dashboard() {
             <div className="relative z-10">
               <p className="text-[10px] font-bold uppercase text-on-surface-variant tracking-widest mb-2">GPU Util</p>
               <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-extrabold font-headline">{isMock ? 'N/A' : fmt(gpuUtil, '%')}</p>
-                {!isMock && (
+                <p className="text-3xl font-extrabold font-headline">{primaryGpu ? fmt(gpuUtil, '%') : 'N/A'}</p>
+                {primaryGpu && (
                   <span className={`text-sm font-bold flex items-center ${gpuUtil > 50 ? 'text-primary' : 'text-secondary'}`}>
                     {gpuUtil > 50 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
                   </span>

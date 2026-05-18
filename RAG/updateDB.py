@@ -38,6 +38,7 @@ Usage:
 from __future__ import annotations
 
 import hashlib
+import gc
 import json
 import logging
 import re
@@ -1155,7 +1156,12 @@ class DocumentUpdater:
                         row[mc] = meta.get(mc, "")
                     rows.append(row)
 
+                # MEM OPT: Giải phóng raw lists ngay sau khi đã tạo rows
+                del all_ids, all_docs, all_metas
+
                 df = pd.DataFrame(rows)
+                del rows
+
                 for int_col in ["chunk_index", "total_chunks", "word_count"]:
                     if int_col in df.columns:
                         df[int_col] = pd.to_numeric(df[int_col], errors="coerce").fillna(0).astype(int)
@@ -1163,6 +1169,10 @@ class DocumentUpdater:
                 df.to_parquet(pq_path, index=False)
                 rows_exported[col_key] = len(df)
                 logger.info(f"  [{col_key}] Saved {len(df):,} rows → {pq_path.name}")
+
+                # MEM OPT: Giải phóng DataFrame sau khi save
+                del df
+                gc.collect()
 
             except Exception as e:
                 logger.error(f"  [{col_key}] Export lỗi: {e}")

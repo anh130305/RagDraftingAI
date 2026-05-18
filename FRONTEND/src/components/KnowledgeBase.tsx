@@ -6,11 +6,12 @@ import {
   Zap, ArrowDownToLine, XCircle, Loader2, Square, CheckSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, parseUTC } from '../lib/utils';
 import * as api from '../lib/api';
 import { useToast } from '../lib/ToastContext';
 import { useConfirm } from '../lib/ConfirmContext';
 import type { DocumentResponse } from '../lib/api';
+import { setProcessing, clearProcessing, removeProcessingIds, getProcessing } from '../lib/processingStore';
 import RAGPanel from './RAGPanel';
 
 interface PendingUpload {
@@ -40,12 +41,26 @@ export default function KnowledgeBase() {
   const [ragRefreshSignal, setRagRefreshSignal] = useState(0);
   const [ragSyncing, setRagSyncing] = useState(false);
 
+  // ── Persistent processing state (survives tab switching) ──
+  const [persistentProcessingIds, setPersistentProcessingIds] = useState<Set<string>>(() => {
+    const { ids } = getProcessing();
+    return ids;
+  });
+  const [persistentAction, setPersistentAction] = useState<string | null>(() => {
+    const { action } = getProcessing();
+    return action;
+  });
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const isProcessingPersisted = persistentProcessingIds.size > 0;
+
   const fetchDocuments = useCallback(async () => {
     try {
       const data = await api.getAdminKnowledgeBase(0, 200);
       setDocuments(data.items);
     } catch (err: any) {
       console.error("Lỗi khi tải danh sách tri thức", err);
+    } finally {
+      setIsInitialLoading(false);
     }
   }, []);
 
@@ -58,7 +73,7 @@ export default function KnowledgeBase() {
   };
   const resumePolling = () => {
     if (!timerRef.current) {
-      timerRef.current = setInterval(fetchDocuments, 5000);
+      timerRef.current = setInterval(fetchDocuments, 30000);
     }
   };
 
@@ -73,11 +88,45 @@ export default function KnowledgeBase() {
 
   useEffect(() => {
     fetchDocuments();
-    timerRef.current = setInterval(fetchDocuments, 5000);
+    timerRef.current = setInterval(fetchDocuments, 30000);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [fetchDocuments]);
+
+  // Poll nhanh hơn khi có tài liệu đang processing hoặc persistent processing IDs
+  useEffect(() => {
+    const hasProcessing = documents.some(d => d.status === 'processing') || persistentProcessingIds.size > 0;
+    if (!hasProcessing) return;
+    // Khi có tài liệu processing, override timer xuống 2s
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(fetchDocuments, 10000);
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [documents, fetchDocuments, persistentProcessingIds]);
+
+  // Auto-clear persistent processing IDs when documents no longer being processed
+  useEffect(() => {
+    if (persistentProcessingIds.size === 0) return;
+    const completedIds: string[] = [];
+    for (const pid of persistentProcessingIds) {
+      const doc = documents.find(d => d.id === pid);
+      // If doc is not found (deleted) or no longer processing, mark as completed
+      if (!doc || (doc.status !== 'processing' && (doc.rag_ingested || doc.status === 'ready' || doc.status === 'failed'))) {
+        completedIds.push(pid);
+      }
+    }
+    if (completedIds.length > 0) {
+      removeProcessingIds(completedIds);
+      const { ids: remaining, action } = getProcessing();
+      setPersistentProcessingIds(remaining);
+      setPersistentAction(remaining.size > 0 ? action : null);
+    }
+  }, [documents, persistentProcessingIds]);
 
   useEffect(() => {
     const validIds = new Set(documents.map(doc => doc.id));
@@ -90,19 +139,21 @@ export default function KnowledgeBase() {
   // ── Upload (multi-file) ──
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    if (pageBusy) return;
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleUploadMultiple(Array.from(e.dataTransfer.files));
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (pageBusy) return;
     if (e.target.files && e.target.files.length > 0) {
       handleUploadMultiple(Array.from(e.target.files));
     }
   };
 
   const handleUploadMultiple = async (files: File[]) => {
-    if (files.length === 0) return;
+    if (files.length === 0 || pageBusy) return;
 
     // Tạm dừng polling tránh race condition
     pausePolling();
@@ -180,6 +231,7 @@ export default function KnowledgeBase() {
 
   // ── Ingest to ChromaDB ──
   const handleIngest = async (doc: DocumentResponse) => {
+    if (pageBusy) return;
     const ok = await confirm({
       title: 'Nạp tri thức vào Vector Database',
       message: `Hệ thống sẽ xử lý file "${doc.title}" và nạp vào Vector Database. Quá trình có thể mất vài phút.`,
@@ -190,6 +242,10 @@ export default function KnowledgeBase() {
 
     setIngestingId(doc.id);
     setRagSyncing(true);
+    // Persist to sessionStorage so loading state survives tab switching
+    setProcessing([doc.id], 'ingest');
+    setPersistentProcessingIds(new Set([doc.id]));
+    setPersistentAction('ingest');
     try {
       const res = await api.ingestDocToRAG(doc.id);
       showToast(`Ingest thành công "${doc.title}": ${res.chunks_created ?? 0} chunks`, 'success');
@@ -198,12 +254,16 @@ export default function KnowledgeBase() {
       showToast(err.message || 'Lỗi khi ingest', 'error');
     } finally {
       setIngestingId(null);
+      clearProcessing();
+      setPersistentProcessingIds(new Set());
+      setPersistentAction(null);
       finishRagSync();
     }
   };
 
   // ── Remove from Vector Database only (soft) ──
   const handleUningest = async (doc: DocumentResponse) => {
+    if (pageBusy) return;
     const ok = await confirm({
       title: 'Gỡ khỏi Vector Database',
       message: `Xoá tất cả chunks của "${doc.title}" khỏi vector database? File vẫn giữ trên Cloudinary.`,
@@ -214,6 +274,9 @@ export default function KnowledgeBase() {
 
     setDeletingId(doc.id);
     setRagSyncing(true);
+    setProcessing([doc.id], 'uningest');
+    setPersistentProcessingIds(new Set([doc.id]));
+    setPersistentAction('uningest');
     try {
       await api.uningestDocFromRAG(doc.id);
       showToast(`Đã gỡ "${doc.title}" khỏi Vector Database. File gốc vẫn còn.`, 'warning');
@@ -222,12 +285,16 @@ export default function KnowledgeBase() {
       showToast(err.message || 'Lỗi khi gỡ', 'error');
     } finally {
       setDeletingId(null);
+      clearProcessing();
+      setPersistentProcessingIds(new Set());
+      setPersistentAction(null);
       finishRagSync();
     }
   };
 
   // ── Hard delete (ChromaDB + Cloudinary + DB) ──
   const handleHardDelete = async (doc: DocumentResponse) => {
+    if (pageBusy) return;
     const ok = await confirm({
       title: 'XOÁ VĨNH VIỄN tài liệu',
       message: `Xoá "${doc.title}" khỏi Vector Database, Cloudinary và CSDL. Không thể hoàn tác!`,
@@ -238,6 +305,9 @@ export default function KnowledgeBase() {
 
     setDeletingId(doc.id);
     setRagSyncing(true);
+    setProcessing([doc.id], 'delete');
+    setPersistentProcessingIds(new Set([doc.id]));
+    setPersistentAction('delete');
     try {
       await api.hardDeleteDoc(doc.id);
       showToast(`Đã xoá vĩnh viễn tài liệu "${doc.title}".`, 'success');
@@ -246,12 +316,16 @@ export default function KnowledgeBase() {
       showToast(err.message || 'Lỗi khi xoá', 'error');
     } finally {
       setDeletingId(null);
+      clearProcessing();
+      setPersistentProcessingIds(new Set());
+      setPersistentAction(null);
       finishRagSync();
     }
   };
 
   // ── Delete from Cloudinary only (not ingested docs) ──
   const handleDeleteCloud = async (doc: DocumentResponse) => {
+    if (pageBusy) return;
     const ok = await confirm({
       title: 'Xoá tài liệu khỏi hệ thống',
       message: `Xoá "${doc.title}" khỏi Cloudinary và cơ sở dữ liệu?`,
@@ -261,6 +335,9 @@ export default function KnowledgeBase() {
     if (!ok) return;
 
     setDeletingId(doc.id);
+    setProcessing([doc.id], 'delete');
+    setPersistentProcessingIds(new Set([doc.id]));
+    setPersistentAction('delete');
     try {
       await api.deleteAdminKnowledgeBase(doc.id);
       showToast(`Đã xoá tài liệu "${doc.title}".`, 'success');
@@ -269,6 +346,9 @@ export default function KnowledgeBase() {
       showToast(err.message || 'Lỗi khi xoá', 'error');
     } finally {
       setDeletingId(null);
+      clearProcessing();
+      setPersistentProcessingIds(new Set());
+      setPersistentAction(null);
     }
   };
 
@@ -286,10 +366,15 @@ export default function KnowledgeBase() {
     successLabel: string,
   ) => {
     if (docsToProcess.length === 0) return;
+    const batchIds = docsToProcess.map(doc => doc.id);
+    const batchStorageAction = `batch-${action}` as 'batch-ingest' | 'batch-uningest' | 'batch-delete';
     setBatchAction(action);
     setRagSyncing(true);
+    setProcessing(batchIds, batchStorageAction);
+    setPersistentProcessingIds(new Set(batchIds));
+    setPersistentAction(batchStorageAction);
     try {
-      const result = await runner(docsToProcess.map(doc => doc.id));
+      const result = await runner(batchIds);
       const { ok, skipped, errors } = summarizeBatch(result.items);
       const toastType: 'warning' | 'success' = errors > 0 ? 'warning' : 'success';
       showToast(`${successLabel}: ${ok} thành công${skipped ? `, ${skipped} bỏ qua` : ''}${errors ? `, ${errors} lỗi` : ''}`, toastType);
@@ -299,6 +384,9 @@ export default function KnowledgeBase() {
       showToast(err.message || 'Lỗi khi xử lý hàng loạt', 'error');
     } finally {
       setBatchAction(null);
+      clearProcessing();
+      setPersistentProcessingIds(new Set());
+      setPersistentAction(null);
       finishRagSync();
     }
   };
@@ -332,9 +420,30 @@ export default function KnowledgeBase() {
 
   const hasSelection = selectedDocs.length > 0;
   const isBatchBusy = batchAction !== null;
-  const bulkDisabled = isBatchBusy || ragSyncing || isUploading;
+  const hasServerProcessing = documents.some(d => d.status === 'processing');
+  const processingMessage = persistentAction?.startsWith('batch')
+    ? 'Đang xử lý hàng loạt, vui lòng chờ hoàn tất...'
+    : hasServerProcessing || persistentAction === 'ingest'
+      ? 'Đang nạp dữ liệu vào Vector Database, vui lòng chờ hoàn tất...'
+      : persistentAction === 'uningest'
+        ? 'Đang gỡ dữ liệu khỏi Vector Database, vui lòng chờ hoàn tất...'
+        : persistentAction === 'delete'
+          ? 'Đang xoá tài liệu, vui lòng chờ hoàn tất...'
+          : 'Đang xử lý, vui lòng chờ hoàn tất...';
+  const pageBusy = Boolean(
+    isUploading ||
+    ragSyncing ||
+    isBatchBusy ||
+    ingestingId ||
+    deletingId ||
+    isProcessingPersisted ||
+    hasServerProcessing
+  );
+  const ragPanelSyncing = ragSyncing || isProcessingPersisted || hasServerProcessing;
+  const bulkDisabled = pageBusy;
 
   const toggleDocSelection = (docId: string) => {
+    if (pageBusy) return;
     setSelectedIds(prev => {
       const next = new Set(prev);
       if (next.has(docId)) next.delete(docId);
@@ -344,6 +453,7 @@ export default function KnowledgeBase() {
   };
 
   const toggleVisibleSelection = () => {
+    if (pageBusy) return;
     setSelectedIds(prev => {
       const next = new Set(prev);
       if (allVisibleSelected) {
@@ -356,6 +466,7 @@ export default function KnowledgeBase() {
   };
 
   const handleBatchIngest = async () => {
+    if (pageBusy) return;
     const ok = await confirm({
       title: 'Ingest hàng loạt',
       message: `Nạp ${selectedNotIngestedDocs.length} tài liệu vào Vector Database và rebuild BM25 một lần sau khi hoàn tất?`,
@@ -367,6 +478,7 @@ export default function KnowledgeBase() {
   };
 
   const handleBatchUningest = async () => {
+    if (pageBusy) return;
     const ok = await confirm({
       title: 'Gỡ RAG hàng loạt',
       message: `Gỡ ${selectedIngestedDocs.length} tài liệu khỏi Vector Database và rebuild BM25 một lần sau khi hoàn tất? File gốc vẫn giữ trên Cloudinary.`,
@@ -378,6 +490,7 @@ export default function KnowledgeBase() {
   };
 
   const handleBatchHardDelete = async () => {
+    if (pageBusy) return;
     const ok = await confirm({
       title: 'Xoá hàng loạt',
       message: `Xoá vĩnh viễn ${selectedDocs.length} tài liệu đã chọn khỏi RAG, Cloudinary và CSDL nếu có. Không thể hoàn tác.`,
@@ -391,7 +504,11 @@ export default function KnowledgeBase() {
   // ── Render a document row ──
   const renderDocRow = (doc: DocumentResponse, isIngested: boolean) => {
     const isSelected = selectedIds.has(doc.id);
-    const isLoading = ingestingId === doc.id || deletingId === doc.id || (isBatchBusy && isSelected);
+    // Kết hợp cả local state (ngay lúc click), DB status (khi navigate lại), VÀ persistent sessionStorage
+    const isServerProcessing = doc.status === 'processing';
+    const isPersistentProcessing = persistentProcessingIds.has(doc.id);
+    const isLoading = ingestingId === doc.id || deletingId === doc.id || isServerProcessing || isPersistentProcessing || (isBatchBusy && isSelected);
+    const rowActionsDisabled = pageBusy || isLoading;
     return (
       <div key={doc.id} className={cn(
         "flex items-center justify-between p-3 rounded-lg hover:bg-surface-high border transition-all group",
@@ -403,7 +520,7 @@ export default function KnowledgeBase() {
             onClick={() => toggleDocSelection(doc.id)}
             className="p-1 rounded-md text-on-surface-variant hover:text-primary focus:text-primary transition-colors shrink-0"
             title={isSelected ? 'Bỏ chọn' : 'Chọn tài liệu'}
-            disabled={isBatchBusy}
+            disabled={rowActionsDisabled}
           >
             {isSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
           </button>
@@ -415,7 +532,7 @@ export default function KnowledgeBase() {
             <div className="flex items-center gap-3 text-[10px] text-on-surface-variant mt-0.5">
               <span className="font-bold">{formatSize(doc.file_size)}</span>
               <span>•</span>
-              <span>{new Date(doc.created_at).toLocaleDateString('vi-VN')}</span>
+              <span>{parseUTC(doc.created_at).toLocaleDateString('vi-VN')}</span>
               {isIngested && (
                 <>
                   <span>•</span>
@@ -429,14 +546,16 @@ export default function KnowledgeBase() {
         <div className="flex items-center gap-1.5 shrink-0 pl-4">
           {isLoading ? (
             <div className="px-3 py-1.5 flex items-center gap-1.5 text-[10px] text-primary font-bold">
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Đang xử lý...
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              {isServerProcessing ? 'Đang nạp dữ liệu...' : 'Đang xử lý...'}
             </div>
           ) : isIngested ? (
             <>
               {/* Uningest — remove from ChromaDB only */}
               <button
                 onClick={() => handleUningest(doc)}
-                className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 border border-outline-variant text-on-surface-variant hover:text-yellow-600 hover:border-yellow-500/30 hover:bg-yellow-500/5 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                disabled={rowActionsDisabled}
+                className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 border border-outline-variant text-on-surface-variant hover:text-yellow-600 hover:border-yellow-500/30 hover:bg-yellow-500/5 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 disabled:opacity-40 disabled:pointer-events-none"
                 title="Gỡ khỏi ChromaDB (giữ file)"
               >
                 <ArrowDownToLine className="w-3 h-3" /> Gỡ RAG
@@ -444,7 +563,8 @@ export default function KnowledgeBase() {
               {/* Hard delete — remove all */}
               <button
                 onClick={() => handleHardDelete(doc)}
-                className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 border border-error/20 text-error/70 hover:text-error hover:bg-error/10 hover:border-error/30 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                disabled={rowActionsDisabled}
+                className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 border border-error/20 text-error/70 hover:text-error hover:bg-error/10 hover:border-error/30 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 disabled:opacity-40 disabled:pointer-events-none"
                 title="Xoá vĩnh viễn (ChromaDB + Cloudinary)"
               >
                 <XCircle className="w-3 h-3" /> Xoá hết
@@ -455,7 +575,8 @@ export default function KnowledgeBase() {
               {/* Ingest to ChromaDB */}
               <button
                 onClick={() => handleIngest(doc)}
-                className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-on-primary transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                disabled={rowActionsDisabled}
+                className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-on-primary transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 disabled:opacity-40 disabled:pointer-events-none"
                 title="Nạp vào ChromaDB"
               >
                 <Zap className="w-3 h-3" /> Ingest
@@ -463,7 +584,8 @@ export default function KnowledgeBase() {
               {/* Delete from Cloudinary */}
               <button
                 onClick={() => handleDeleteCloud(doc)}
-                className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 border border-error/20 text-error/70 hover:text-error hover:bg-error/10 hover:border-error/30 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                disabled={rowActionsDisabled}
+                className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 border border-error/20 text-error/70 hover:text-error hover:bg-error/10 hover:border-error/30 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 disabled:opacity-40 disabled:pointer-events-none"
                 title="Xoá khỏi Cloudinary"
               >
                 <Trash2 className="w-3 h-3" /> Xoá
@@ -495,44 +617,66 @@ export default function KnowledgeBase() {
         </div>
       </header>
 
+      {pageBusy && !isInitialLoading && (
+        <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-center gap-2 text-xs font-bold text-primary">
+          <RefreshCw className="w-4 h-4 animate-spin" />
+          {processingMessage}
+        </div>
+      )}
+
       {/* Stats row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="glass-card p-4 rounded-xl border border-outline-variant/30 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-            <Database className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Tổng tài liệu</p>
-            <p className="text-xl font-extrabold font-headline">{stats.total}</p>
-          </div>
-        </div>
-        <div className="glass-card p-4 rounded-xl border border-outline-variant/30 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center text-green-500">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Đã Ingest</p>
-            <p className="text-xl font-extrabold font-headline">{stats.ingested}</p>
-          </div>
-        </div>
-        <div className="glass-card p-4 rounded-xl border border-outline-variant/30 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center text-yellow-500">
-            <Clock className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Chưa Ingest</p>
-            <p className="text-xl font-extrabold font-headline">{stats.notIngested}</p>
-          </div>
-        </div>
-        <div className="glass-card p-4 rounded-xl border border-outline-variant/30 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
-            <Layers className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Tổng Chunks</p>
-            <p className="text-xl font-extrabold font-headline">{stats.chunks.toLocaleString()}</p>
-          </div>
-        </div>
+        {isInitialLoading ? (
+          // Skeleton cho 4 stat cards
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="glass-card p-4 rounded-xl border border-outline-variant/30 flex items-center gap-4 animate-pulse">
+              <div className="w-10 h-10 rounded-lg bg-surface-highest shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-2 bg-surface-highest rounded w-16" />
+                <div className="h-5 bg-surface-highest rounded w-8" />
+              </div>
+            </div>
+          ))
+        ) : (
+          <>
+            <div className="glass-card p-4 rounded-xl border border-outline-variant/30 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                <Database className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Tổng tài liệu</p>
+                <p className="text-xl font-extrabold font-headline">{stats.total}</p>
+              </div>
+            </div>
+            <div className="glass-card p-4 rounded-xl border border-outline-variant/30 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center text-green-500">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Đã Ingest</p>
+                <p className="text-xl font-extrabold font-headline">{stats.ingested}</p>
+              </div>
+            </div>
+            <div className="glass-card p-4 rounded-xl border border-outline-variant/30 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center text-yellow-500">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Chưa Ingest</p>
+                <p className="text-xl font-extrabold font-headline">{stats.notIngested}</p>
+              </div>
+            </div>
+            <div className="glass-card p-4 rounded-xl border border-outline-variant/30 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+                <Layers className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Tổng Chunks</p>
+                <p className="text-xl font-extrabold font-headline">{stats.chunks.toLocaleString()}</p>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -544,19 +688,21 @@ export default function KnowledgeBase() {
             onDrop={handleFileDrop}
             className={cn(
               "glass-card p-8 rounded-xl border-dashed border-2 transition-all flex flex-col items-center justify-center text-center min-h-[240px]",
-              isUploading ? "border-primary/50 bg-primary/5" : "border-outline-variant hover:border-primary/40 hover:bg-surface-highest/50 cursor-pointer"
+              pageBusy ? "border-primary/50 bg-primary/5 cursor-not-allowed" : "border-outline-variant hover:border-primary/40 hover:bg-surface-highest/50 cursor-pointer"
             )}
-            onClick={() => !isUploading && fileInputRef.current?.click()}
+            onClick={() => !pageBusy && fileInputRef.current?.click()}
           >
-            <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} accept=".pdf,.txt,.docx,.md" multiple />
+            <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} accept=".pdf,.txt,.docx,.md" multiple disabled={pageBusy} />
             <AnimatePresence mode="wait">
-              {isUploading ? (
+              {pageBusy ? (
                 <motion.div key="uploading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center w-full">
                   <div className="w-16 h-16 rounded-full border-4 border-surface-highest border-t-primary animate-spin mb-4" />
-                  <h3 className="text-lg font-bold text-primary mb-2">Đang nạp tri thức...</h3>
-                  <div className="w-full max-w-[200px] h-2 bg-surface-highest rounded-full overflow-hidden">
-                    <div className="h-full bg-primary transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
-                  </div>
+                  <h3 className="text-lg font-bold text-primary mb-2">{isUploading ? 'Đang tải tri thức...' : 'Đang xử lý...'}</h3>
+                  {isUploading && (
+                    <div className="w-full max-w-[200px] h-2 bg-surface-highest rounded-full overflow-hidden">
+                      <div className="h-full bg-primary transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                  )}
                 </motion.div>
               ) : (
                 <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center">
@@ -567,7 +713,7 @@ export default function KnowledgeBase() {
                   <p className="text-xs text-on-surface-variant mb-6 max-w-[200px] leading-relaxed">
                     Upload file → Cloudinary. Sau đó bấm Ingest để nạp vào ChromaDB.
                   </p>
-                  <button className="px-6 py-2.5 bg-surface-highest hover:bg-primary hover:text-on-primary border border-outline-variant hover:border-primary text-on-surface rounded-full text-xs font-bold transition-all shadow-sm">
+                  <button disabled={pageBusy} className="px-6 py-2.5 bg-surface-highest hover:bg-primary hover:text-on-primary border border-outline-variant hover:border-primary text-on-surface rounded-full text-xs font-bold transition-all shadow-sm disabled:opacity-40">
                     Chọn Tệp
                   </button>
                 </motion.div>
@@ -576,7 +722,7 @@ export default function KnowledgeBase() {
           </div>
 
           {/* RAG Panel — ChromaDB Status only */}
-          <RAGPanel refreshSignal={ragRefreshSignal} syncing={ragSyncing} />
+          <RAGPanel refreshSignal={ragRefreshSignal} syncing={ragPanelSyncing} />
         </div>
 
         {/* Right: Document List — Split by ingest status */}
@@ -588,7 +734,7 @@ export default function KnowledgeBase() {
                 <button
                   type="button"
                   onClick={toggleVisibleSelection}
-                  disabled={visibleDocs.length === 0 || isBatchBusy}
+                  disabled={visibleDocs.length === 0 || pageBusy}
                   className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-highest disabled:opacity-40 transition-colors"
                   title={allVisibleSelected ? 'Bỏ chọn tất cả đang hiển thị' : 'Chọn tất cả đang hiển thị'}
                 >
@@ -644,7 +790,7 @@ export default function KnowledgeBase() {
                 <button
                   type="button"
                   onClick={() => setSelectedIds(new Set())}
-                  disabled={isBatchBusy}
+                  disabled={pageBusy}
                   className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-on-surface-variant hover:bg-surface-highest disabled:opacity-40 transition-all"
                 >
                   Bỏ chọn
@@ -725,7 +871,27 @@ export default function KnowledgeBase() {
               </div>
             )}
 
-            {documents.length === 0 && pendingUploads.length === 0 ? (
+            {isInitialLoading ? (
+              // Skeleton rows khi đang tải lần đầu
+              <div className="p-2 space-y-1">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-transparent animate-pulse">
+                    <div className="flex items-center gap-3 flex-1 overflow-hidden">
+                      <div className="w-4 h-4 rounded bg-surface-highest shrink-0" />
+                      <div className="w-10 h-10 rounded-lg bg-surface-highest shrink-0" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-3 bg-surface-highest rounded w-48" />
+                        <div className="h-2 bg-surface-highest rounded w-24" />
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5 shrink-0 pl-4">
+                      <div className="h-6 w-14 bg-surface-highest rounded-lg" />
+                      <div className="h-6 w-10 bg-surface-highest rounded-lg" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : documents.length === 0 && pendingUploads.length === 0 ? (
               // Hoàn toàn trống: chưa có file nào và không có upload đang chờ
               <div className="h-full flex flex-col items-center justify-center text-on-surface-variant/50 p-6 text-center">
                 <FileText className="w-12 h-12 mb-3 opacity-20" />

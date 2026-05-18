@@ -5,6 +5,7 @@ import SettingsRow from './components/SettingsRow';
 import { useAuth } from './lib/AuthContext';
 import * as api from './lib/api';
 import { useLocation } from 'react-router-dom';
+import { parseUTC } from './lib/utils';
 
 function SettingsContent() {
   const { user, refreshUser, logout } = useAuth();
@@ -235,7 +236,7 @@ function SettingsContent() {
                 <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/10 flex items-center justify-between">
                   <span className="text-sm font-medium text-on-surface-variant">Ngày tham gia</span>
                   <span className="text-sm font-bold text-on-surface">
-                    {user?.created_at ? new Date(user.created_at).toLocaleDateString('vi-VN') : 'Mới đây'}
+                    {user?.created_at ? parseUTC(user.created_at).toLocaleDateString('vi-VN') : 'Mới đây'}
                   </span>
                 </div>
               </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, Save, Building, Clock, ShieldCheck, Mail, Camera, AlertCircle } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, parseUTC } from '../lib/utils';
 import * as api from '../lib/api';
 import { useToast } from '../lib/ToastContext';
 
@@ -111,7 +111,7 @@ export default function Settings() {
                   <Clock className="w-3.5 h-3.5" /> Ngày gia nhập
                 </span>
                 <span className="text-xs font-bold font-mono text-on-surface">
-                  {new Date(profile.created_at).toLocaleDateString('vi-VN')}
+                  {parseUTC(profile.created_at).toLocaleDateString('vi-VN')}
                 </span>
               </div>
               <div className="flex items-center justify-between">

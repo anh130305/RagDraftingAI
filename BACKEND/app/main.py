@@ -11,7 +11,6 @@ from pathlib import Path
 import time
 import logging
 from sqlalchemy.exc import OperationalError
-from sqlalchemy import text
 
 from app.core.config import settings
 from app.api.v1.router import api_router
@@ -36,7 +35,42 @@ async def lifespan(app: FastAPI):
         
     except Exception as e:
         logger.error(f"Failed to initialize RAG service during startup: {e}")
-    
+
+    # ── Recover stuck "processing" documents ─────────────────
+    # When the server is killed mid-ingest (e.g. docker down), documents
+    # can remain with status='processing' in PostgreSQL forever. Reset them
+    # to a terminal/retryable state so users are not blocked after restart.
+    try:
+        from app.db.session import get_session_local
+        from app.models.document import Document, DocStatus
+        session_factory = get_session_local()
+        db = session_factory()
+        try:
+            stuck_docs = (
+                db.query(Document)
+                .filter(Document.status == DocStatus.processing)
+                .all()
+            )
+            stuck_count = len(stuck_docs)
+            if stuck_count:
+                for doc in stuck_docs:
+                    doc.status = DocStatus.ready if doc.rag_ingested else DocStatus.pending
+                    if doc.rag_ingested:
+                        doc.error_message = None
+                    elif not doc.error_message:
+                        doc.error_message = "Recovered after backend restart while processing."
+                db.commit()
+                logger.warning(
+                    "Startup recovery: reset %s document(s) stuck in 'processing'.",
+                    stuck_count,
+                )
+            else:
+                db.commit()
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Startup recovery failed: {e}")
+
     yield
     # Shutdown: Cleanup shared HTTP clients
     await rag_service.aclose()
