@@ -2,3 +2,5 @@
 \models
 .env
 .DS_Store
+\output_prompts
+\drafts

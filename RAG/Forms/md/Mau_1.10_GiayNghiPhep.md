@@ -8,22 +8,22 @@ required_fields:
 - TEN_CQ_CAP_PHEP
 - SO_GNP
 - CHU_VIET_TAT_CQ_CAP_PHEP
-- HO_TEN_NGUOI_NGHI
-- CHUC_VU
-- NGAY_BAT_DAU
-- NGAY_KET_THUC
-- NOI_NGHI_PHEP
 - DIA_DANH
 - NGAY
 - THANG
 - NAM
-- KHOANG_THOI_GIAN (Ví dụ: 05 ngày. Lưu ý: Tính tổng số ngày kể cả ngày bắt đầu và ngày kết thúc)
+- HO_TEN_NGUOI_LAM_DON
+- HO_TEN_NGUOI_NGHI
+- CHUC_VU
+- KHOANG_THOI_GIAN # Ví dụ: "05 ngày". Tính tổng số ngày kể cả ngày bắt đầu và ngày kết thúc.
+- NGAY_BAT_DAU
+- NGAY_KET_THUC
+- NOI_NGHI_PHEP
 - CHE_DO_NGHI
 - NGUOI_DUOC_CAP_PHEP
 - DON_VI_SOAN_THAO
 - QUYEN_HAN_CHUC_VU_NGUOI_KY
 - HO_VA_TEN_NGUOI_KY
-- HO_TEN_NGUOI_LAM_DON
 ---
 
 {{TEN_CQ_CHU_QUAN}}  
@@ -42,7 +42,7 @@ Số: {{SO_GNP}}/GNP-{{CHU_VIET_TAT_CQ_CAP_PHEP}}
 
 # GIẤY NGHỈ PHÉP
 
-Xét Đơn đề nghị nghỉ phép của ông (bà) {{HO_TEN_NGUOI_LAM_DON}}.
+Xét Đơn đề nghị nghỉ phép ngày {{NGAY}} tháng {{THANG}} của ông (bà) {{HO_TEN_NGUOI_LAM_DON}}
 
 {{TEN_CQ_CAP_PHEP}} cấp cho:
 
@@ -50,19 +50,15 @@ Xét Đơn đề nghị nghỉ phép của ông (bà) {{HO_TEN_NGUOI_LAM_DON}}.
 
 Chức vụ: {{CHUC_VU}}
 
----
+Được nghỉ phép trong thời gian {{KHOANG_THOI_GIAN}} kể từ ngày **{{NGAY_BAT_DAU}}** đến hết ngày **{{NGAY_KET_THUC}}** tại {{NOI_NGHI_PHEP}}
 
-Được nghỉ phép trong thời gian {{KHOANG_THOI_GIAN}} kể từ ngày **{{NGAY_BAT_DAU}}** đến hết ngày **{{NGAY_KET_THUC}}**.
-
-Nơi nghỉ phép: {{NOI_NGHI_PHEP}}
-
-Chế độ nghỉ: {{CHE_DO_NGHI}}
+Số ngày nghỉ phép nêu trên được tính vào thời gian {{CHE_DO_NGHI}}.
 
 ---
 
 **Nơi nhận:**
 
-- {{NGUOI_DUOC_CAP_PHEP}}
+- {{NGUOI_DUOC_CAP_PHEP}};
 - Lưu: VT, {{DON_VI_SOAN_THAO}}
 
 ---
@@ -73,5 +69,6 @@ Chế độ nghỉ: {{CHE_DO_NGHI}}
 
 ---
 
-**Xác nhận của cơ quan hoặc địa phương nơi nghỉ phép (nếu cần)**  
-*(Ký, đóng dấu)*
+**Xác nhận của cơ quan (tổ chức) hoặc chính quyền địa phương nơi nghỉ phép (nếu cần)**
+
+Họ và tên
