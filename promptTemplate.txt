@@ -1,0 +1,54 @@
+QUESTION & ANSWER
+    QA1: Trong trường hợp nào thì cơ quan công tác có thẩm quyền ra quyết định bổ nhiệm công chức lãnh đạo, quản lý ?
+    QA2: Pháp luật Việt Nam đã có cơ chế phân loại hệ thống AI theo mức độ rủi ro và quy định trách nhiệm riêng cho AI chưa?
+    QA3: Luật Doanh nghiệp 2020 có bắt buộc doanh nghiệp phải thu thập và lưu giữ thông tin về chủ sở hữu hưởng lợi không?
+    QA4: Luật Cán bộ, công chức 2025 còn đặt nặng biên chế như trước hay chuyển sang quản lý theo vị trí việc làm?
+    QA5: Luật Viên chức mới có cơ chế bảo vệ người dám đổi mới sáng tạo không?
+    QA6: Người đã nghỉ hưu có còn bị xử lý kỷ luật theo Nghị định 172/2025 không?
+    
+DRAFT 1
+    query: 
+        Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý.
+    extra:
+        Cơ quan ban hành: Sở Nội vụ tỉnh Bình Dương.
+        Số quyết định: 45/QĐ-SNV. Ngày ký: 20/01/2026.
+        Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai.
+        Đối tượng bổ nhiệm: Ông Nguyễn Văn Hùng.
+        Chức vụ bổ nhiệm: Trưởng phòng Hành chính - Tổng hợp.
+
+
+DRAFT 2
+    query: 
+        Soạn thảo biên bản họp Hội đồng kỷ luật công chức.
+    extra:
+        Cơ quan: Sở Y tế tỉnh Phú Thọ.
+        Đối tượng bị xem xét: Ông Nguyễn Văn Hải, chức vụ Chuyên viên phòng Tổ chức cán bộ.
+        Hành vi vi phạm: Vi phạm quy định về thời giờ làm việc, tự ý nghỉ việc không có lý do chính đáng 
+        tổng cộng 05 ngày làm việc trong một tháng, gây ảnh hưởng đến tiến độ giải quyết hồ sơ công vụ.
+        Thời gian: 14h00 ngày 20/03/2026. Địa điểm: Phòng họp Ban Giám đốc Sở Y tế Phú Thọ.
+        Hội đồng kỷ luật: 
+        1. BS. Nguyễn Đức Thắng (Chủ tịch Hội đồng - Giám đốc Sở)
+        2. Bà Trần Thị Lan (Thư ký Hội đồng - Trưởng phòng TC-CB)
+        3. Và 03 thành viên khác theo Quyết định số 45/QĐ-SYT ngày 10/03/2026.
+        Diễn biến chính: Hội đồng xác định hành vi của ông Hải là tái phạm sau khi đã bị nhắc nhở bằng văn bản.
+        Ông Hải thừa nhận khuyết điểm và hứa sửa chữa. 
+        Kết quả: Hội đồng tiến hành bỏ phiếu kín. Kết quả 05/05 phiếu (100%) thống nhất kiến nghị hình thức Cảnh cáo.
+
+DRAFT 3
+    query:
+        Soạn thảo giấy nghỉ phép cho công chức.
+    extra:
+        Cơ quan chủ quản: Ủy ban nhân dân Thành phố Đà Nẵng.
+        Cơ quan cấp phép: Sở Nội vụ Thành phố Đà Nẵng.
+        Số giấy nghỉ phép: 12/GNP-SNV.
+        Địa danh: Đà Nẵng.
+        Ngày ký: 20/01/2026.
+        Người làm đơn: Cáp Kim Khánh.
+        Người nghỉ phép: Cáp Kim Khánh.
+        Chức vụ: Chuyên viên phòng Tổ chức cán bộ.
+        Ngày bắt đầu nghỉ: 25/01/2026.
+        Ngày kết thúc nghỉ: 29/01/2026.
+        Nơi nghỉ phép: Đà Nẵng.
+        Chế độ nghỉ: Nghỉ phép năm.
+        Người ký: Giám đốc Sở Nội vụ - Nguyễn Quang Anh.
+        Đơn vị soạn thảo: Phòng Tổ chức cán bộ.

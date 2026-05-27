@@ -95,7 +95,7 @@ export default function ChatComposer({
 
   // Mode and Extras state
   const [mode, setMode] = useState<'qa' | 'generate'>('qa');
-  const [llmModel, setLlmModel] = useState<LLMModel>('17b');
+  const [llmModel, setLlmModel] = useState<LLMModel>('70b');
   const [showModelPicker, setShowModelPicker] = useState(false);
   const modelPickerRef = useRef<HTMLDivElement | null>(null);
   const [extras, setExtras] = useState('');
@@ -751,7 +751,7 @@ export default function ChatComposer({
             setMode('qa'); 
             setShowExtras(false); 
             setExtras(''); 
-            setLlmModel('17b'); // Tự động đổi sang 17B khi chọn QA
+            setLlmModel('70b'); // Tự động đổi sang 70B khi chọn QA
           }}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${mode === 'qa'
             ? 'bg-primary text-on-primary shadow-sm'
