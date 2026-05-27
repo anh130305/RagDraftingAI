@@ -95,19 +95,11 @@ _GROQ_MODEL_ALIASES = {
 def resolve_llm_model(model: Optional[str] = None, mode: Optional[str] = None) -> str:
     """
     Chuẩn hoá lựa chọn model Groq.
-    - Nếu không chỉ định model:
-        - Mode 'draft'     -> 70B
-        - Mode 'legal_qa'  -> 17B
-        - Khác            -> DEFAULT_LLM_MODEL
+    - Nếu không chỉ định model, luôn dùng 70B (PRO) mặc định.
     Hỗ trợ: "17b", "70b", hoặc full model id.
     """
     if not model:
-        if mode == "draft":
-            model = GROQ_MODEL_70B
-        elif mode == "legal_qa":
-            model = GROQ_MODEL_17B
-        else:
-            model = DEFAULT_LLM_MODEL
+        model = GROQ_MODEL_70B
 
     requested = model.strip().strip("\"'")
     key = requested.lower()
@@ -149,6 +141,18 @@ def _call_llm(messages: List[Dict[str, str]], model: Optional[str] = None) -> Op
             logger.warning("groq chưa cài. Chạy: pip install groq")
         except Exception as e:
             logger.error(f"Groq API lỗi: {e}")
+            if groq_model == GROQ_MODEL_70B:
+                logger.info("Rollback sang model 17B do 70B gặp lỗi...")
+                try:
+                    response = client.chat.completions.create(
+                        model       = GROQ_MODEL_17B,
+                        messages    = messages,
+                        max_tokens  = _LLM_CONFIG["max_tokens"],
+                        temperature = _LLM_CONFIG["temperature"],
+                    )
+                    return response.choices[0].message.content or ""
+                except Exception as e2:
+                    logger.error(f"Groq API (17B fallback) lỗi: {e2}")
             return None
 
     # ── OpenAI ──────────────────────────────────────────────────
@@ -215,6 +219,29 @@ def _stream_llm(messages: List[Dict[str, str]], model: Optional[str] = None) -> 
             logger.warning("groq chưa cài. Chạy: pip install groq")
         except Exception as e:
             logger.error(f"Groq stream lỗi: {e}")
+            if groq_model == GROQ_MODEL_70B:
+                logger.info("Rollback sang model 17B do 70B gặp lỗi (stream)...")
+                try:
+                    stream = client.chat.completions.create(
+                        model=GROQ_MODEL_17B,
+                        messages=messages,
+                        max_tokens=_LLM_CONFIG["max_tokens"],
+                        temperature=_LLM_CONFIG["temperature"],
+                        stream=True,
+                    )
+                    emitted_any = False
+                    for chunk in stream:
+                        try:
+                            token = chunk.choices[0].delta.content
+                        except Exception:
+                            token = None
+                        if isinstance(token, str) and token:
+                            emitted_any = True
+                            yield token
+                    if emitted_any:
+                        return
+                except Exception as e2:
+                    logger.error(f"Groq stream (17B fallback) lỗi: {e2}")
 
     # ── OpenAI ──────────────────────────────────────────────────
     if openai_key:

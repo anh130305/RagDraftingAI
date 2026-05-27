@@ -843,7 +843,70 @@ def fill_word_template(
 
         return placeholder_pattern.sub(_sub, text), changed
 
+    def merge_split_placeholders(para) -> None:
+        """
+        Nối các run bị Microsoft Word chia nhỏ cho phần placeholder {{FIELD_NAME}}.
+        Chỉ gộp các run chứa ký tự của cùng một placeholder {{...}} để bảo toàn định dạng.
+        """
+        runs = para.runs
+        if len(runs) <= 1:
+            return
+
+        text = "".join(r.text for r in runs)
+        run_map = []
+        for r_idx, r in enumerate(runs):
+            run_map.extend([r_idx] * len(r.text))
+
+        # Tìm kiếm các mẫu placeholder dạng {{...}}
+        placeholder_pattern = re.compile(r"\{\{\s*[^}]*?\s*\}\}")
+        matches = list(placeholder_pattern.finditer(text))
+        if not matches:
+            return
+
+        # Duyệt từ phải qua trái để tránh dịch chuyển vị trí các run chưa xử lý
+        for match in reversed(matches):
+            start, end = match.start(), match.end()
+            if start >= len(run_map) or end > len(run_map):
+                continue
+            start_run_idx = run_map[start]
+            end_run_idx = run_map[end - 1]
+
+            if start_run_idx != end_run_idx:
+                start_run_char_start = run_map.index(start_run_idx)
+                prefix = runs[start_run_idx].text[:start - start_run_char_start]
+
+                end_run_char_start = run_map.index(end_run_idx)
+                match_end_in_end_run = end - end_run_char_start
+                suffix = runs[end_run_idx].text[match_end_in_end_run:]
+
+                match_text = text[start:end]
+
+                # Gộp placeholder vào start_run
+                runs[start_run_idx].text = prefix + match_text
+
+                # Xoá nội dung các run trung gian
+                for i in range(start_run_idx + 1, end_run_idx):
+                    runs[i].text = ""
+
+                # Trả phần text thừa còn lại về end_run
+                runs[end_run_idx].text = suffix
+
     doc           = Document(template_path)
+    
+    # Nối tất cả các placeholder bị split trước khi thay thế
+    for para in doc.paragraphs:
+        merge_split_placeholders(para)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    merge_split_placeholders(para)
+    for section in doc.sections:
+        for para in section.header.paragraphs:
+            merge_split_placeholders(para)
+        for para in section.footer.paragraphs:
+            merge_split_placeholders(para)
+
     replace_count = 0
 
     def _replace_para(para) -> bool:

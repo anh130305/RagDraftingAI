@@ -23,6 +23,8 @@ services:
       dockerfile: Dockerfile
     container_name: rag_ai_service
     restart: always
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
     ports:
       - "8001:8001"
     volumes:
@@ -54,6 +56,7 @@ services:
       - ./BACKEND/Key:/app/Key
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app
     environment:
+      - TZ=Asia/Ho_Chi_Minh
       - DATABASE_URL=${DATABASE_URL}
       - USE_CLOUD_DB=${USE_CLOUD_DB}
       - CLOUD_DATABASE_URL=${CLOUD_DATABASE_URL}
@@ -82,6 +85,7 @@ services:
       - ./FRONTEND:/app
       - /app/node_modules
     environment:
+      - TZ=Asia/Ho_Chi_Minh
       - VITE_API_URL=${VITE_API_URL}
     depends_on:
       - backend

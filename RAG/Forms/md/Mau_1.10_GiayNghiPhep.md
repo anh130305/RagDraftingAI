@@ -13,6 +13,17 @@ required_fields:
 - NGAY_BAT_DAU
 - NGAY_KET_THUC
 - NOI_NGHI_PHEP
+- DIA_DANH
+- NGAY
+- THANG
+- NAM
+- KHOANG_THOI_GIAN (Ví dụ: 05 ngày. Lưu ý: Tính tổng số ngày kể cả ngày bắt đầu và ngày kết thúc)
+- CHE_DO_NGHI
+- NGUOI_DUOC_CAP_PHEP
+- DON_VI_SOAN_THAO
+- QUYEN_HAN_CHUC_VU_NGUOI_KY
+- HO_VA_TEN_NGUOI_KY
+- HO_TEN_NGUOI_LAM_DON
 ---
 
 {{TEN_CQ_CHU_QUAN}}  
@@ -41,7 +52,7 @@ Chức vụ: {{CHUC_VU}}
 
 ---
 
-Được nghỉ phép từ ngày **{{NGAY_BAT_DAU}}** đến hết ngày **{{NGAY_KET_THUC}}**.
+Được nghỉ phép trong thời gian {{KHOANG_THOI_GIAN}} kể từ ngày **{{NGAY_BAT_DAU}}** đến hết ngày **{{NGAY_KET_THUC}}**.
 
 Nơi nghỉ phép: {{NOI_NGHI_PHEP}}
 

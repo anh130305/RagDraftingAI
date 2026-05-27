@@ -142,7 +142,7 @@ def create_assistant_response(
     session_id: UUID,
     content: str = "OKE! Tôi đã xử lý xong yêu cầu của bạn.",
     mode: str = "qa",
-    llm_model: str = "17b",
+    llm_model: str = "70b",
 ) -> ChatMessageResponse:
     """Internal helper to create an assistant message in the database."""
     msg = message_repo.create(
@@ -169,7 +169,7 @@ async def generate_assistant_response_task(
     user_query: str,
     mode: str = "qa",
     extras: Optional[str] = None,
-    llm_model: str = "17b",
+    llm_model: str = "70b",
 ):
     """
     Background task to simulate RAG/LLM processing and save assistant response.
@@ -300,7 +300,7 @@ def update_message_feedback(
 async def stream_assistant_response(
     user_query: str,
     extras: Optional[str] = None,
-    llm_model: str = "17b",
+    llm_model: str = "70b",
     history: Optional[list] = None,
 ) -> AsyncGenerator[Dict[str, object], None]:
     """Proxy token stream events from RAG service for legal QA."""
