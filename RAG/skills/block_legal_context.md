@@ -19,3 +19,6 @@ Nếu không xác định được, ghi chú "(cần xác minh hiệu lực)" kh
 ## QUY TẮC ƯU TIÊN
 Khi có chồng chéo giữa các điều khoản, ưu tiên theo thứ bậc:
 Luật > Pháp lệnh > Nghị định > Nghị quyết.
+
+## Quy tắc ghi căn cứ
+Khi ghi 1 điều luật, nghị định vào căn cứ pháp lý cần chuẩn hoá tên của luật , nghị định đó về dạng phù hợp. Ví dụ : LUẬT CÁN BỘ, CÔNG CHỨC -> Luật Cán bộ, công chức. NGHỊ ĐỊNH -> Nghị định
