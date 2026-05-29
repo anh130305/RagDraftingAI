@@ -682,7 +682,7 @@ export function sendMessage(
   content: string,
   mode: 'qa' | 'generate' = 'qa',
   extras?: string,
-  llmModel: LLMModel = '17b',
+  llmModel: LLMModel = mode === 'generate' ? '17b' : '70b',
 ) {
   const timeoutMs = mode === 'qa' ? 180000 : 360000;
   return request<ChatMessage>(
@@ -700,7 +700,7 @@ export async function* streamMessage(
   content: string,
   mode: 'qa' | 'generate' = 'qa',
   extras?: string,
-  llmModel: LLMModel = '17b',
+  llmModel: LLMModel = mode === 'generate' ? '17b' : '70b',
   signal?: AbortSignal,
 ): AsyncGenerator<ChatStreamEvent> {
   const token = localStorage.getItem('access_token');

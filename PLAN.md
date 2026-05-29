@@ -8,7 +8,7 @@ Triển khai lựa chọn LLM model theo `apiTutorial.md`: người dùng chọn
   - Thêm `llm_model?: "17b" | "70b"` vào `ChatMessageCreate`, `ChatMessageResponse`, `DraftRequest`.
   - `sendMessage`, `streamMessage`, `generateDraftDocx` nhận `llm_model` và truyền xuống `rag_service`.
   - `rag_service.answer_legal_question`, `stream_legal_question`, `draft_document` gửi JSON `{ model: llm_model }` tới RAG service.
-  - Nếu frontend không gửi, default là `"17b"` để khớp `apiTutorial.md`.
+  - Nếu frontend không gửi, default theo nghiệp vụ: QA dùng `"70b"`, Draft/Generate dùng `"17b"`.
 
 - Database persistence:
   - Thêm migration Alembic:
@@ -24,7 +24,7 @@ Triển khai lựa chọn LLM model theo `apiTutorial.md`: người dùng chọn
 
 - Frontend chat UX:
   - Thêm selector model trong `ChatComposer`, đặt gần cụm mic/send như yêu cầu.
-  - Default `"17b"`; option `"70b"` cho tác vụ cần lập luận kỹ.
+  - Default theo mode: QA `"70b"`, Soạn thảo `"17b"`.
   - `onSend(content, mode, extras, llmModel)` truyền model từ composer lên `Chat.tsx`.
   - `api.sendMessage`, `api.streamMessage`, `api.generateDraftDocx` gửi `llm_model`.
   - Message badge hiển thị cả nghiệp vụ (`Hỏi đáp` / `Soạn thảo`) và model (`17b` / `70b`) cho user/assistant message.
@@ -38,7 +38,7 @@ Triển khai lựa chọn LLM model theo `apiTutorial.md`: người dùng chọn
 ## Test Plan
 - Backend:
   - Test `POST /chat/sessions/{id}/messages` với `llm_model: "70b"` trả message có `llm_model`.
-  - Test default không gửi `llm_model` thì lưu `"17b"`.
+  - Test default không gửi `llm_model` thì QA lưu `"70b"`, Draft/Generate lưu `"17b"`.
   - Test stream legal QA truyền model xuống `rag_service.stream_legal_question`.
   - Test draft docx truyền model xuống `rag_service.draft_document`.
   - Test audit detail có `llm_model`.
@@ -46,8 +46,8 @@ Triển khai lựa chọn LLM model theo `apiTutorial.md`: người dùng chọn
 
 - Frontend:
   - `npm run lint` và `npm run build`.
-  - Kiểm tra gửi QA với `17b` và `70b`: request payload có `llm_model`, badge message hiển thị đúng.
-  - Kiểm tra soạn thảo văn bản với `70b`: draft payload có `llm_model`, assistant message hiển thị đúng.
+  - Kiểm tra gửi QA mặc định với `70b` và khi chọn `17b`: request payload có `llm_model`, badge message hiển thị đúng.
+  - Kiểm tra soạn thảo văn bản mặc định với `17b` và khi chọn `70b`: draft payload có `llm_model`, assistant message hiển thị đúng.
   - Kiểm tra reload session: model badge vẫn hiện từ dữ liệu backend.
   - Kiểm tra Dashboard/AIMonitoring hiển thị donut model usage khi có dữ liệu và trạng thái empty khi chưa có.
 
@@ -55,4 +55,4 @@ Triển khai lựa chọn LLM model theo `apiTutorial.md`: người dùng chọn
 - `mode` tiếp tục chỉ nghĩa nghiệp vụ `qa | generate`; không dùng `mode` để chỉ model.
 - Field public thống nhất dùng `llm_model` ở BE/FE; khi gọi RAG service map sang `model`.
 - Frontend chỉ cho chọn `"17b"` và `"70b"`; full model id chỉ còn là khả năng nội bộ của RAG service.
-- Default là `"17b"` nếu request cũ không truyền model, để tương thích ngược.
+- Default theo mode nếu request cũ không truyền model: QA `"70b"`, Draft/Generate `"17b"`.

@@ -164,8 +164,8 @@ export default function Dashboard() {
 
   const modelDist = monitoringStats?.summary.model_distribution;
   const rawModelDonutData = [
-    { name: 'Base', value: modelDist?.['17b'] || 0, color: 'var(--primary)' },
-    { name: 'Pro', value: modelDist?.['70b'] || 0, color: 'var(--tertiary)' },
+    { name: 'Pro', value: modelDist?.['17b'] || 0, color: 'var(--primary)' },
+    { name: 'Base', value: modelDist?.['70b'] || 0, color: 'var(--tertiary)' },
   ].filter(d => d.value > 0);
   const modelDonutData = rawModelDonutData.length > 0
     ? rawModelDonutData
@@ -548,14 +548,14 @@ export default function Dashboard() {
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-primary" />
-                            <span className="text-xs font-medium">Base</span>
+                            <span className="text-xs font-medium">Pro</span>
                           </div>
                           <span className="text-xs font-bold">{modelDist?.['17b'] || 0}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-tertiary" />
-                            <span className="text-xs font-medium">Pro</span>
+                            <span className="text-xs font-medium">Base</span>
                           </div>
                           <span className="text-xs font-bold">{modelDist?.['70b'] || 0}</span>
                         </div>
