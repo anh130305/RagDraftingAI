@@ -494,7 +494,7 @@ export default function Chat() {
     content: string,
     mode: 'qa' | 'generate' = 'qa',
     extras?: string,
-    llmModel: LLMModel = '17b',
+    llmModel: LLMModel = mode === 'generate' ? '17b' : '70b',
   ): Promise<string | undefined> => {
     if (activeBusySessionIdRef.current) return;
 
@@ -893,16 +893,16 @@ export default function Chat() {
                             {msg.llm_model && (
                               <div className={cn(
                                 "mr-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 border transition-all duration-300",
-                                msg.llm_model === '70b'
+                                msg.llm_model === '17b'
                                   ? "bg-primary/10 text-primary border-primary/20"
                                   : "bg-surface-highest text-on-surface-variant border-outline-variant/30"
                               )}>
-                                {msg.llm_model === '70b' ? (
+                                {msg.llm_model === '17b' ? (
                                   <Sparkles className="w-2.5 h-2.5" />
                                 ) : (
                                   <Cpu className="w-2.5 h-2.5" />
                                 )}
-                                {msg.llm_model === '17b' ? 'Base' : msg.llm_model === '70b' ? 'Pro' : msg.llm_model}
+                                {msg.llm_model === '17b' ? 'Pro' : msg.llm_model === '70b' ? 'Base' : msg.llm_model}
                               </div>
                             )}
 

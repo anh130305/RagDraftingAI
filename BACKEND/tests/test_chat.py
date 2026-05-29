@@ -185,7 +185,30 @@ class TestMessages:
         assert data["session_id"] == session_id
         assert data["llm_model"] == "70b"
 
-    def test_send_message_defaults_llm_model_to_17b(self, client, normal_auth):
+    def test_send_message_defaults_qa_llm_model_to_70b(self, client, normal_auth, monkeypatch):
+        from app.services import chat_service
+
+        async def noop_generate_assistant_response_task(*args, **kwargs):
+            return None
+
+        monkeypatch.setattr(
+            chat_service,
+            "generate_assistant_response_task",
+            noop_generate_assistant_response_task,
+        )
+
+        session_id = self._create_session(client, normal_auth)
+
+        resp = client.post(
+            f"/api/v1/chat/sessions/{session_id}/messages",
+            headers=normal_auth,
+            json={"content": "Hello, AI!", "mode": "qa"},
+        )
+
+        assert resp.status_code == 201
+        assert resp.json()["llm_model"] == "70b"
+
+    def test_send_message_defaults_generate_llm_model_to_17b(self, client, normal_auth):
         session_id = self._create_session(client, normal_auth)
 
         resp = client.post(

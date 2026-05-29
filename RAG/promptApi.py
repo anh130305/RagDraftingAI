@@ -81,7 +81,8 @@ _LLM_CONFIG = {
 
 GROQ_MODEL_17B = "meta-llama/llama-4-scout-17b-16e-instruct"
 GROQ_MODEL_70B = "llama-3.3-70b-versatile"
-DEFAULT_LLM_MODEL = GROQ_MODEL_70B
+DEFAULT_QA_LLM_MODEL = GROQ_MODEL_70B
+DEFAULT_DRAFT_LLM_MODEL = GROQ_MODEL_17B
 _GROQ_MODEL_ALIASES = {
     "17b": GROQ_MODEL_17B,
     "llama-4-scout-17b": GROQ_MODEL_17B,
@@ -95,11 +96,12 @@ _GROQ_MODEL_ALIASES = {
 def resolve_llm_model(model: Optional[str] = None, mode: Optional[str] = None) -> str:
     """
     Chuẩn hoá lựa chọn model Groq.
-    - Nếu không chỉ định model, luôn dùng 70B (PRO) mặc định.
+    - Nếu không chỉ định model: draft dùng 17B (Pro), legal_qa dùng 70B (Base).
     Hỗ trợ: "17b", "70b", hoặc full model id.
     """
     if not model:
-        model = GROQ_MODEL_70B
+        normalized_mode = (mode or "").strip().lower()
+        model = DEFAULT_DRAFT_LLM_MODEL if normalized_mode == "draft" else DEFAULT_QA_LLM_MODEL
 
     requested = model.strip().strip("\"'")
     key = requested.lower()
@@ -845,7 +847,7 @@ if __name__ == "__main__":
     parser.add_argument("--extras", type=str, default="",
                         help="Thông tin bổ sung tách biệt với query chính")
     parser.add_argument("--model", type=str, default="",
-                        help='LLM model: "17b", "70b", hoặc full model id. Mặc định: 17b')
+                        help='LLM model: "17b", "70b", hoặc full model id. Mặc định theo mode: draft=17b, legal_qa=70b')
     parser.add_argument("--no-reranker", action="store_true")
     parser.add_argument("--no-llm",      action="store_true",
                         help="Chỉ build prompt, không gọi LLM")
@@ -912,7 +914,7 @@ if __name__ == "__main__":
     query  = args.query  or DEFAULT_QUERIES[args.mode]
     extras = args.extras or DEFAULT_EXTRAS[args.mode] or None
     try:
-        selected_model = resolve_llm_model(args.model)
+        selected_model = resolve_llm_model(args.model, mode=args.mode)
     except ValueError as e:
         print(f"[ERROR] {e}", file=sys.stderr)
         sys.exit(2)

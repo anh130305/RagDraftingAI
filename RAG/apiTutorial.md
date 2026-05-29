@@ -9,7 +9,7 @@
 | Soạn thảo | `api.draft()` | Soạn văn bản hành chính, trả về dict các fields đã điền |
 | Hỏi đáp | `api.legal_qa()` | Hỏi đáp pháp luật, trả về Markdown string |
 
-LLM mặc định là Groq **17b** (`meta-llama/llama-4-scout-17b-16e-instruct`). Mỗi request có thể chọn sang **70b** (`llama-3.3-70b-versatile`) bằng tham số `model`.
+LLM mặc định theo chế độ: **Draft/Soạn thảo** dùng **17b Pro** (`meta-llama/llama-4-scout-17b-16e-instruct`), **QA/Hỏi đáp** dùng **70b Base** (`llama-3.3-70b-versatile`). Mỗi request có thể ghi đè bằng tham số `model`.
 
 ---
 
@@ -84,10 +84,10 @@ if result["status"] == "ok":
 ### Chọn model LLM
 
 ```python
-# Mặc định: 17b
+# Mặc định Draft: 17b Pro
 result = api.draft(query="Soạn quyết định bổ nhiệm công chức")
 
-# Chọn model 70b cho yêu cầu cần lập luận kỹ hơn
+# Có thể chọn 70b Base nếu muốn ghi đè
 result = api.draft(
     query = "Soạn quyết định bổ nhiệm công chức lãnh đạo, quản lý",
     model = "70b",
@@ -96,10 +96,10 @@ result = api.draft(
 
 Các giá trị hợp lệ cho `model`:
 
-| Giá trị ngắn | Full model id |
-|--------------|---------------|
-| `"17b"` | `"meta-llama/llama-4-scout-17b-16e-instruct"` |
-| `"70b"` | `"llama-3.3-70b-versatile"` |
+| Giá trị ngắn | Nhãn UI | Full model id |
+|--------------|---------|---------------|
+| `"17b"` | Pro | `"meta-llama/llama-4-scout-17b-16e-instruct"` |
+| `"70b"` | Base | `"llama-3.3-70b-versatile"` |
 
 ### Lọc loại văn bản pháp luật
 
@@ -204,7 +204,7 @@ if result["status"] == "ok":
 result = api.legal_qa(
     query       = "So sánh thủ tục ban hành văn bản quy phạm pháp luật giữa Luật và Nghị định",
     legal_top_k = 8,   # mặc định là 5
-    model       = "70b",
+    model       = "17b", # ghi đè sang Pro nếu cần
 )
 ```
 

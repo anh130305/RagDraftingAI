@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Optional, List, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.models.chat_message import MessageRole
 
@@ -45,6 +45,12 @@ class ChatMessageCreate(BaseModel):
     mode: Literal["qa", "generate"] = Field("qa")
     extras: Optional[str] = Field(None, description="Optional extra context or instructions")
     llm_model: Optional[Literal["17b", "70b"]] = Field(None, description="LLM model alias")
+
+    @model_validator(mode="after")
+    def default_llm_model_for_mode(self):
+        if self.llm_model is None:
+            self.llm_model = "17b" if self.mode == "generate" else "70b"
+        return self
 
 class ChatMessageFeedbackUpdate(BaseModel):
     """PUT /chat/messages/{id}/feedback"""

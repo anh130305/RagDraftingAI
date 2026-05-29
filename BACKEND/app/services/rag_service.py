@@ -14,6 +14,9 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_QA_LLM_MODEL = "70b"
+DEFAULT_DRAFT_LLM_MODEL = "17b"
+
 
 FORM_DOCX_MAPPING = {
     "Form_01": "Mau_1.1_–_Nghi_quyet__ca_biet__1011143252_2605081617.docx",
@@ -106,6 +109,7 @@ class RAGService:
         history: Optional[list] = None,
     ) -> Dict[str, Any]:
         """Call the RAG legal_qa mode via API."""
+        selected_model = llm_model or DEFAULT_QA_LLM_MODEL
         try:
             response = await self._client.post(
                 f"{self.base_url}/legal_qa",
@@ -113,7 +117,7 @@ class RAGService:
                     "query": query,
                     "extras": extras,
                     "call_llm": True,
-                    "model": llm_model,
+                    "model": selected_model,
                     "history": history or [],
                 },
                 timeout=httpx.Timeout(180.0, connect=10.0, read=180.0),
@@ -132,7 +136,7 @@ class RAGService:
                 "mode": "legal_qa",
                 "error": detail,
                 "http_status": e.response.status_code,
-                "meta": {"query": query, "extras": extras, "llm_model": llm_model},
+                "meta": {"query": query, "extras": extras, "llm_model": selected_model},
             }
         except httpx.HTTPError as e:
             logger.error("RAG API transport error (legal_qa): %s", e)
@@ -140,7 +144,7 @@ class RAGService:
                 "status": "error",
                 "mode": "legal_qa",
                 "error": str(e),
-                "meta": {"query": query, "extras": extras, "llm_model": llm_model}
+                "meta": {"query": query, "extras": extras, "llm_model": selected_model}
             }
 
     async def stream_legal_question(
@@ -151,6 +155,7 @@ class RAGService:
         history: Optional[list] = None,
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """Stream legal QA tokens via RAG NDJSON endpoint."""
+        selected_model = llm_model or DEFAULT_QA_LLM_MODEL
         try:
             async with self._client.stream(
                 "POST",
@@ -159,7 +164,7 @@ class RAGService:
                     "query": query,
                     "extras": extras,
                     "call_llm": True,
-                    "model": llm_model,
+                    "model": selected_model,
                     "history": history or [],
                 },
                 timeout=httpx.Timeout(180.0, connect=10.0, read=180.0),
@@ -190,14 +195,14 @@ class RAGService:
                 "type": "error",
                 "error": detail,
                 "http_status": e.response.status_code,
-                "meta": {"query": query, "extras": extras, "llm_model": llm_model},
+                "meta": {"query": query, "extras": extras, "llm_model": selected_model},
             }
         except httpx.HTTPError as e:
             logger.error("RAG API transport error (legal_qa_stream): %s", e)
             yield {
                 "type": "error",
                 "error": str(e),
-                "meta": {"query": query, "extras": extras, "llm_model": llm_model},
+                "meta": {"query": query, "extras": extras, "llm_model": selected_model},
             }
         except asyncio.CancelledError:
             logger.info("RAG stream cancelled by downstream client")
@@ -210,6 +215,7 @@ class RAGService:
         llm_model: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Call the RAG draft mode via API."""
+        selected_model = llm_model or DEFAULT_DRAFT_LLM_MODEL
         try:
             response = await self._client.post(
                 f"{self.base_url}/draft",
@@ -217,7 +223,7 @@ class RAGService:
                     "query": query,
                     "extras": extras,
                     "call_llm": True,
-                    "model": llm_model,
+                    "model": selected_model,
                 },
                 timeout=httpx.Timeout(360.0, connect=10.0, read=360.0),
             )
@@ -235,7 +241,7 @@ class RAGService:
                 "mode": "draft",
                 "error": detail,
                 "http_status": e.response.status_code,
-                "meta": {"query": query, "extras": extras, "llm_model": llm_model},
+                "meta": {"query": query, "extras": extras, "llm_model": selected_model},
             }
         except httpx.HTTPError as e:
             logger.error("RAG API transport error (draft): %s", e)
@@ -243,7 +249,7 @@ class RAGService:
                 "status": "error",
                 "mode": "draft",
                 "error": str(e),
-                "meta": {"query": query, "extras": extras, "llm_model": llm_model}
+                "meta": {"query": query, "extras": extras, "llm_model": selected_model}
             }
 
     def get_template_docx_path(self, form_id: str) -> Path:

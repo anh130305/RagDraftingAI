@@ -53,7 +53,8 @@ def test_answer_legal_question_success_payload_and_endpoint():
         "query": "Cau hoi",
         "extras": "Them",
         "call_llm": True,
-        "model": "17b",
+        "model": "70b",
+        "history": [],
     }
 
 

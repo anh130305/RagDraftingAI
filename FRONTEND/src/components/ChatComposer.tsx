@@ -751,7 +751,7 @@ export default function ChatComposer({
             setMode('qa'); 
             setShowExtras(false); 
             setExtras(''); 
-            setLlmModel('70b'); // Tự động đổi sang 70B khi chọn QA
+            setLlmModel('70b'); // QA mặc định dùng 70B (Base)
           }}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${mode === 'qa'
             ? 'bg-primary text-on-primary shadow-sm'
@@ -765,7 +765,7 @@ export default function ChatComposer({
           type="button"
           onClick={() => {
             setMode('generate');
-            setLlmModel('70b'); // Tự động đổi sang 70B khi chọn Soạn thảo
+            setLlmModel('17b'); // Soạn thảo mặc định dùng 17B (Pro)
           }}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${mode === 'generate'
             ? 'bg-secondary text-on-secondary shadow-sm'
@@ -1053,12 +1053,14 @@ export default function ChatComposer({
                       // Auto-switch mode based on template configuration
                       if (tpl.mode === 'generate') {
                         setMode('generate');
+                        setLlmModel('17b');
                         if (tpl.extra_instructions) {
                           setExtras(tpl.extra_instructions);
                           setShowExtras(true);
                         }
                       } else {
                         setMode('qa');
+                        setLlmModel('70b');
                         setShowExtras(false);
                       }
 
@@ -1118,13 +1120,13 @@ export default function ChatComposer({
                 "flex h-9 items-center gap-1.5 rounded-full border px-3 transition-all duration-300",
                 "bg-surface-container-high/80 backdrop-blur-sm",
                 showModelPicker ? "border-primary/50 shadow-[0_0_12px_rgba(var(--primary-rgb),0.2)]" : "border-outline-variant/20 hover:border-outline-variant/40",
-                llmModel === '70b' ? "text-primary" : "text-on-surface-variant"
+                llmModel === '17b' ? "text-primary" : "text-on-surface-variant"
               )}
               title="Chọn model LLM"
             >
-              {llmModel === '70b' ? <Sparkles className="w-3.5 h-3.5" /> : <Cpu className="w-3.5 h-3.5" />}
+              {llmModel === '17b' ? <Sparkles className="w-3.5 h-3.5" /> : <Cpu className="w-3.5 h-3.5" />}
               <span className="text-xs font-bold text-on-surface">
-                {llmModel === '17b' ? 'Base' : 'Pro'}
+                {llmModel === '17b' ? 'Pro' : 'Base'}
               </span>
               <ChevronDown className={cn("w-3 h-3 transition-transform duration-300 opacity-50", showModelPicker && "rotate-180 opacity-100")} />
             </button>
@@ -1152,13 +1154,13 @@ export default function ChatComposer({
                     >
                       <div className={cn(
                         "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
-                        llmModel === '17b' ? "bg-primary/20 text-primary" : "bg-surface-container-high text-on-surface-variant group-hover:bg-surface-container-highest"
+                        llmModel === '17b' ? "bg-primary text-on-primary shadow-lg shadow-primary/20" : "bg-surface-container-high text-on-surface-variant group-hover:bg-surface-container-highest"
                       )}>
-                        <Cpu className="w-4 h-4" />
+                        <Sparkles className="w-4 h-4" />
                       </div>
                       <div className="flex flex-col">
-                        <span className={cn("text-xs font-bold", llmModel === '17b' ? "text-primary" : "text-on-surface")}>Base</span>
-                        <span className="text-[10px] text-on-surface-variant/70 leading-tight">Nhanh & Hiệu quả</span>
+                        <span className={cn("text-xs font-bold", llmModel === '17b' ? "text-primary" : "text-on-surface")}>Pro</span>
+                        <span className="text-[10px] text-on-surface-variant/70 leading-tight">Soạn thảo chuyên sâu</span>
                       </div>
                     </button>
 
@@ -1178,13 +1180,13 @@ export default function ChatComposer({
                       )}
                       <div className={cn(
                         "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
-                        llmModel === '70b' ? "bg-primary text-on-primary shadow-lg shadow-primary/20" : "bg-surface-container-high text-on-surface-variant group-hover:bg-surface-container-highest"
+                        llmModel === '70b' ? "bg-primary/20 text-primary" : "bg-surface-container-high text-on-surface-variant group-hover:bg-surface-container-highest"
                       )}>
-                        <Sparkles className="w-4 h-4" />
+                        <Cpu className="w-4 h-4" />
                       </div>
                       <div className="flex flex-col">
-                        <span className={cn("text-xs font-bold", llmModel === '70b' ? "text-primary" : "text-on-surface")}>Pro</span>
-                        <span className="text-[10px] text-on-surface-variant/70 leading-tight">Thông minh & Chính xác</span>
+                        <span className={cn("text-xs font-bold", llmModel === '70b' ? "text-primary" : "text-on-surface")}>Base</span>
+                        <span className="text-[10px] text-on-surface-variant/70 leading-tight">Hỏi đáp mặc định</span>
                       </div>
                     </button>
                   </div>
