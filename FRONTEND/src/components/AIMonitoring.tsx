@@ -72,8 +72,8 @@ export default function AIMonitoring() {
     { name: 'Không ý kiến', value: (stats?.summary.total_queries || 0) - (stats?.summary.interaction_stats.total_feedback || 0), color: '#94a3b8' }
   ];
   const rawModelData = [
-    { name: 'Pro', value: stats?.summary.model_distribution?.['17b'] || 0, color: COLORS.primary },
-    { name: 'Base', value: stats?.summary.model_distribution?.['70b'] || 0, color: COLORS.secondary },
+    { name: 'Llama 17b', value: stats?.summary.model_distribution?.['17b'] || 0, color: COLORS.primary },
+    { name: 'Llama 70b', value: stats?.summary.model_distribution?.['70b'] || 0, color: COLORS.secondary },
   ].filter(item => item.value > 0);
   const modelData = rawModelData.length > 0
     ? rawModelData
