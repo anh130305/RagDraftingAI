@@ -18,7 +18,7 @@ DRAFT 1
         Đối tượng bổ nhiệm: Ông Nguyễn Văn Hùng.
         Chức vụ bổ nhiệm: Trưởng phòng Hành chính - Tổng hợp.
 
-DRAFT 3
+DRAFT 2
     query:
         Soạn thảo quyết định kỷ luật công chức
     extra:

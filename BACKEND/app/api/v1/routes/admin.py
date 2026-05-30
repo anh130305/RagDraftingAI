@@ -211,7 +211,7 @@ def upload_knowledge_base_document(
         cloudinary_res = cloudinary_service.upload_to_cloudinary(
             file,
             user_id=str(admin.id),
-            session_id="general",
+            session_id="knowledge_base",
         )
         doc = document_service.upload_document(
             db,

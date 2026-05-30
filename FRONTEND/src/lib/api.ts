@@ -314,7 +314,7 @@ export interface UserResponse {
   username: string;
   email: string | null;
   google_id: string | null;
-  role: 'admin' | 'user' | 'moderator';
+  role: 'admin' | 'user' | 'clerical_specialist' | 'professional';
   department: string | null;
   is_active: boolean;
   created_at: string;

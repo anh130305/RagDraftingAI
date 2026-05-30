@@ -89,6 +89,7 @@ export default function ChatComposer({
 
   // Prompt template states
   const [showPromptPicker, setShowPromptPicker] = useState(false);
+  const [hoveredTemplate, setHoveredTemplate] = useState<PromptTemplateResponse | null>(null);
   const [promptTemplates, setPromptTemplates] = useState<PromptTemplateResponse[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const promptPickerRef = useRef<HTMLDivElement | null>(null);
@@ -655,10 +656,16 @@ export default function ChatComposer({
     recognition.start();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Không xử lý Enter nếu người dùng đang gõ dấu tiếng Việt (IME)
+    if (e.nativeEvent.isComposing) return;
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit();
+      // Nếu có input hợp lệ thì gửi, nếu không thì chặn luôn để không bị xuống hàng
+      if (value.trim()) {
+        handleSubmit();
+      }
     }
   };
 
@@ -1046,7 +1053,9 @@ export default function ChatComposer({
                   <button
                     key={tpl.id}
                     type="button"
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-container-high transition-colors border-b border-outline-variant/10 last:border-b-0"
+                    onMouseEnter={() => setHoveredTemplate(tpl)}
+                    onMouseLeave={() => setHoveredTemplate(null)}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-container-high transition-colors border-b border-outline-variant/10 last:border-b-0 group relative"
                     onClick={() => {
                       onValueChange?.(tpl.query);
 
@@ -1098,6 +1107,31 @@ export default function ChatComposer({
           </div>
         )}
 
+        {/* Floating Tooltip cho Template Content */}
+        <AnimatePresence>
+          {showPromptPicker && hoveredTemplate && (
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.15 }}
+              className="absolute left-[330px] bottom-full mb-3 w-[360px] rounded-3xl border border-outline-variant/20 bg-surface/95 shadow-[0_20px_45px_rgba(0,0,0,0.12)] backdrop-blur-xl z-50 p-5 pointer-events-none"
+            >
+              <h4 className="font-bold text-on-surface mb-3">{hoveredTemplate.name}</h4>
+              <div className="space-y-3">
+                <p className="text-xs text-on-surface-variant leading-relaxed whitespace-pre-wrap">
+                  <span className="font-semibold text-primary/80">Nội dung:</span> {hoveredTemplate.query}
+                </p>
+                {hoveredTemplate.extra_instructions && (
+                  <p className="text-xs text-on-surface-variant leading-relaxed whitespace-pre-wrap">
+                    <span className="font-semibold text-secondary/80">Bổ sung:</span> {hoveredTemplate.extra_instructions}
+                  </p>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="flex min-h-14 flex-1 items-end rounded-[24px] bg-surface/70 px-3.5 py-2.5 transition-shadow focus-within:ring-0">
           <textarea
             ref={textareaRef}
@@ -1126,7 +1160,7 @@ export default function ChatComposer({
             >
               {llmModel === '17b' ? <Sparkles className="w-3.5 h-3.5" /> : <Cpu className="w-3.5 h-3.5" />}
               <span className="text-xs font-bold text-on-surface">
-                {llmModel === '17b' ? 'Pro' : 'Base'}
+                {llmModel === '17b' ? 'Llama 17B' : 'Llama 70B'}
               </span>
               <ChevronDown className={cn("w-3 h-3 transition-transform duration-300 opacity-50", showModelPicker && "rotate-180 opacity-100")} />
             </button>
@@ -1159,7 +1193,7 @@ export default function ChatComposer({
                         <Sparkles className="w-4 h-4" />
                       </div>
                       <div className="flex flex-col">
-                        <span className={cn("text-xs font-bold", llmModel === '17b' ? "text-primary" : "text-on-surface")}>Pro</span>
+                        <span className={cn("text-xs font-bold", llmModel === '17b' ? "text-primary" : "text-on-surface")}>Llama 17B</span>
                         <span className="text-[10px] text-on-surface-variant/70 leading-tight">Soạn thảo chuyên sâu</span>
                       </div>
                     </button>
@@ -1185,7 +1219,7 @@ export default function ChatComposer({
                         <Cpu className="w-4 h-4" />
                       </div>
                       <div className="flex flex-col">
-                        <span className={cn("text-xs font-bold", llmModel === '70b' ? "text-primary" : "text-on-surface")}>Base</span>
+                        <span className={cn("text-xs font-bold", llmModel === '70b' ? "text-primary" : "text-on-surface")}>Llama 70B</span>
                         <span className="text-[10px] text-on-surface-variant/70 leading-tight">Hỏi đáp mặc định</span>
                       </div>
                     </button>

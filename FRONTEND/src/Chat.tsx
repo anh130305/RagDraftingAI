@@ -902,7 +902,7 @@ export default function Chat() {
                                 ) : (
                                   <Cpu className="w-2.5 h-2.5" />
                                 )}
-                                {msg.llm_model === '17b' ? 'Pro' : msg.llm_model === '70b' ? 'Base' : msg.llm_model}
+                                {msg.llm_model === '17b' ? 'Llama 17B' : msg.llm_model === '70b' ? 'Llama 70B' : msg.llm_model}
                               </div>
                             )}
 

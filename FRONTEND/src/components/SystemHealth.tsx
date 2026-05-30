@@ -228,6 +228,23 @@ export default function SystemHealth() {
           </div>
 
           <div className="flex items-center gap-2 w-full lg:w-auto">
+            <button 
+              onClick={() => {
+                const exportData = logs.map(log => ({
+                  'Thời gian': parseUTC(log.created_at).toLocaleString('vi-VN'),
+                  'Hành động': auditActionLabels[log.action] || log.action,
+                  'User ID': log.user_name || log.user_id || 'System',
+                  'IP': log.ip_address || '-',
+                  'Tài nguyên': log.resource_type ? `${log.resource_type} (${log.resource_id})` : '-',
+                  'Chi tiết': log.detail ? JSON.stringify(log.detail) : '-'
+                }));
+                import('../lib/exportExcel').then(({ exportToExcel }) => exportToExcel(exportData, 'Nhat_ky_he_thong', 'AuditLogs'));
+              }}
+              className="px-4 py-2 bg-primary/10 text-primary font-bold rounded-xl border border-primary/20 hover:bg-primary/20 transition-colors flex items-center gap-2 shrink-0 text-xs"
+            >
+              <Download className="w-4 h-4" />
+              <span>Xuất Excel</span>
+            </button>
             <button
               onClick={fetchLogs}
               className="px-4 py-2 border border-outline-variant rounded-xl text-on-surface text-sm font-bold bg-surface hover:bg-surface-high transition-colors flex items-center gap-2 shrink-0"
