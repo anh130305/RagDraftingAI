@@ -50,7 +50,10 @@ def _resolve_upload_context(file_name: str, content_type: Optional[str], user_id
     else:
         upload_resource_type = "raw"
 
-    folder_path = f"RagDraftingAI/{user_id}/{session_id}"
+    if session_id == "knowledge_base":
+        folder_path = "RagDraftingAI/knowledge_base"
+    else:
+        folder_path = f"RagDraftingAI/{user_id}/{session_id}"
     public_id = normalized_name if upload_resource_type == "raw" else normalized_name.rsplit(".", 1)[0]
 
     return {

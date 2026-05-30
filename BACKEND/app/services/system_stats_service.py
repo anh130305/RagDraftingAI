@@ -99,15 +99,15 @@ def _mock_gpu_stats() -> list[dict[str, Any]]:
     Sinh dữ liệu mock GPU động thay đổi theo thời gian thực.
     Các thông số được tính toán đồng bộ và thực tế (ví dụ: RTX 4090).
     """
-    vram_total_mb = 24576.0  # 24 GB
-    # VRAM sử dụng dao động quanh 8.3 GB - 8.8 GB (~34% - 36%)
-    vram_used_mb = round(8192.0 + random.uniform(150.0, 600.0), 1)
+    vram_total_mb = 8192.0  # 8 GB
+    # VRAM sử dụng dao động quanh 90%
+    vram_used_mb = round(7372.8 + random.uniform(-100.0, 100.0), 1)
     vram_free_mb = round(vram_total_mb - vram_used_mb, 1)
     vram_percent = round((vram_used_mb / vram_total_mb) * 100, 1)
 
-    # GPU utilization loanh quanh 30% - 40%
-    gpu_util = int(30 + random.uniform(0, 10))
-    memory_util = int(20 + random.uniform(0, 8))
+    # GPU utilization loanh quanh 90%
+    gpu_util = int(88 + random.uniform(0, 7))
+    memory_util = int(88 + random.uniform(0, 7))
 
     # Nhiệt độ quanh 62°C (60 - 64)
     temp = int(60 + random.uniform(0, 4))
@@ -156,11 +156,11 @@ def _mock_system_stats() -> dict[str, Any]:
     - RAM loanh quanh 20GB trên tổng số 32GB (~62.5% sử dụng)
     - Disk quanh 245GB trên tổng số 512GB (~48% sử dụng)
     """
-    cpu_percent = round(28.0 + random.uniform(0.0, 4.0), 1)
+    cpu_percent = round(88.0 + random.uniform(0.0, 5.0), 1)
     
-    ram_total_mb = 32768.0  # 32 GB
-    # RAM dùng quanh 20GB (19.8GB - 20.2GB)
-    ram_used_mb = round(20275.2 + random.uniform(-204.8, 204.8), 1)
+    ram_total_mb = 16384.0  # 16 GB
+    # RAM dùng quanh 90%
+    ram_used_mb = round(14745.6 + random.uniform(-150.0, 150.0), 1)
     ram_percent = round((ram_used_mb / ram_total_mb) * 100, 1)
 
     disk_total_gb = 512.0
@@ -193,8 +193,8 @@ def _prepopulate_history_if_needed() -> None:
         now = datetime.now()
         for i in range(_HISTORY_SIZE, 0, -1):
             t = (now - timedelta(minutes=i * 2)).strftime("%H:%M")
-            # Lấy giá trị phần trăm VRAM loanh quanh 34% - 36%
-            val = round(34.5 + random.uniform(-1.2, 1.2), 1)
+            # Lấy giá trị phần trăm VRAM loanh quanh 90%
+            val = round(90.0 + random.uniform(-1.5, 1.5), 1)
             _vram_history.append({
                 "time": t,
                 "value": val,

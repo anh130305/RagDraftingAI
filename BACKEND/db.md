@@ -4,7 +4,7 @@
 -- ENUMS
 -- ============================================================
 
-CREATE TYPE user_role    AS ENUM ('admin', 'user', 'moderator');
+CREATE TYPE user_role    AS ENUM ('admin', 'user', 'clerical_specialist', 'professional');
 CREATE TYPE message_role AS ENUM ('user', 'assistant', 'system');
 CREATE TYPE doc_status   AS ENUM ('pending', 'processing', 'ready', 'failed');
 CREATE TYPE audit_action AS ENUM (

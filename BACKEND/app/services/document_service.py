@@ -100,8 +100,14 @@ def list_global_documents(
     limit: int = 100,
 ) -> DocumentListResponse:
     """List all common knowledge-base documents (session_id is None)."""
-    # Use general query filtering for session_id=None
-    query = db.query(Document).filter(Document.session_id == None)
+    # Lọc các file không thuộc session nào nhưng KHÔNG PHẢI là bản thảo sinh ra từ AI
+    # File của knowledge base thường nằm trong folder 'general' trên Cloudinary
+    # File bản thảo AI tạo ra khi chưa có session sẽ nằm trong folder 'drafting' hoặc 'generated'
+    query = db.query(Document).filter(
+        Document.session_id == None,
+        ~Document.file_path.ilike("%/drafting/%"),
+        ~Document.file_path.ilike("%/generated/%")
+    )
     total = query.count()
     docs = query.order_by(desc(Document.created_at)).offset(skip).limit(limit).all()
     

@@ -2,10 +2,10 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   Users, ShieldCheck, Zap, Filter, UserPlus, Search,
   MoreVertical, Edit2, Trash2, ChevronLeft, ChevronRight,
-  CheckCircle2, XCircle
+  CheckCircle2, XCircle, Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, parseUTC } from '../lib/utils';
 import * as api from '../lib/api';
 import { useToast } from '../lib/ToastContext';
 import type { UserResponse } from '../lib/api';
@@ -21,12 +21,12 @@ const permissions = [
     ]
   },
   {
-    role: 'Moderator',
+    role: 'Clerical Specialist',
     color: 'secondary',
     items: [
       { label: 'Xem Phân tích Toàn cục', active: true },
       { label: 'Dán nhãn dữ liệu', active: true },
-      { label: 'Cấu hình Hệ thống', active: false },
+      { label: 'Cấu hình Hệ thống', active: true },
     ]
   },
   {
@@ -45,6 +45,7 @@ export default function UserManagement() {
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [roleConfirm, setRoleConfirm] = useState<{ userId: string; username: string; newRole: string } | null>(null);
 
   // Stats
   const activeCount = users.filter(u => u.is_active).length;
@@ -66,14 +67,23 @@ export default function UserManagement() {
     fetchUsers();
   }, [fetchUsers]);
 
-  const handleRoleChange = async (userId: string, newRole: string) => {
+  const handleRoleChange = (userId: string, username: string, newRole: string) => {
+    setRoleConfirm({ userId, username, newRole });
+  };
+
+  const confirmRoleChange = async () => {
+    if (!roleConfirm) return;
+    const { userId, newRole } = roleConfirm;
     try {
       // Optimistic update
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole as any } : u));
       await api.updateAdminUser(userId, { role: newRole });
+      showToast('Cập nhật vai trò thành công', 'success');
     } catch (err: any) {
       showToast(err.message || 'Lỗi khi cập nhật vai trò', 'error');
       fetchUsers(); // Rollback on error
+    } finally {
+      setRoleConfirm(null);
     }
   };
 
@@ -100,13 +110,27 @@ export default function UserManagement() {
           <p className="text-xs text-on-surface-variant max-w-2xl font-medium">Theo dõi, phân quyền và quản lý vòng đời tài khoản trên toàn nền tảng RAG AI.</p>
         </div>
         <div className="flex gap-3">
+          <button 
+            onClick={() => {
+              const exportData = users.map(u => ({
+                'User ID': u.id,
+                'Tên hiển thị': u.username,
+                'Email': u.email,
+                'Phòng ban': u.department || '-',
+                'Vai trò': u.role,
+                'Ngày tạo': parseUTC(u.created_at).toLocaleString('vi-VN'),
+                'Trạng thái': u.is_active ? 'Hoạt động' : 'Đã khóa'
+              }));
+              import('../lib/exportExcel').then(({ exportToExcel }) => exportToExcel(exportData, 'Danh_sach_nguoi_dung', 'Users'));
+            }}
+            className="px-4 py-2 bg-primary/10 text-primary font-bold rounded-xl border border-primary/20 hover:bg-primary/20 transition-colors flex items-center gap-2 text-xs"
+          >
+            <Download className="w-4 h-4" />
+            Xuất Excel
+          </button>
           <button className="px-4 py-2 bg-surface text-on-surface-variant font-bold rounded-xl border border-outline-variant hover:bg-surface-highest transition-colors flex items-center gap-2 text-xs">
             <Filter className="w-4 h-4" />
             Bộ lọc
-          </button>
-          <button className="px-6 py-2 gradient-primary text-surface font-bold rounded-xl shadow-lg hover:opacity-90 transition-opacity flex items-center justify-center min-w-[120px] text-xs">
-            <UserPlus className="w-4 h-4 mr-2" />
-            Mời Người dùng
           </button>
         </div>
       </header>
@@ -180,11 +204,12 @@ export default function UserManagement() {
                     <td className="px-6 py-4">
                       <select
                         value={user.role}
-                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                        onChange={(e) => handleRoleChange(user.id, user.username, e.target.value)}
                         className="bg-surface-low border-none rounded-lg px-3 py-1.5 text-xs font-bold text-on-surface focus:ring-2 focus:ring-primary focus:outline-none appearance-none cursor-pointer hover:bg-surface-high transition-colors shadow-sm capitalize"
                       >
                         <option value="admin">Admin</option>
-                        <option value="moderator">Moderator</option>
+                        <option value="clerical_specialist">Chuyên viên văn thư</option>
+                        <option value="professional">Chuyên viên nghiệp vụ</option>
                         <option value="user">User</option>
                       </select>
                     </td>
@@ -257,6 +282,38 @@ export default function UserManagement() {
           ))}
         </div>igt
     </div>*/}
-    </motion.div >
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {roleConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-surface border border-outline-variant/30 p-6 rounded-2xl shadow-2xl max-w-sm w-full"
+            >
+              <h3 className="text-lg font-bold text-on-surface mb-2">Xác nhận thay đổi</h3>
+              <p className="text-sm text-on-surface-variant mb-6">
+                Bạn có chắc chắn muốn đổi vai trò của <span className="font-bold text-primary">{roleConfirm.username}</span> thành <span className="font-bold capitalize">{roleConfirm.newRole === 'clerical_specialist' ? 'Chuyên viên văn thư' : roleConfirm.newRole === 'professional' ? 'Chuyên viên nghiệp vụ' : roleConfirm.newRole}</span> không?
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setRoleConfirm(null)}
+                  className="px-4 py-2 text-sm font-bold text-on-surface-variant hover:bg-surface-highest rounded-xl transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={confirmRoleChange}
+                  className="px-4 py-2 text-sm font-bold bg-primary text-surface hover:opacity-90 rounded-xl transition-opacity shadow-lg"
+                >
+                  Xác nhận
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

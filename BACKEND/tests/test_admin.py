@@ -41,12 +41,12 @@ class TestAdminUpdateUser:
     def test_admin_change_role(self, client, admin_auth, normal_user):
         user_id = str(normal_user.id)
         resp = client.put(
-            f"/api/v1/admin/users/{user_id}",
+            f"/api/v1/admin/users/{normal_user.id}",
             headers=admin_auth,
-            json={"role": "moderator"},
+            json={"role": "clerical_specialist"},
         )
         assert resp.status_code == 200
-        assert resp.json()["role"] == "moderator"
+        assert resp.json()["role"] == "clerical_specialist"
 
     def test_admin_deactivate_user(self, client, admin_auth, normal_user):
         user_id = str(normal_user.id)
