@@ -858,7 +858,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     DEFAULT_QUERIES = {
-        "draft"   : "Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý theo quy định của luật cán bộ, công chức.",
+        "draft"   : "Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý.",
+        # "draft" : "Soạn thảo quyết định kỷ luật công chức",
         # "draft": "Soạn thảo giấy nghỉ phép cho công chức.",
         # "draft": "Soạn thảo biên bản họp Hội đồng kỷ luật công chức.",
         # "legal_qa": "Trình bày điều kiện cấp giấy phép kinh doanh",
@@ -875,6 +876,17 @@ if __name__ == "__main__":
             "Đối tượng bổ nhiệm: Ông Nguyễn Văn Hùng.\n"
             "Chức vụ bổ nhiệm: Trưởng phòng Hành chính - Tổng hợp.\n"
         ),
+        # "draft" : (
+        #     "Cơ quan ban hành: SNV thành phố Đà Nẵng.\n"
+        #     "Số quyết định: 18. Ngày ký: 20/01/2026.\n"
+        #     "Người bị kỷ luật: Ông Nguyễn Văn Hải.\n"
+        #     "Chức vụ, đơn vị công tác: Chuyên viên Phòng Tổ chức cán bộ.\n"
+        #     "Hành vi vi phạm: Tự ý nghỉ việc 05 ngày làm việc trong tháng 12/2025 không có lý do chính đáng.\n"
+        #     "Hình thức kỷ luật: Khiển trách.\n"
+        #     "Thời điểm áp dụng: kể từ ngày quyết định có hiệu lực.\n"
+        #     "Đơn vị thực hiện: Phòng Tổ chức cán bộ, Văn phòng Sở và ông Nguyễn Văn Hải.\n"
+        #     "Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai.\n"
+        # ),
         # "draft" :(
         #     "Cơ quan chủ quản: Ủy ban nhân dân Thành phố Đà Nẵng.\n"
         #     "Cơ quan cấp phép: Sở Nội vụ Thành phố Đà Nẵng.\n"

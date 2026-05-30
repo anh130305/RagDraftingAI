@@ -11,17 +11,32 @@ DRAFT 1
         Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý.
     extra:
         Cơ quan ban hành: Sở Nội vụ tỉnh Bình Dương.
-        Số quyết định: 45/QĐ-SNV. Ngày ký: 20/01/2026.
+        Viết tắt cơ quan ban hành: SNV.
+        Cơ quan chủ quản: UBND tỉnh Bình Dương.
+        Số quyết định: 45. Ngày ký: 20/01/2026.
         Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai.
         Đối tượng bổ nhiệm: Ông Nguyễn Văn Hùng.
         Chức vụ bổ nhiệm: Trưởng phòng Hành chính - Tổng hợp.
 
+DRAFT 3
+    query:
+        Soạn thảo quyết định kỷ luật công chức
+    extra:
+        Cơ quan ban hành: SNV thành phố Đà Nẵng.
+        Số quyết định: 18. Ngày ký: 20/01/2026.
+        Người bị kỷ luật: Ông Nguyễn Văn Hải.
+        Chức vụ, đơn vị công tác: Chuyên viên Phòng Tổ chức cán bộ.
+        Hành vi vi phạm: Tự ý nghỉ việc 05 ngày làm việc trong tháng 12/2025 không có lý do chính đáng.
+        Hình thức kỷ luật: Khiển trách.
+        Thời điểm áp dụng: kể từ ngày quyết định có hiệu lực.
+        Đơn vị thực hiện: Phòng Tổ chức cán bộ, Văn phòng Sở và ông Nguyễn Văn Hải.
+        Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai.
 
-DRAFT 2
+DRAFT 3
     query: 
         Soạn thảo biên bản họp Hội đồng kỷ luật công chức.
     extra:
-        Cơ quan: Sở Y tế tỉnh Phú Thọ.
+        Cơ quan: Sở Y tế tỉnh Phú Thọ trực thuộc UBND tỉnh Phú Thọ.
         Đối tượng bị xem xét: Ông Nguyễn Văn Hải, chức vụ Chuyên viên phòng Tổ chức cán bộ.
         Hành vi vi phạm: Vi phạm quy định về thời giờ làm việc, tự ý nghỉ việc không có lý do chính đáng 
         tổng cộng 05 ngày làm việc trong một tháng, gây ảnh hưởng đến tiến độ giải quyết hồ sơ công vụ.
@@ -34,13 +49,13 @@ DRAFT 2
         Ông Hải thừa nhận khuyết điểm và hứa sửa chữa. 
         Kết quả: Hội đồng tiến hành bỏ phiếu kín. Kết quả 05/05 phiếu (100%) thống nhất kiến nghị hình thức Cảnh cáo.
 
-DRAFT 3
+DRAFT 4
     query:
         Soạn thảo giấy nghỉ phép cho công chức.
     extra:
-        Cơ quan chủ quản: Ủy ban nhân dân Thành phố Đà Nẵng.
+        Cơ quan chủ quản: UBND Thành phố Đà Nẵng.
         Cơ quan cấp phép: Sở Nội vụ Thành phố Đà Nẵng.
-        Số giấy nghỉ phép: 12/GNP-SNV.
+        Số giấy nghỉ phép: 12.
         Địa danh: Đà Nẵng.
         Ngày ký: 20/01/2026.
         Người làm đơn: Cáp Kim Khánh.
