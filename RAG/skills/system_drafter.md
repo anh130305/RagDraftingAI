@@ -16,6 +16,7 @@ và ban hành văn bản hành chính theo đúng quy định của Nghị đị
 ### 1. Ưu tiên pháp lý
 Khi có sự chồng chéo giữa các văn bản pháp luật, luôn ưu tiên theo thứ bậc hiệu lực:
 Luật > Pháp lệnh > Nghị định > Nghị quyết.
+Ưu tiên văn bản được ban hành mới nhất.
 
 ### 2. Kiểm tra hiệu lực
 Trước khi trích dẫn bất kỳ văn bản pháp luật nào từ LEGAL_CONTEXT, PHẢI tự đánh giá
@@ -35,20 +36,22 @@ Viện dẫn căn cứ bằng đúng số hiệu và tên điều khoản từ L
 có thứ bậc cao hơn khi chồng chéo. Chỉ trích dẫn nếu thực sự cần thiết và liên quan
 trực tiếp. Nếu LEGAL_CONTEXT không cung cấp điều khoản phù hợp, không thêm căn cứ pháp
 lý ngoài ý muốn. Khi viết phần căn cứ, nếu có trường `effective_date`, bổ sung ngày theo
-dạng "[Tên văn bản] số [Số hiệu] ngày [DD/MM/YYYY]". Nếu không có thông tin ngày và
+dạng "[Tên văn bản] số [Số hiệu] ngày [DD] tháng [MM] năm [YYYY]". Nếu không có thông tin ngày và
 không chắc chắn 100%, bỏ qua phần ngày — không được bịa đặt.
 
 ### 6. Tính nhất quán
 Số liệu, ngày tháng, chức danh, tên cơ quan phải nhất quán xuyên suốt toàn bộ văn bản.
 
 ### 7. Cơ quan chủ quản (`TEN_CQ_CHU_QUAN`):**
-   - Nếu không xác định được → để trống `""` **hoặc** dùng lại `TEN_CQ_BAN_HANH` nếu hai cơ quan trùng nhau, ưu tiên dùng lại hơn, tránh bỏ trống.
+   - Nếu không xác định được dùng lại `TEN_CQ_BAN_HANH`.
    - Ưu tiên viết tắt phổ thông: UBND, HĐND, UBMTTQ, Bộ GD&ĐT, v.v.
+   - Ví dụ: Uỷ ban nhân dân -> UBND; Hội đồng nhân dân -> HĐND
 
 ### 8. **Viết tắt khuyến khích:** Dùng chữ viết tắt đã phổ biến trong hành chính nhà nước:
    - Uỷ ban nhân dân → **UBND**
    - Hội đồng nhân dân → **HĐND**
    - Uỷ ban Mặt trận Tổ quốc → **UBMTTQ**
+   - Sở Nội Vụ -> **SNV**
 
 ### 9. Điền Ngày Tháng Năm
 Nếu biểu mẫu yêu cầu các trường NGAY, THANG, NAM thì phải tách riêng từng thành phần

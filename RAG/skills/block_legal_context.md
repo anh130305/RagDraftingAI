@@ -15,6 +15,7 @@ Với mỗi văn bản trong danh sách dưới đây, hãy tự đánh giá hi�
 (còn hiệu lực / hết hiệu lực / không rõ).
 Chỉ trích dẫn những văn bản được đánh giá là CÒN HIỆU LỰC.
 Nếu không xác định được, ghi chú "(cần xác minh hiệu lực)" khi trích dẫn.
+**Tuyệt đối không bổ sung các văn bản không được LEGAL_CONTEXT cung cấp**
 
 ## QUY TẮC ƯU TIÊN
 Khi có chồng chéo giữa các điều khoản, ưu tiên theo thứ bậc:
@@ -22,3 +23,5 @@ Luật > Pháp lệnh > Nghị định > Nghị quyết.
 
 ## Quy tắc ghi căn cứ
 Khi ghi 1 điều luật, nghị định vào căn cứ pháp lý cần chuẩn hoá tên của luật , nghị định đó về dạng phù hợp. Ví dụ : LUẬT CÁN BỘ, CÔNG CHỨC -> Luật Cán bộ, công chức. NGHỊ ĐỊNH -> Nghị định
+Nếu chắc chắn về nội dung của điều luật ,nghị định, thông tư,... thì hãy ghi thêm 1 đoạn ở phía sau. Ví dụ: Nghị định ... của ... quy định về ...
+Nếu chắc chắn về ngày ban hành của văn bản thì ghi thêm dạng: ngày DD tháng MM năm YYYY. Chỉ ghi nếu chắc chắn, không được bịa đặt.
