@@ -548,6 +548,46 @@ class RAGDocumentBatchRequest(BaseModel):
     document_ids: List[UUID]
 
 
+class LLMConfigUpdateRequest(BaseModel):
+    max_tokens: Optional[int] = None
+    temperature: Optional[float] = None
+
+
+@router.get("/rag/llm-config")
+async def rag_get_llm_config(
+    admin: User = Depends(require_admin),
+):
+    """Proxy: Get RAG runtime LLM configuration."""
+    try:
+        return await rag_client.get_llm_config()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail=f"RAG service unavailable: {e}")
+
+
+@router.put("/rag/llm-config")
+async def rag_update_llm_config(
+    payload: LLMConfigUpdateRequest,
+    admin: User = Depends(require_admin),
+):
+    """Proxy: Update RAG runtime LLM configuration for future requests."""
+    try:
+        return await rag_client.update_llm_config(
+            max_tokens=payload.max_tokens,
+            temperature=payload.temperature,
+        )
+    except httpx.HTTPStatusError as e:
+        detail = e.response.text
+        try:
+            detail = e.response.json().get("detail", detail)
+        except Exception:
+            pass
+        raise HTTPException(status_code=e.response.status_code, detail=detail)
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail=f"RAG service unavailable: {e}")
+
+
 @router.post("/rag/batch-delete")
 async def rag_batch_delete(
     request: Request,

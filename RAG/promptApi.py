@@ -86,7 +86,7 @@ _GROQ_MODEL_ALIASES = {
 }
 
 _LLM_CONFIG = {
-    "max_tokens"  : 4096,
+    "max_tokens"  : 8192,
     "temperature" : 0.1,
 }
 
@@ -108,6 +108,40 @@ def resolve_llm_model(model: Optional[str] = None, mode: Optional[str] = None) -
         raise ValueError(f"Model không hợp lệ: {model!r}. Chọn một trong: {allowed}")
     return _GROQ_MODEL_ALIASES[key]
 
+def _usage_value(usage: Any, key: str) -> Optional[int]:
+    if not usage:
+        return None
+    if isinstance(usage, dict):
+        return usage.get(key)
+    return getattr(usage, key, None)
+
+
+def _log_llm_response(provider: str, model: str, response: Any, content: str) -> None:
+    choice = response.choices[0] if getattr(response, "choices", None) else None
+    finish_reason = getattr(choice, "finish_reason", None)
+    usage = getattr(response, "usage", None)
+    prompt_tokens = _usage_value(usage, "prompt_tokens")
+    completion_tokens = _usage_value(usage, "completion_tokens")
+    total_tokens = _usage_value(usage, "total_tokens")
+
+    logger.info(
+        "LLM response provider=%s model=%s finish_reason=%s raw_chars=%s "
+        "prompt_tokens=%s completion_tokens=%s total_tokens=%s max_tokens=%s",
+        provider,
+        model,
+        finish_reason,
+        len(content or ""),
+        prompt_tokens,
+        completion_tokens,
+        total_tokens,
+        _LLM_CONFIG["max_tokens"],
+    )
+
+    if finish_reason == "length":
+        logger.warning(
+            "LLM output có dấu hiệu bị cắt do max_tokens. raw_tail=%r",
+            (content or "")[-500:],
+        )
 
 def get_llm_config() -> Dict[str, Any]:
     """Trả về bản sao cấu hình LLM runtime hiện tại."""
@@ -207,7 +241,7 @@ def _call_llm(messages: List[Dict[str, str]], model: Optional[str] = None) -> Op
                 response_format = {"type": "json_object"},
             )
             content = response.choices[0].message.content or ""
-            _log_llm_response("openai", _LLM_CONFIG["openai_model"], response, content)
+            _log_llm_response("openai", OPENAI_MODEL, response, content)
             return content
         except ImportError:
             logger.warning("openai chưa cài. Chạy: pip install openai")

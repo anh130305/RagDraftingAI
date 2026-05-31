@@ -6,15 +6,23 @@ import * as api from '../lib/api';
 import { useToast } from '../lib/ToastContext';
 
 const VALID_DEPARTMENTS = ["BackEnd", "FrontEnd", "AI Engineer", "FullStack", "DevOps"];
+const DEFAULT_MAX_TOKENS = 8192;
+const MIN_LLM_TOKENS = 1;
+const MAX_LLM_TOKENS = 32768;
 
-let mockTokenValue = 8192;
+function isAdminUser(user: any) {
+  return String(user?.role || '').toLowerCase() === 'admin';
+}
 
 export default function Settings() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [department, setDepartment] = useState('');
-  const [maxTokens, setMaxTokens] = useState(mockTokenValue);
+  const [configLoading, setConfigLoading] = useState(false);
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [llmConfig, setLlmConfig] = useState<api.LLMRuntimeConfig | null>(null);
+  const [maxTokens, setMaxTokens] = useState(String(DEFAULT_MAX_TOKENS));
 
   // Global Toast
   const { showToast } = useToast();
@@ -26,13 +34,28 @@ export default function Settings() {
   const fetchProfile = async () => {
     try {
       setLoading(true);
+      setConfigLoading(false);
       const res = await api.getMe();
       setProfile(res);
       setDepartment(res.department || '');
+      setLoading(false);
+
+      if (isAdminUser(res)) {
+        try {
+          setConfigLoading(true);
+          const configRes = await api.getLLMRuntimeConfig();
+          setLlmConfig(configRes.config);
+          setMaxTokens(String(configRes.config.max_tokens));
+        } catch (err: any) {
+          showToast(err.message || 'Không thể tải cấu hình LLM runtime', 'warning');
+        } finally {
+          setConfigLoading(false);
+        }
+      }
     } catch (err: any) {
       showToast(err.message || 'Lỗi khi lấy thông tin hồ sơ', 'error');
-    } finally {
       setLoading(false);
+      setConfigLoading(false);
     }
   };
 
@@ -50,6 +73,27 @@ export default function Settings() {
     }
   };
 
+  const handleSaveLLMConfig = async () => {
+    const nextMaxTokens = Number(maxTokens);
+    if (!Number.isInteger(nextMaxTokens) || nextMaxTokens < MIN_LLM_TOKENS || nextMaxTokens > MAX_LLM_TOKENS) {
+      showToast(`Số lượng token tối đa phải là số nguyên trong khoảng ${MIN_LLM_TOKENS}..${MAX_LLM_TOKENS}.`, 'warning');
+      return;
+    }
+
+    try {
+      setSavingConfig(true);
+      const res = await api.updateLLMRuntimeConfig({ max_tokens: nextMaxTokens });
+      setLlmConfig(res.config);
+      setMaxTokens(String(res.config.max_tokens));
+      showToast('Cập nhật cấu hình LLM runtime thành công!', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Có lỗi xảy ra khi lưu cấu hình LLM', 'error');
+      if (llmConfig) setMaxTokens(String(llmConfig.max_tokens));
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32 opacity-50">
@@ -63,6 +107,15 @@ export default function Settings() {
   }
 
   if (!profile) return null;
+
+  const isAdmin = isAdminUser(profile);
+  const parsedMaxTokens = Number(maxTokens);
+  const isMaxTokensValid =
+    maxTokens.trim() !== '' &&
+    Number.isInteger(parsedMaxTokens) &&
+    parsedMaxTokens >= MIN_LLM_TOKENS &&
+    parsedMaxTokens <= MAX_LLM_TOKENS;
+  const isLLMConfigUnchanged = llmConfig ? parsedMaxTokens === llmConfig.max_tokens : false;
 
   return (
     <motion.div
@@ -215,39 +268,56 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* Token Setup Card (Mock) */}
-          <div className="glass-card p-8 rounded-[2rem] border border-outline-variant mt-6">
-            <h3 className="text-xl font-bold font-headline text-on-surface mb-6 flex items-center gap-3">
-              <Key className="w-5 h-5 text-tertiary" />
-              Thiết lập Token
-            </h3>
+          {isAdmin && (
+            <div className="glass-card p-8 rounded-[2rem] border border-outline-variant mt-6">
+              <h3 className="text-xl font-bold font-headline text-on-surface mb-6 flex items-center gap-3">
+                <Key className="w-5 h-5 text-tertiary" />
+                Thiết lập Token
+              </h3>
 
-            <div className="flex flex-col md:flex-row items-start md:items-end gap-4">
-              <div className="flex-1 w-full space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant pl-1">
-                  SỐ LƯỢNG TOKEN TỐI ĐA
-                </label>
-                <input
-                  type="number"
-                  value={maxTokens}
-                  onChange={(e) => setMaxTokens(Number(e.target.value))}
-                  placeholder="Nhập số lượng token ..."
-                  className="w-full bg-surface-high border border-outline-variant rounded-xl px-4 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium shadow-sm"
-                />
+              <div className="flex flex-col md:flex-row items-start md:items-end gap-4">
+                <div className="flex-1 w-full space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant pl-1">
+                    SỐ LƯỢNG TOKEN TỐI ĐA
+                  </label>
+                  <input
+                    type="number"
+                    min={MIN_LLM_TOKENS}
+                    max={MAX_LLM_TOKENS}
+                    step={1}
+                    value={maxTokens}
+                    onChange={(e) => setMaxTokens(e.target.value)}
+                    placeholder="Nhập số lượng token ..."
+                    disabled={configLoading || savingConfig}
+                    className="w-full bg-surface-high border border-outline-variant rounded-xl px-4 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                  />
+                  <p className="text-[10px] text-on-surface-variant/70 pl-2">
+                    {configLoading
+                      ? 'Đang tải cấu hình LLM runtime...'
+                      : `Áp dụng ngay cho các request LLM tiếp theo trong RAG service.${llmConfig ? ` Temperature hiện tại: ${llmConfig.temperature}.` : ''}`}
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleSaveLLMConfig}
+                  disabled={
+                    configLoading ||
+                    savingConfig ||
+                    !isMaxTokensValid ||
+                    isLLMConfigUnchanged
+                  }
+                  className="bg-surface-highest text-on-surface font-extrabold px-8 py-3 rounded-xl text-sm shadow-sm border border-outline-variant hover:bg-surface-container-highest disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shrink-0 h-[46px] w-full md:w-auto"
+                >
+                  {savingConfig ? (
+                    <div className="w-4 h-4 border-2 border-on-surface/30 border-t-on-surface rounded-full animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  Lưu Cấu hình
+                </button>
               </div>
-
-              <button
-                onClick={() => {
-                  mockTokenValue = maxTokens;
-                  showToast('Cập nhật cấu hình thành công!', 'success');
-                }}
-                className="bg-surface-highest text-on-surface font-extrabold px-8 py-3 rounded-xl text-sm shadow-sm border border-outline-variant hover:bg-surface-container-highest transition-all flex items-center justify-center gap-2 shrink-0 h-[46px] w-full md:w-auto"
-              >
-                <Save className="w-4 h-4" />
-                Lưu Cấu hình
-              </button>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
