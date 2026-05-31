@@ -129,6 +129,11 @@ class LegalQARequest(BaseModel):
     history: Optional[List[Dict[str, Any]]] = None
 
 
+class LLMConfigUpdateRequest(BaseModel):
+    max_tokens: Optional[int] = None
+    temperature: Optional[float] = None
+
+
 class DBCheckRequest(BaseModel):
     so_hieu: str
     collection_key: str = "legal"
@@ -185,6 +190,27 @@ async def health_check():
     if _prompt_api is None:
         return {"status": "ready_to_load", "message": "Service is up, models not yet loaded."}
     return {"status": "ready", "message": "RAG Service is operational."}
+
+
+@app.get("/api/v1/rag/llm_config")
+async def get_llm_runtime_config():
+    _ensure_full_mode()
+    from promptApi import get_llm_config
+    return {"status": "ok", "config": get_llm_config()}
+
+
+@app.put("/api/v1/rag/llm_config")
+async def update_llm_runtime_config(request: LLMConfigUpdateRequest):
+    _ensure_full_mode()
+    from promptApi import update_llm_config
+    try:
+        config = update_llm_config(
+            max_tokens=request.max_tokens,
+            temperature=request.temperature,
+        )
+        return {"status": "ok", "config": config}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/api/v1/db/status")

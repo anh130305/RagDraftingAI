@@ -72,17 +72,10 @@ except ImportError as e:
 # ═══════════════════════════════════════════════════════════════
 # LLM CONFIG
 # ═══════════════════════════════════════════════════════════════
-_LLM_CONFIG = {
-    "groq_model"  : os.environ.get("LLM_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct"),
-    "openai_model": os.environ.get("LLM_MODEL", "gpt-4o-mini"),
-    "max_tokens"  : 8192,
-    "temperature" : 0.1,
-}
-
 GROQ_MODEL_17B = "meta-llama/llama-4-scout-17b-16e-instruct"
 GROQ_MODEL_70B = "llama-3.3-70b-versatile"
-DEFAULT_QA_LLM_MODEL = GROQ_MODEL_70B
-DEFAULT_DRAFT_LLM_MODEL = GROQ_MODEL_17B
+DEFAULT_LLM_MODEL = GROQ_MODEL_70B
+OPENAI_MODEL = os.environ.get("LLM_MODEL", "gpt-4o-mini")
 _GROQ_MODEL_ALIASES = {
     "17b": GROQ_MODEL_17B,
     "llama-4-scout-17b": GROQ_MODEL_17B,
@@ -90,6 +83,11 @@ _GROQ_MODEL_ALIASES = {
     "70b": GROQ_MODEL_70B,
     "llama-3.3-70b": GROQ_MODEL_70B,
     GROQ_MODEL_70B: GROQ_MODEL_70B,
+}
+
+_LLM_CONFIG = {
+    "max_tokens"  : 4096,
+    "temperature" : 0.1,
 }
 
 
@@ -111,40 +109,39 @@ def resolve_llm_model(model: Optional[str] = None, mode: Optional[str] = None) -
     return _GROQ_MODEL_ALIASES[key]
 
 
-def _usage_value(usage: Any, key: str) -> Optional[int]:
-    if not usage:
-        return None
-    if isinstance(usage, dict):
-        return usage.get(key)
-    return getattr(usage, key, None)
+def get_llm_config() -> Dict[str, Any]:
+    """Trả về bản sao cấu hình LLM runtime hiện tại."""
+    return dict(_LLM_CONFIG)
 
 
-def _log_llm_response(provider: str, model: str, response: Any, content: str) -> None:
-    choice = response.choices[0] if getattr(response, "choices", None) else None
-    finish_reason = getattr(choice, "finish_reason", None)
-    usage = getattr(response, "usage", None)
-    prompt_tokens = _usage_value(usage, "prompt_tokens")
-    completion_tokens = _usage_value(usage, "completion_tokens")
-    total_tokens = _usage_value(usage, "total_tokens")
+def update_llm_config(
+    *,
+    max_tokens: Optional[int] = None,
+    temperature: Optional[float] = None,
+) -> Dict[str, Any]:
+    """
+    Cập nhật cấu hình LLM runtime cho các request sau.
+    Không ghi ra .env, không restart service.
+    """
+    updates: Dict[str, Any] = {}
 
-    logger.info(
-        "LLM response provider=%s model=%s finish_reason=%s raw_chars=%s "
-        "prompt_tokens=%s completion_tokens=%s total_tokens=%s max_tokens=%s",
-        provider,
-        model,
-        finish_reason,
-        len(content or ""),
-        prompt_tokens,
-        completion_tokens,
-        total_tokens,
-        _LLM_CONFIG["max_tokens"],
-    )
+    if max_tokens is not None:
+        if not isinstance(max_tokens, int) or isinstance(max_tokens, bool):
+            raise ValueError("max_tokens phải là số nguyên.")
+        if max_tokens < 1 or max_tokens > 32768:
+            raise ValueError("max_tokens phải nằm trong khoảng 1..32768.")
+        updates["max_tokens"] = max_tokens
 
-    if finish_reason == "length":
-        logger.warning(
-            "LLM output có dấu hiệu bị cắt do max_tokens. raw_tail=%r",
-            (content or "")[-500:],
-        )
+    if temperature is not None:
+        if not isinstance(temperature, (int, float)) or isinstance(temperature, bool):
+            raise ValueError("temperature phải là số.")
+        temperature_value = float(temperature)
+        if temperature_value < 0 or temperature_value > 2:
+            raise ValueError("temperature phải nằm trong khoảng 0..2.")
+        updates["temperature"] = temperature_value
+
+    _LLM_CONFIG.update(updates)
+    return get_llm_config()
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -203,7 +200,7 @@ def _call_llm(messages: List[Dict[str, str]], model: Optional[str] = None) -> Op
             import openai
             client   = openai.OpenAI(api_key=openai_key)
             response = client.chat.completions.create(
-                model           = _LLM_CONFIG["openai_model"],
+                model           = OPENAI_MODEL,
                 messages        = messages,
                 max_tokens      = _LLM_CONFIG["max_tokens"],
                 temperature     = _LLM_CONFIG["temperature"],
@@ -294,7 +291,7 @@ def _stream_llm(messages: List[Dict[str, str]], model: Optional[str] = None) -> 
 
             client = openai.OpenAI(api_key=openai_key)
             stream = client.chat.completions.create(
-                model=_LLM_CONFIG["openai_model"],
+                model=OPENAI_MODEL,
                 messages=messages,
                 max_tokens=_LLM_CONFIG["max_tokens"],
                 temperature=_LLM_CONFIG["temperature"],
