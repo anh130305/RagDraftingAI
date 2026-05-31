@@ -41,6 +41,39 @@ class RAGClient:
         except httpx.RequestError:
             return False
 
+    # ── LLM Runtime Config ───────────────────────────────────────
+
+    async def get_llm_config(self) -> dict:
+        """Get runtime LLM generation settings from the RAG service."""
+        r = await self._client.get(
+            f"{self.base_url}/api/v1/rag/llm_config", timeout=10.0
+        )
+        r.raise_for_status()
+        return r.json()
+
+    async def update_llm_config(
+        self,
+        *,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+    ) -> dict:
+        """Update runtime LLM generation settings for subsequent RAG requests."""
+        payload = {
+            key: value
+            for key, value in {
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+            }.items()
+            if value is not None
+        }
+        r = await self._client.put(
+            f"{self.base_url}/api/v1/rag/llm_config",
+            json=payload,
+            timeout=10.0,
+        )
+        r.raise_for_status()
+        return r.json()
+
     # ── ChromaDB / Vector DB management ───────────────────────
 
     async def db_status(self) -> dict:

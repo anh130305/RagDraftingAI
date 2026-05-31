@@ -1083,6 +1083,32 @@ export function getBM25RebuildStatus() {
   return request<BM25RebuildState>('/api/v1/admin/rag/rebuild-bm25/status');
 }
 
+export interface LLMRuntimeConfig {
+  max_tokens: number;
+  temperature: number;
+}
+
+export interface LLMRuntimeConfigResponse {
+  status: 'ok';
+  config: LLMRuntimeConfig;
+}
+
+export interface LLMRuntimeConfigUpdate {
+  max_tokens?: number;
+  temperature?: number;
+}
+
+export function getLLMRuntimeConfig() {
+  return request<LLMRuntimeConfigResponse>('/api/v1/admin/rag/llm-config');
+}
+
+export function updateLLMRuntimeConfig(data: LLMRuntimeConfigUpdate) {
+  return request<LLMRuntimeConfigResponse>('/api/v1/admin/rag/llm-config', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
 export interface OCRExtractResponse {
   text: string;
   filename: string;
