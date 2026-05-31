@@ -9,7 +9,7 @@ const VALID_DEPARTMENTS = ["BackEnd", "FrontEnd", "AI Engineer", "FullStack", "D
 const DEFAULT_MAX_TOKENS = 8192;
 const MIN_LLM_TOKENS = 1;
 const MAX_LLM_TOKENS = 32768;
-const TOKEN_OPTIONS = [512, 1024, 2048, 4096, 8192];
+const TOKEN_OPTIONS = [512, 1024, 2048, 4096, 8192, 16384];
 
 function isAdminUser(user: any) {
   return String(user?.role || '').toLowerCase() === 'admin';
@@ -315,7 +315,7 @@ export default function Settings() {
                     Lưu Cấu hình
                   </button>
                 </div>
-                
+
                 <p className="text-[10px] text-on-surface-variant/70 pl-2">
                   {configLoading
                     ? 'Đang tải cấu hình LLM runtime...'
