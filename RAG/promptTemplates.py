@@ -45,12 +45,12 @@ def _estimate_tokens(text: str) -> int:
 def _trim_history_to_budget(
     history: List[Dict[str, str]],
     max_tokens: int = 2000,
-    max_messages: int = 6,
+    max_messages: int = 4,
 ) -> List[Dict[str, str]]:
     """
     Giữ lại N messages GẦN NHẤT sao cho tổng token ≤ budget.
 
-    - max_messages: Giới hạn cứng (mặc định 6 = 3 cặp user-assistant).
+    - max_messages: Giới hạn cứng (mặc định 4 = 2 cặp user-assistant).
     - max_tokens  : Ngân sách token tối đa cho toàn bộ history.
     - Ưu tiên giữ messages gần nhất (recency > completeness).
     - Đảm bảo kết quả bắt đầu bằng role "user" (không cắt giữa cặp).

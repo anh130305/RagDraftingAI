@@ -23,6 +23,7 @@ import {
   RefreshCw,
   TrendingUp,
   Cpu,
+  Download,
 } from 'lucide-react';
 import { getAIMonitoringStats, AIMonitoringResponse } from '../lib/api';
 import { useToast } from '../lib/ToastContext';
@@ -72,8 +73,8 @@ export default function AIMonitoring() {
     { name: 'Không ý kiến', value: (stats?.summary.total_queries || 0) - (stats?.summary.interaction_stats.total_feedback || 0), color: '#94a3b8' }
   ];
   const rawModelData = [
-    { name: 'Base', value: stats?.summary.model_distribution?.['17b'] || 0, color: COLORS.primary },
-    { name: 'Pro', value: stats?.summary.model_distribution?.['70b'] || 0, color: COLORS.secondary },
+    { name: 'Llama 17B', value: stats?.summary.model_distribution?.['17b'] || 0, color: COLORS.primary },
+    { name: 'Llama 70B', value: stats?.summary.model_distribution?.['70b'] || 0, color: COLORS.secondary },
   ].filter(item => item.value > 0);
   const modelData = rawModelData.length > 0
     ? rawModelData
@@ -108,6 +109,24 @@ export default function AIMonitoring() {
             ))}
           </div>
 
+          <button 
+            onClick={() => {
+              if (!stats) return;
+              const exportData = stats.trends.map(t => ({
+                'Ngày': t.name,
+                'Số truy vấn': t.queries,
+                'Lỗi': t.errors,
+                'Độ trễ TB (ms)': t.avgLatency
+              }));
+              import('../lib/exportExcel').then(({ exportToExcel }) => exportToExcel(exportData, `AI_Monitoring_${days}ngay`, 'AIMonitoring'));
+            }}
+            disabled={loading || !stats}
+            className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl transition-all font-bold text-sm border border-primary/20"
+          >
+            <Download className="w-4 h-4" />
+            Xuất Excel
+          </button>
+          
           <button
             onClick={() => fetchStats(days)}
             disabled={loading}

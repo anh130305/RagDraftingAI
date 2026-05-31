@@ -31,6 +31,7 @@ interface ChatComposerProps {
   statusMessage?: string;
   onSend?: (content: string, mode: 'qa' | 'generate', extras?: string, llmModel?: LLMModel) => string | undefined | void | Promise<string | undefined | void>;
   disabled?: boolean;
+  sendBlocked?: boolean;
   value?: string;
   onValueChange?: (val: string) => void;
 }
@@ -63,6 +64,7 @@ export default function ChatComposer({
   statusMessage,
   onSend,
   disabled = false,
+  sendBlocked = false,
   value = '',
   onValueChange,
 }: ChatComposerProps) {
@@ -73,6 +75,7 @@ export default function ChatComposer({
   const extrasRef = useRef<HTMLTextAreaElement | null>(null);
   const recognitionRef = useRef<any>(null);
   const valueRef = useRef(value);
+  const extrasValueRef = useRef('');
   const attachmentsRef = useRef<PendingAttachment[]>([]);
   const dragCounterRef = useRef(0);
   const { showToast } = useToast();
@@ -89,6 +92,7 @@ export default function ChatComposer({
 
   // Prompt template states
   const [showPromptPicker, setShowPromptPicker] = useState(false);
+  const [hoveredTemplate, setHoveredTemplate] = useState<PromptTemplateResponse | null>(null);
   const [promptTemplates, setPromptTemplates] = useState<PromptTemplateResponse[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const promptPickerRef = useRef<HTMLDivElement | null>(null);
@@ -114,6 +118,8 @@ export default function ChatComposer({
   }, [value]);
 
   useEffect(() => {
+    extrasValueRef.current = extras;
+
     // Auto-adjust height for extras textarea
     if (extrasRef.current) {
       extrasRef.current.style.height = 'auto';
@@ -464,7 +470,7 @@ export default function ChatComposer({
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (disabled || isUploading || retryingAttachmentId) return;
+    if (disabled || sendBlocked || isUploading || retryingAttachmentId) return;
 
     const trimmedValue = value.trim();
     const hasAttachments = attachments.length > 0;
@@ -517,24 +523,26 @@ export default function ChatComposer({
 
     setIsUploading(true);
 
-    // Clear UI immediately - don't make user wait
-    onValueChange?.('');
-    setExtras('');
-    setShowExtras(false);
-    clearAttachments();
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    if (imageInputRef.current) imageInputRef.current.value = '';
-    setIsWaitingForAttachments(false);
-
     // Upload files to Cloudinary AFTER onSend so we have the resolved session ID
     // (onSend creates the session if it doesn't exist yet and returns its ID).
     try {
       const resolvedSessionId = await onSend?.(finalMessageWithAttachments, mode, finalExtras, llmModel);
+      if (!resolvedSessionId) return;
+
+      if (valueRef.current.trim() === trimmedValue) {
+        onValueChange?.('');
+      }
+      if (extrasValueRef.current === extras) {
+        setExtras('');
+      }
+      setShowExtras(false);
+      clearAttachments();
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (imageInputRef.current) imageInputRef.current.value = '';
+      setIsWaitingForAttachments(false);
 
       const uploadSessionId = resolvedSessionId as string | undefined;
       if (filesToUpload.length > 0) {
-        if (!uploadSessionId) return;
-
         filesToUpload.forEach(file => {
           api.uploadDocument(file, file.name, uploadSessionId)
             .then((doc) => {
@@ -655,10 +663,17 @@ export default function ChatComposer({
     recognition.start();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Không xử lý Enter nếu người dùng đang gõ dấu tiếng Việt (IME)
+    if (e.nativeEvent.isComposing) return;
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit();
+      if (disabled || sendBlocked) return;
+      // Nếu có input hợp lệ thì gửi, nếu không thì chặn luôn để không bị xuống hàng
+      if (value.trim()) {
+        handleSubmit();
+      }
     }
   };
 
@@ -751,7 +766,7 @@ export default function ChatComposer({
             setMode('qa'); 
             setShowExtras(false); 
             setExtras(''); 
-            setLlmModel('70b'); // Tự động đổi sang 70B khi chọn QA
+            setLlmModel('70b'); // QA mặc định dùng 70B (Base)
           }}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${mode === 'qa'
             ? 'bg-primary text-on-primary shadow-sm'
@@ -765,7 +780,7 @@ export default function ChatComposer({
           type="button"
           onClick={() => {
             setMode('generate');
-            setLlmModel('70b'); // Tự động đổi sang 70B khi chọn Soạn thảo
+            setLlmModel('17b'); // Soạn thảo mặc định dùng 17B (Pro)
           }}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${mode === 'generate'
             ? 'bg-secondary text-on-secondary shadow-sm'
@@ -1046,19 +1061,23 @@ export default function ChatComposer({
                   <button
                     key={tpl.id}
                     type="button"
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-container-high transition-colors border-b border-outline-variant/10 last:border-b-0"
+                    onMouseEnter={() => setHoveredTemplate(tpl)}
+                    onMouseLeave={() => setHoveredTemplate(null)}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-container-high transition-colors border-b border-outline-variant/10 last:border-b-0 group relative"
                     onClick={() => {
                       onValueChange?.(tpl.query);
 
                       // Auto-switch mode based on template configuration
                       if (tpl.mode === 'generate') {
                         setMode('generate');
+                        setLlmModel('17b');
                         if (tpl.extra_instructions) {
                           setExtras(tpl.extra_instructions);
                           setShowExtras(true);
                         }
                       } else {
                         setMode('qa');
+                        setLlmModel('70b');
                         setShowExtras(false);
                       }
 
@@ -1096,6 +1115,31 @@ export default function ChatComposer({
           </div>
         )}
 
+        {/* Floating Tooltip cho Template Content */}
+        <AnimatePresence>
+          {showPromptPicker && hoveredTemplate && (
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.15 }}
+              className="absolute left-[330px] bottom-full mb-3 w-[360px] rounded-3xl border border-outline-variant/20 bg-surface/95 shadow-[0_20px_45px_rgba(0,0,0,0.12)] backdrop-blur-xl z-50 p-5 pointer-events-none"
+            >
+              <h4 className="font-bold text-on-surface mb-3">{hoveredTemplate.name}</h4>
+              <div className="space-y-3">
+                <p className="text-xs text-on-surface-variant leading-relaxed whitespace-pre-wrap">
+                  <span className="font-semibold text-primary/80">Nội dung:</span> {hoveredTemplate.query}
+                </p>
+                {hoveredTemplate.extra_instructions && (
+                  <p className="text-xs text-on-surface-variant leading-relaxed whitespace-pre-wrap">
+                    <span className="font-semibold text-secondary/80">Bổ sung:</span> {hoveredTemplate.extra_instructions}
+                  </p>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="flex min-h-14 flex-1 items-end rounded-[24px] bg-surface/70 px-3.5 py-2.5 transition-shadow focus-within:ring-0">
           <textarea
             ref={textareaRef}
@@ -1118,13 +1162,13 @@ export default function ChatComposer({
                 "flex h-9 items-center gap-1.5 rounded-full border px-3 transition-all duration-300",
                 "bg-surface-container-high/80 backdrop-blur-sm",
                 showModelPicker ? "border-primary/50 shadow-[0_0_12px_rgba(var(--primary-rgb),0.2)]" : "border-outline-variant/20 hover:border-outline-variant/40",
-                llmModel === '70b' ? "text-primary" : "text-on-surface-variant"
+                llmModel === '17b' ? "text-primary" : "text-on-surface-variant"
               )}
               title="Chọn model LLM"
             >
-              {llmModel === '70b' ? <Sparkles className="w-3.5 h-3.5" /> : <Cpu className="w-3.5 h-3.5" />}
+              {llmModel === '17b' ? <Sparkles className="w-3.5 h-3.5" /> : <Cpu className="w-3.5 h-3.5" />}
               <span className="text-xs font-bold text-on-surface">
-                {llmModel === '17b' ? 'Base' : 'Pro'}
+                {llmModel === '17b' ? 'Llama 17B' : 'Llama 70B'}
               </span>
               <ChevronDown className={cn("w-3 h-3 transition-transform duration-300 opacity-50", showModelPicker && "rotate-180 opacity-100")} />
             </button>
@@ -1152,13 +1196,13 @@ export default function ChatComposer({
                     >
                       <div className={cn(
                         "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
-                        llmModel === '17b' ? "bg-primary/20 text-primary" : "bg-surface-container-high text-on-surface-variant group-hover:bg-surface-container-highest"
+                        llmModel === '17b' ? "bg-primary text-on-primary shadow-lg shadow-primary/20" : "bg-surface-container-high text-on-surface-variant group-hover:bg-surface-container-highest"
                       )}>
-                        <Cpu className="w-4 h-4" />
+                        <Sparkles className="w-4 h-4" />
                       </div>
                       <div className="flex flex-col">
-                        <span className={cn("text-xs font-bold", llmModel === '17b' ? "text-primary" : "text-on-surface")}>Base</span>
-                        <span className="text-[10px] text-on-surface-variant/70 leading-tight">Nhanh & Hiệu quả</span>
+                        <span className={cn("text-xs font-bold", llmModel === '17b' ? "text-primary" : "text-on-surface")}>Llama 17B</span>
+                        <span className="text-[10px] text-on-surface-variant/70 leading-tight">Soạn thảo chuyên sâu</span>
                       </div>
                     </button>
 
@@ -1178,13 +1222,13 @@ export default function ChatComposer({
                       )}
                       <div className={cn(
                         "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
-                        llmModel === '70b' ? "bg-primary text-on-primary shadow-lg shadow-primary/20" : "bg-surface-container-high text-on-surface-variant group-hover:bg-surface-container-highest"
+                        llmModel === '70b' ? "bg-primary/20 text-primary" : "bg-surface-container-high text-on-surface-variant group-hover:bg-surface-container-highest"
                       )}>
-                        <Sparkles className="w-4 h-4" />
+                        <Cpu className="w-4 h-4" />
                       </div>
                       <div className="flex flex-col">
-                        <span className={cn("text-xs font-bold", llmModel === '70b' ? "text-primary" : "text-on-surface")}>Pro</span>
-                        <span className="text-[10px] text-on-surface-variant/70 leading-tight">Thông minh & Chính xác</span>
+                        <span className={cn("text-xs font-bold", llmModel === '70b' ? "text-primary" : "text-on-surface")}>Llama 70B</span>
+                        <span className="text-[10px] text-on-surface-variant/70 leading-tight">Hỏi đáp mặc định</span>
                       </div>
                     </button>
                   </div>
@@ -1205,7 +1249,7 @@ export default function ChatComposer({
           <button
             className="ml-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-container text-on-primary-fixed hover:opacity-90 transition-opacity active:scale-95 disabled:grayscale disabled:opacity-50 disabled:pointer-events-none"
             type="submit"
-            disabled={!value.trim() || disabled || isUploading || !!retryingAttachmentId || hasFailedAttachments}
+            disabled={!value.trim() || disabled || sendBlocked || isUploading || !!retryingAttachmentId || hasFailedAttachments}
           >
             <ArrowRight className="w-5 h-5" />
           </button>

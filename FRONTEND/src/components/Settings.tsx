@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Save, Building, Clock, ShieldCheck, Mail, Camera, AlertCircle } from 'lucide-react';
+import { User, Save, Building, Clock, ShieldCheck, Mail, Camera, AlertCircle, Key } from 'lucide-react';
 import { cn, parseUTC } from '../lib/utils';
 import * as api from '../lib/api';
 import { useToast } from '../lib/ToastContext';
 
 const VALID_DEPARTMENTS = ["BackEnd", "FrontEnd", "AI Engineer", "FullStack", "DevOps"];
 
+let mockTokenValue = 8192;
+
 export default function Settings() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [department, setDepartment] = useState('');
+  const [maxTokens, setMaxTokens] = useState(mockTokenValue);
 
   // Global Toast
   const { showToast } = useToast();
@@ -209,6 +212,40 @@ export default function Settings() {
                   Lưu Thay đổi
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Token Setup Card (Mock) */}
+          <div className="glass-card p-8 rounded-[2rem] border border-outline-variant mt-6">
+            <h3 className="text-xl font-bold font-headline text-on-surface mb-6 flex items-center gap-3">
+              <Key className="w-5 h-5 text-tertiary" />
+              Thiết lập Token
+            </h3>
+
+            <div className="flex flex-col md:flex-row items-start md:items-end gap-4">
+              <div className="flex-1 w-full space-y-2">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant pl-1">
+                  SỐ LƯỢNG TOKEN TỐI ĐA
+                </label>
+                <input
+                  type="number"
+                  value={maxTokens}
+                  onChange={(e) => setMaxTokens(Number(e.target.value))}
+                  placeholder="Nhập số lượng token ..."
+                  className="w-full bg-surface-high border border-outline-variant rounded-xl px-4 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium shadow-sm"
+                />
+              </div>
+
+              <button
+                onClick={() => {
+                  mockTokenValue = maxTokens;
+                  showToast('Cập nhật cấu hình thành công!', 'success');
+                }}
+                className="bg-surface-highest text-on-surface font-extrabold px-8 py-3 rounded-xl text-sm shadow-sm border border-outline-variant hover:bg-surface-container-highest transition-all flex items-center justify-center gap-2 shrink-0 h-[46px] w-full md:w-auto"
+              >
+                <Save className="w-4 h-4" />
+                Lưu Cấu hình
+              </button>
             </div>
           </div>
         </div>

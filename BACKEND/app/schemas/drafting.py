@@ -1,5 +1,5 @@
 from typing import Optional, List, Dict, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from app.schemas.document import DocumentResponse
 
 class DraftRequest(BaseModel):
@@ -15,6 +15,12 @@ class DraftRequest(BaseModel):
     )
     session_id: Optional[str] = Field(None, description="ID của phiên chat để gắn tài liệu vào")
     llm_model: Optional[Literal["17b", "70b"]] = Field(None, description="LLM model alias")
+
+    @model_validator(mode="after")
+    def default_llm_model_for_draft(self):
+        if self.llm_model is None:
+            self.llm_model = "17b"
+        return self
 
 class DraftMeta(BaseModel):
     query: str

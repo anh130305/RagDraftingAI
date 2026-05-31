@@ -68,7 +68,8 @@ def test_qa_mode_payload_mapping():
         "query": "Trình bày điều kiện cấp giấy phép kinh doanh?",
         "extras": None,
         "call_llm": True,
-        "model": "17b",
+        "model": "70b",
+        "history": [],
     }
 
     # 4. OUTPUT CUỐI CÙNG MÀ USER NHẬN ĐƯỢC

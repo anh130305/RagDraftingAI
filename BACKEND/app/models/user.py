@@ -16,7 +16,8 @@ class UserRole(str, enum.Enum):
     """Roles available in the system."""
     admin = "admin"
     user = "user"
-    moderator = "moderator"
+    clerical_specialist = "clerical_specialist"
+    professional = "professional"
 
 
 class User(Base):
