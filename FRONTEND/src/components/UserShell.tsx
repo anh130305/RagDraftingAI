@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { parseUTC } from '../lib/utils';
 
 import {
@@ -32,14 +32,17 @@ import { useAuth } from '../lib/AuthContext';
 import { useToast } from '../lib/ToastContext';
 import { useConfirm } from '../lib/ConfirmContext';
 import * as api from '../lib/api';
-import type { ChatSession } from '../lib/api';
+import type { ChatMessage, ChatSession } from '../lib/api';
 import { useTheme } from '../lib/ThemeContext';
 import {
   clearChatProcessingStateForSession,
+  emitChatAssistantResponseReady,
+  emitChatMessagesUpdated,
   readChatProcessingState,
   subscribeChatAssistantResponseReady,
   subscribeChatMessagesUpdated,
   subscribeChatProcessingState,
+  writeChatProcessingState,
 } from '../lib/chatActivityStore';
 import '../styles/chat-auth.css';
 import FullScreenLoader from './FullScreenLoader';
@@ -49,6 +52,64 @@ type UserNav = 'chat' | 'settings';
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'rag_ai_sidebar_collapsed_v1';
 const PROCESSING_RECONCILE_GRACE_MS = 2000;
+const PROCESSING_POLL_INTERVAL_MS = 2000;
+const PROCESSING_POLL_MAX_RETRIES = 210; // 210 * 2s = 420s, covers the 360s drafting request timeout.
+const PROCESSING_STATUS_ROTATION = [
+  'AI đang suy nghĩ...',
+  'Đang phân tích yêu cầu...',
+  'Đang trích xuất dữ liệu...',
+  'Đang chuẩn bị phản hồi...',
+];
+
+const getProcessingStatus = (currentStatus: string, retryIndex: number) => {
+  const trimmed = currentStatus.trim();
+  if (!trimmed || trimmed === 'Đang gửi tin nhắn...' || PROCESSING_STATUS_ROTATION.includes(trimmed)) {
+    return PROCESSING_STATUS_ROTATION[retryIndex % PROCESSING_STATUS_ROTATION.length];
+  }
+  return currentStatus;
+};
+
+function findAssistantResponse(
+  messages: ChatMessage[],
+  targetUserMessageId: string | null,
+  allowTargetFallback: boolean,
+): { assistant: ChatMessage | null; resolvedTargetUserMessageId: string | null } {
+  if (messages.length === 0) {
+    return { assistant: null, resolvedTargetUserMessageId: targetUserMessageId };
+  }
+
+  if (targetUserMessageId) {
+    const targetIndex = messages.findIndex((message) => message.id === targetUserMessageId);
+    if (targetIndex !== -1) {
+      return {
+        assistant: messages.slice(targetIndex + 1).find((message) => message.role === 'assistant') || null,
+        resolvedTargetUserMessageId: targetUserMessageId,
+      };
+    }
+
+    if (!allowTargetFallback) {
+      return { assistant: null, resolvedTargetUserMessageId: targetUserMessageId };
+    }
+  }
+
+  const latestUserIndex = [...messages]
+    .reverse()
+    .findIndex((message) => message.role === 'user');
+  if (latestUserIndex !== -1) {
+    const targetIndex = messages.length - 1 - latestUserIndex;
+    const targetUserMessage = messages[targetIndex];
+    return {
+      assistant: messages.slice(targetIndex + 1).find((message) => message.role === 'assistant') || null,
+      resolvedTargetUserMessageId: targetUserMessage.id,
+    };
+  }
+
+  const latestMessage = messages[messages.length - 1];
+  return {
+    assistant: latestMessage?.role === 'assistant' ? latestMessage : null,
+    resolvedTargetUserMessageId: null,
+  };
+}
 
 interface UserShellProps {
   children: React.ReactNode;
@@ -86,6 +147,11 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
   const [fileTab, setFileTab] = useState<'uploaded' | 'created'>('uploaded');
   const [previewFile, setPreviewFile] = useState<{ name: string; url: string; fileType?: string | null } | null>(null);
   const [chatProcessingState, setChatProcessingState] = useState(readChatProcessingState);
+  const pollingIntervalRef = useRef<number | null>(null);
+  const pollingRetryRef = useRef(0);
+  const pollingInFlightRef = useRef(false);
+  const pollingSessionIdRef = useRef<string | null>(null);
+  const pollingLastTargetIdRef = useRef<string | null>(null);
   const lastReconciledBusyKeyRef = useRef<string | null>(null);
   const notifiedAssistantResponseRef = useRef<Set<string>>(new Set());
   const [animatedProcessingPreview, setAnimatedProcessingPreview] = useState('');
@@ -104,6 +170,113 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
   const visibleFiles = fileTab === 'created' ? createdFiles : uploadedFiles;
 
   const currentSession = sessions.find(s => s.id === sessionId);
+
+  const stopPolling = useCallback(() => {
+    if (pollingIntervalRef.current !== null) {
+      window.clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    pollingRetryRef.current = 0;
+    pollingInFlightRef.current = false;
+    pollingSessionIdRef.current = null;
+    pollingLastTargetIdRef.current = null;
+  }, []);
+
+  const startPolling = useCallback((busySessionId: string) => {
+    if (!busySessionId) return;
+    if (pollingSessionIdRef.current === busySessionId && pollingIntervalRef.current !== null) return;
+
+    stopPolling();
+    pollingSessionIdRef.current = busySessionId;
+
+    const tick = async () => {
+      if (pollingInFlightRef.current) return;
+      pollingInFlightRef.current = true;
+
+      const state = readChatProcessingState();
+      if (!state.busySessionId || state.busySessionId !== busySessionId) {
+        pollingInFlightRef.current = false;
+        stopPolling();
+        return;
+      }
+
+      const targetId = state.targetUserMessageId || null;
+      const hasOptimisticTarget = !!targetId && targetId.startsWith('temp-');
+      if (pollingLastTargetIdRef.current !== targetId) {
+        pollingLastTargetIdRef.current = targetId;
+        pollingRetryRef.current = 0;
+      }
+
+      const nextStatus = hasOptimisticTarget
+        ? (state.statusText || 'Đang gửi tin nhắn...')
+        : getProcessingStatus(state.statusText || '', pollingRetryRef.current);
+      writeChatProcessingState({
+        busySessionId,
+        targetUserMessageId: targetId,
+        statusText: nextStatus,
+      });
+
+      try {
+        const updatedMessages = await api.getMessages(busySessionId);
+        const {
+          assistant: assistantMessageAfterTarget,
+          resolvedTargetUserMessageId,
+        } = findAssistantResponse(updatedMessages, targetId, !targetId);
+
+        if (assistantMessageAfterTarget) {
+          clearChatProcessingStateForSession(busySessionId);
+          emitChatMessagesUpdated(busySessionId);
+          emitChatAssistantResponseReady(busySessionId, assistantMessageAfterTarget.id);
+          stopPolling();
+          return;
+        }
+
+        if (resolvedTargetUserMessageId && resolvedTargetUserMessageId !== targetId) {
+          pollingLastTargetIdRef.current = resolvedTargetUserMessageId;
+          pollingRetryRef.current = 0;
+          writeChatProcessingState({
+            busySessionId,
+            targetUserMessageId: resolvedTargetUserMessageId,
+            statusText: nextStatus,
+          });
+          return;
+        }
+
+        pollingRetryRef.current += 1;
+        if (pollingRetryRef.current >= PROCESSING_POLL_MAX_RETRIES) {
+          clearChatProcessingStateForSession(busySessionId);
+          stopPolling();
+          showToast('Quá thời gian phản hồi. Vui lòng thử lại.', 'warning');
+        }
+      } catch (err: any) {
+        const currentState = readChatProcessingState();
+        if (!currentState.busySessionId || currentState.busySessionId !== busySessionId) {
+          pollingInFlightRef.current = false;
+          stopPolling();
+          return;
+        }
+
+        if (err?.status === 404) {
+          clearChatProcessingStateForSession(busySessionId);
+          stopPolling();
+        } else {
+          pollingRetryRef.current += 1;
+          if (pollingRetryRef.current >= PROCESSING_POLL_MAX_RETRIES) {
+            clearChatProcessingStateForSession(busySessionId);
+            stopPolling();
+            showToast('Không thể đồng bộ phản hồi từ máy chủ. Vui lòng thử lại.', 'error');
+          }
+        }
+      } finally {
+        pollingInFlightRef.current = false;
+      }
+    };
+
+    void tick();
+    pollingIntervalRef.current = window.setInterval(() => {
+      void tick();
+    }, PROCESSING_POLL_INTERVAL_MS);
+  }, [showToast, stopPolling]);
 
   const handleLogout = () => {
     setShowProfileMenu(false);
@@ -135,6 +308,7 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
       const state = readChatProcessingState();
       const busySessionId = state.busySessionId;
       if (!busySessionId) return;
+      if (state.targetUserMessageId?.startsWith('temp-')) return;
 
       if (Date.now() - state.updatedAt < PROCESSING_RECONCILE_GRACE_MS) return;
 
@@ -157,15 +331,25 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
         const currentState = readChatProcessingState();
         if (currentState.busySessionId !== busySessionId) return;
 
-        const latestMessage = busyMessages[busyMessages.length - 1];
-        if (!latestMessage || latestMessage.role === 'assistant') {
-          if (latestMessage?.role === 'assistant') {
-            notifyAssistantResponseReady({
-              sessionId: busySessionId,
-              messageId: latestMessage.id,
-            });
-          }
+        const targetId = currentState.targetUserMessageId || null;
+        const {
+          assistant: assistantMessageAfterTarget,
+          resolvedTargetUserMessageId,
+        } = findAssistantResponse(busyMessages, targetId, !targetId);
+
+        if (assistantMessageAfterTarget) {
+          emitChatMessagesUpdated(busySessionId);
+          emitChatAssistantResponseReady(busySessionId, assistantMessageAfterTarget.id);
           clearChatProcessingStateForSession(busySessionId);
+          return;
+        }
+
+        if (resolvedTargetUserMessageId && resolvedTargetUserMessageId !== targetId) {
+          writeChatProcessingState({
+            busySessionId,
+            targetUserMessageId: resolvedTargetUserMessageId,
+            statusText: currentState.statusText || 'AI đang xử lý...',
+          });
         }
       } catch (err: any) {
         if (!isMounted) return;
@@ -231,6 +415,22 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
       unsubscribeProcessingState();
     };
   }, [user, sessionId, showToast]);
+
+  useEffect(() => {
+    const busySessionId = chatProcessingState.busySessionId;
+    if (!busySessionId) {
+      stopPolling();
+      return;
+    }
+
+    startPolling(busySessionId);
+  }, [chatProcessingState.busySessionId, startPolling, stopPolling]);
+
+  useEffect(() => {
+    return () => {
+      stopPolling();
+    };
+  }, [stopPolling]);
 
   useEffect(() => {
     try {
@@ -438,7 +638,11 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                                 to={`/chat/${chat.id}`}
                                 title={isSidebarCollapsed ? (chat.title || 'Untitled Chat') : undefined}
                               >
-                                <Pin className="w-6 h-6 shrink-0 text-primary -rotate-45" fill="currentColor" />
+                                {isSidebarCollapsed && isChatProcessing ? (
+                                  <Loader2 className="w-6 h-6 shrink-0 text-primary animate-spin" />
+                                ) : (
+                                  <Pin className="w-6 h-6 shrink-0 text-primary -rotate-45" fill="currentColor" />
+                                )}
                                 {!isSidebarCollapsed && editingSessionId === chat.id ? (
                                   <input
                                     autoFocus
@@ -511,7 +715,11 @@ export default function UserShell({ children, isLoading = false, loadingText }: 
                               to={`/chat/${chat.id}`}
                               title={isSidebarCollapsed ? (chat.title || 'Hội thoại không tên') : undefined}
                             >
-                              <MessageSquare className="w-6 h-6 shrink-0" />
+                              {isSidebarCollapsed && isChatProcessing ? (
+                                <Loader2 className="w-6 h-6 shrink-0 text-primary animate-spin" />
+                              ) : (
+                                <MessageSquare className="w-6 h-6 shrink-0" />
+                              )}
                               {!isSidebarCollapsed && editingSessionId === chat.id ? (
                                 <input
                                   autoFocus

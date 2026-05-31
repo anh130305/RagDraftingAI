@@ -31,6 +31,7 @@ interface ChatComposerProps {
   statusMessage?: string;
   onSend?: (content: string, mode: 'qa' | 'generate', extras?: string, llmModel?: LLMModel) => string | undefined | void | Promise<string | undefined | void>;
   disabled?: boolean;
+  sendBlocked?: boolean;
   value?: string;
   onValueChange?: (val: string) => void;
 }
@@ -63,6 +64,7 @@ export default function ChatComposer({
   statusMessage,
   onSend,
   disabled = false,
+  sendBlocked = false,
   value = '',
   onValueChange,
 }: ChatComposerProps) {
@@ -73,6 +75,7 @@ export default function ChatComposer({
   const extrasRef = useRef<HTMLTextAreaElement | null>(null);
   const recognitionRef = useRef<any>(null);
   const valueRef = useRef(value);
+  const extrasValueRef = useRef('');
   const attachmentsRef = useRef<PendingAttachment[]>([]);
   const dragCounterRef = useRef(0);
   const { showToast } = useToast();
@@ -115,6 +118,8 @@ export default function ChatComposer({
   }, [value]);
 
   useEffect(() => {
+    extrasValueRef.current = extras;
+
     // Auto-adjust height for extras textarea
     if (extrasRef.current) {
       extrasRef.current.style.height = 'auto';
@@ -465,7 +470,7 @@ export default function ChatComposer({
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (disabled || isUploading || retryingAttachmentId) return;
+    if (disabled || sendBlocked || isUploading || retryingAttachmentId) return;
 
     const trimmedValue = value.trim();
     const hasAttachments = attachments.length > 0;
@@ -518,24 +523,26 @@ export default function ChatComposer({
 
     setIsUploading(true);
 
-    // Clear UI immediately - don't make user wait
-    onValueChange?.('');
-    setExtras('');
-    setShowExtras(false);
-    clearAttachments();
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    if (imageInputRef.current) imageInputRef.current.value = '';
-    setIsWaitingForAttachments(false);
-
     // Upload files to Cloudinary AFTER onSend so we have the resolved session ID
     // (onSend creates the session if it doesn't exist yet and returns its ID).
     try {
       const resolvedSessionId = await onSend?.(finalMessageWithAttachments, mode, finalExtras, llmModel);
+      if (!resolvedSessionId) return;
+
+      if (valueRef.current.trim() === trimmedValue) {
+        onValueChange?.('');
+      }
+      if (extrasValueRef.current === extras) {
+        setExtras('');
+      }
+      setShowExtras(false);
+      clearAttachments();
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (imageInputRef.current) imageInputRef.current.value = '';
+      setIsWaitingForAttachments(false);
 
       const uploadSessionId = resolvedSessionId as string | undefined;
       if (filesToUpload.length > 0) {
-        if (!uploadSessionId) return;
-
         filesToUpload.forEach(file => {
           api.uploadDocument(file, file.name, uploadSessionId)
             .then((doc) => {
@@ -662,6 +669,7 @@ export default function ChatComposer({
 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      if (disabled || sendBlocked) return;
       // Nếu có input hợp lệ thì gửi, nếu không thì chặn luôn để không bị xuống hàng
       if (value.trim()) {
         handleSubmit();
@@ -1241,7 +1249,7 @@ export default function ChatComposer({
           <button
             className="ml-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-container text-on-primary-fixed hover:opacity-90 transition-opacity active:scale-95 disabled:grayscale disabled:opacity-50 disabled:pointer-events-none"
             type="submit"
-            disabled={!value.trim() || disabled || isUploading || !!retryingAttachmentId || hasFailedAttachments}
+            disabled={!value.trim() || disabled || sendBlocked || isUploading || !!retryingAttachmentId || hasFailedAttachments}
           >
             <ArrowRight className="w-5 h-5" />
           </button>
