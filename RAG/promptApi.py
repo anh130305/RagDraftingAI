@@ -75,7 +75,7 @@ except ImportError as e:
 _LLM_CONFIG = {
     "groq_model"  : os.environ.get("LLM_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct"),
     "openai_model": os.environ.get("LLM_MODEL", "gpt-4o-mini"),
-    "max_tokens"  : 4096,
+    "max_tokens"  : 8192,
     "temperature" : 0.1,
 }
 
@@ -111,6 +111,42 @@ def resolve_llm_model(model: Optional[str] = None, mode: Optional[str] = None) -
     return _GROQ_MODEL_ALIASES[key]
 
 
+def _usage_value(usage: Any, key: str) -> Optional[int]:
+    if not usage:
+        return None
+    if isinstance(usage, dict):
+        return usage.get(key)
+    return getattr(usage, key, None)
+
+
+def _log_llm_response(provider: str, model: str, response: Any, content: str) -> None:
+    choice = response.choices[0] if getattr(response, "choices", None) else None
+    finish_reason = getattr(choice, "finish_reason", None)
+    usage = getattr(response, "usage", None)
+    prompt_tokens = _usage_value(usage, "prompt_tokens")
+    completion_tokens = _usage_value(usage, "completion_tokens")
+    total_tokens = _usage_value(usage, "total_tokens")
+
+    logger.info(
+        "LLM response provider=%s model=%s finish_reason=%s raw_chars=%s "
+        "prompt_tokens=%s completion_tokens=%s total_tokens=%s max_tokens=%s",
+        provider,
+        model,
+        finish_reason,
+        len(content or ""),
+        prompt_tokens,
+        completion_tokens,
+        total_tokens,
+        _LLM_CONFIG["max_tokens"],
+    )
+
+    if finish_reason == "length":
+        logger.warning(
+            "LLM output có dấu hiệu bị cắt do max_tokens. raw_tail=%r",
+            (content or "")[-500:],
+        )
+
+
 # ═══════════════════════════════════════════════════════════════
 # LLM CALLER (nội bộ)
 # ═══════════════════════════════════════════════════════════════
@@ -138,7 +174,9 @@ def _call_llm(messages: List[Dict[str, str]], model: Optional[str] = None) -> Op
                 max_tokens  = _LLM_CONFIG["max_tokens"],
                 temperature = _LLM_CONFIG["temperature"],
             )
-            return response.choices[0].message.content or ""
+            content = response.choices[0].message.content or ""
+            _log_llm_response("groq", groq_model, response, content)
+            return content
         except ImportError:
             logger.warning("groq chưa cài. Chạy: pip install groq")
         except Exception as e:
@@ -152,7 +190,9 @@ def _call_llm(messages: List[Dict[str, str]], model: Optional[str] = None) -> Op
                         max_tokens  = _LLM_CONFIG["max_tokens"],
                         temperature = _LLM_CONFIG["temperature"],
                     )
-                    return response.choices[0].message.content or ""
+                    content = response.choices[0].message.content or ""
+                    _log_llm_response("groq", GROQ_MODEL_17B, response, content)
+                    return content
                 except Exception as e2:
                     logger.error(f"Groq API (17B fallback) lỗi: {e2}")
             return None
@@ -169,7 +209,9 @@ def _call_llm(messages: List[Dict[str, str]], model: Optional[str] = None) -> Op
                 temperature     = _LLM_CONFIG["temperature"],
                 response_format = {"type": "json_object"},
             )
-            return response.choices[0].message.content or ""
+            content = response.choices[0].message.content or ""
+            _log_llm_response("openai", _LLM_CONFIG["openai_model"], response, content)
+            return content
         except ImportError:
             logger.warning("openai chưa cài. Chạy: pip install openai")
         except Exception as e:
@@ -465,7 +507,15 @@ class PromptAPI:
                 return {"status": "prompt_only", "mode": "draft", "fields": {}, "meta": meta}
 
             # 5. Parse JSON
-            parsed = parse_llm_json(raw)
+            try:
+                parsed = parse_llm_json(raw)
+            except Exception:
+                logger.error(
+                    "Draft JSON parse failed: raw_chars=%s raw_tail=%r",
+                    len(raw or ""),
+                    (raw or "")[-500:],
+                )
+                raise
             meta["elapsed_s"] = round(time.time() - t0, 2)
             meta["llm_raw"]   = raw  # giữ lại để debug nếu cần
 
