@@ -59,8 +59,8 @@ Ghi theo thứ tự thời gian, khách quan, trung thực.
 **Cấu trúc:**
 Nêu rõ: họ tên người nghỉ, chức vụ, thời gian nghỉ (từ ngày... đến ngày...),
 nơi nghỉ phép, chế độ nghỉ được hưởng.
-
 Văn phong ngắn gọn, đủ ý, có thể không cần căn cứ pháp lý.
+KHOANG_THOI_GIAN tính theo công thức: NGAY_KET_THUC - NGAY_BAT_DAU + 1 (tính cả ngày bắt đầu và kết thúc).
 
 ---
 

@@ -75,6 +75,8 @@ except ImportError as e:
 GROQ_MODEL_17B = "meta-llama/llama-4-scout-17b-16e-instruct"
 GROQ_MODEL_70B = "llama-3.3-70b-versatile"
 DEFAULT_LLM_MODEL = GROQ_MODEL_70B
+DEFAULT_DRAFT_LLM_MODEL = GROQ_MODEL_17B
+DEFAULT_QA_LLM_MODEL = GROQ_MODEL_70B
 OPENAI_MODEL = os.environ.get("LLM_MODEL", "gpt-4o-mini")
 _GROQ_MODEL_ALIASES = {
     "17b": GROQ_MODEL_17B,
@@ -941,24 +943,24 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     DEFAULT_QUERIES = {
-        "draft"   : "Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý.",
+        # "draft"   : "Soạn thảo quyết định về việc bổ nhiệm công chức lãnh đạo, quản lý.",
         # "draft" : "Soạn thảo quyết định kỷ luật công chức",
-        # "draft": "Soạn thảo giấy nghỉ phép cho công chức.",
+        "draft": "Soạn thảo giấy nghỉ phép cho công chức.",
         # "draft": "Soạn thảo biên bản họp Hội đồng kỷ luật công chức.",
         # "legal_qa": "Trình bày điều kiện cấp giấy phép kinh doanh",
         "legal_qa": "Trình bày quy định về xử phạt cán bộ",
         # "legal_qa": "Trình bày phân loại mức độ rủi ro của trí tuệ nhân tạo",
     }
     DEFAULT_EXTRAS = {
-        "draft"   : (
-            "Cơ quan ban hành: Sở Nội vụ tỉnh Bình Dương.\n"
-            "Viết tắt cơ quan ban hành: SNV.\n"
-            "Cơ quan chủ quản: UBND tỉnh Bình Dương.\n"
-            "Số quyết định: 45. Ngày ký: 20/01/2026.\n"
-            "Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai.\n"
-            "Đối tượng bổ nhiệm: Ông Nguyễn Văn Hùng.\n"
-            "Chức vụ bổ nhiệm: Trưởng phòng Hành chính - Tổng hợp.\n"
-        ),
+        # "draft"   : (
+        #     "Cơ quan ban hành: Sở Nội vụ tỉnh Bình Dương.\n"
+        #     "Viết tắt cơ quan ban hành: SNV.\n"
+        #     "Cơ quan chủ quản: UBND tỉnh Bình Dương.\n"
+        #     "Số quyết định: 45. Ngày ký: 20/01/2026.\n"
+        #     "Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai.\n"
+        #     "Đối tượng bổ nhiệm: Ông Nguyễn Văn Hùng.\n"
+        #     "Chức vụ bổ nhiệm: Trưởng phòng Hành chính - Tổng hợp.\n"
+        # ),
         # "draft" : (
         #     "Cơ quan ban hành: SNV thành phố Đà Nẵng.\n"
         #     "Số quyết định: 18. Ngày ký: 20/01/2026.\n"
@@ -966,26 +968,25 @@ if __name__ == "__main__":
         #     "Chức vụ, đơn vị công tác: Chuyên viên Phòng Tổ chức cán bộ.\n"
         #     "Hành vi vi phạm: Tự ý nghỉ việc 05 ngày làm việc trong tháng 12/2025 không có lý do chính đáng.\n"
         #     "Hình thức kỷ luật: Khiển trách.\n"
-        #     "Thời điểm áp dụng: kể từ ngày quyết định có hiệu lực.\n"
         #     "Đơn vị thực hiện: Phòng Tổ chức cán bộ, Văn phòng Sở và ông Nguyễn Văn Hải.\n"
         #     "Người ký: Giám đốc Sở Nội vụ - Trần Thị Mai.\n"
         # ),
-        # "draft" :(
-        #     "Cơ quan chủ quản: Ủy ban nhân dân Thành phố Đà Nẵng.\n"
-        #     "Cơ quan cấp phép: Sở Nội vụ Thành phố Đà Nẵng.\n"
-        #     "Số giấy nghỉ phép: 12.\n"
-        #     "Địa danh: Đà Nẵng.\n"
-        #     "Ngày ký: 20/01/2026.\n"
-        #     "Người làm đơn: Cáp Kim Khánh.\n"
-        #     "Người nghỉ phép: Cáp Kim Khánh.\n"
-        #     "Chức vụ: Chuyên viên phòng Tổ chức cán bộ.\n"
-        #     "Ngày bắt đầu nghỉ: 25/01/2026.\n"
-        #     "Ngày kết thúc nghỉ: 29/01/2026.\n"
-        #     "Nơi nghỉ phép: Đà Nẵng.\n"
-        #     "Chế độ nghỉ: Nghỉ phép năm.\n"
-        #     "Người ký: Giám đốc Sở Nội vụ - Nguyễn Quang Anh.\n"
-        #     "Đơn vị soạn thảo: Phòng Tổ chức cán bộ.\n"
-        # ),
+        "draft" :(
+            "Cơ quan chủ quản: UBND Thành phố Đà Nẵng.\n"
+            "Cơ quan cấp phép: Sở Nội vụ Thành phố Đà Nẵng.\n"
+            "Số giấy nghỉ phép: 12.\n"
+            "Địa danh: Đà Nẵng.\n"
+            "Ngày ký: 20/01/2026.\n"
+            "Người làm đơn: Cáp Kim Khánh.\n"
+            "Người nghỉ phép: Cáp Kim Khánh.\n"
+            "Chức vụ: Chuyên viên phòng Tổ chức cán bộ.\n"
+            "Ngày bắt đầu nghỉ: 25/01/2026.\n"
+            "Ngày kết thúc nghỉ: 29/01/2026.\n"
+            "Nơi nghỉ phép: Đà Nẵng.\n"
+            "Chế độ nghỉ: Nghỉ phép năm.\n"
+            "Người ký: Giám đốc Sở Nội vụ - Nguyễn Quang Anh.\n"
+            "Đơn vị soạn thảo: Phòng Tổ chức cán bộ.\n"
+        ),
         # "draft": (
         #     "Cơ quan ban hành/ chủ quản: Sở Y tế tỉnh Phú Thọ.\n"
         #     "Viết tắt cơ quan ban hành: SYT.\n"
