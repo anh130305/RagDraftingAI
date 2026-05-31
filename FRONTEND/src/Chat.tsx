@@ -107,6 +107,10 @@ export default function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [composerValue, setComposerValue] = useState('');
+  const [composerMode, setComposerMode] = useState<'qa' | 'generate'>('qa');
+  const [composerLlmModel, setComposerLlmModel] = useState<LLMModel>('70b');
+  const [composerExtras, setComposerExtras] = useState('');
+  const [composerShowExtras, setComposerShowExtras] = useState(false);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [chatProcessingState, setChatProcessingState] = useState(readChatProcessingState);
   // File preview state
@@ -488,8 +492,31 @@ export default function Chat() {
     setTimeout(() => setCopyStatus(null), 2000);
   };
 
-  const handleEdit = (content: string) => {
-    setComposerValue(content);
+  const handleEdit = (msg: ChatMessage) => {
+    if (msg.mode === 'generate') {
+      setComposerMode('generate');
+      setComposerLlmModel(msg.llm_model || '17b');
+      
+      const splitPattern = /\n\n---\n\*\*Thông tin bổ sung:\*\*\n\n/;
+      const match = msg.content.split(splitPattern);
+      if (match.length > 1) {
+        setComposerValue(match[0]);
+        // Giải mã các dòng xuống hàng được định dạng bằng double space
+        const rawExtras = match[1].replace(/  \n/g, '\n');
+        setComposerExtras(rawExtras);
+        setComposerShowExtras(true);
+      } else {
+        setComposerValue(msg.content);
+        setComposerExtras('');
+        setComposerShowExtras(false);
+      }
+    } else {
+      setComposerMode('qa');
+      setComposerLlmModel(msg.llm_model || '70b');
+      setComposerValue(msg.content);
+      setComposerExtras('');
+      setComposerShowExtras(false);
+    }
   };
 
   const handleReload = () => {
@@ -728,7 +755,7 @@ export default function Chat() {
                                 </button>
                                 {isLatestUser && (
                                   <button
-                                    onClick={() => handleEdit(msg.content)}
+                                    onClick={() => handleEdit(msg)}
                                     className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-md transition-all"
                                     title="Chỉnh sửa"
                                   >
@@ -817,6 +844,14 @@ export default function Chat() {
             value={composerValue}
             onValueChange={setComposerValue}
             statusMessage={composerStatus}
+            mode={composerMode}
+            onModeChange={setComposerMode}
+            llmModel={composerLlmModel}
+            onLlmModelChange={setComposerLlmModel}
+            extras={composerExtras}
+            onExtrasChange={setComposerExtras}
+            showExtras={composerShowExtras}
+            onShowExtrasChange={setComposerShowExtras}
           />
         </div>
         {/* Subtle Ambient Background Decorations */}

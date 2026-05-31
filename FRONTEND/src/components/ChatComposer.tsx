@@ -34,6 +34,14 @@ interface ChatComposerProps {
   sendBlocked?: boolean;
   value?: string;
   onValueChange?: (val: string) => void;
+  mode?: 'qa' | 'generate';
+  onModeChange?: (m: 'qa' | 'generate') => void;
+  llmModel?: LLMModel;
+  onLlmModelChange?: (model: LLMModel) => void;
+  extras?: string;
+  onExtrasChange?: (ext: string) => void;
+  showExtras?: boolean;
+  onShowExtrasChange?: (show: boolean) => void;
 }
 
 type AttachmentKind = 'image' | 'document';
@@ -67,6 +75,14 @@ export default function ChatComposer({
   sendBlocked = false,
   value = '',
   onValueChange,
+  mode: propMode,
+  onModeChange: propOnModeChange,
+  llmModel: propLlmModel,
+  onLlmModelChange: propOnLlmModelChange,
+  extras: propExtras,
+  onExtrasChange: propOnExtrasChange,
+  showExtras: propShowExtras,
+  onShowExtrasChange: propOnShowExtrasChange,
 }: ChatComposerProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -97,13 +113,25 @@ export default function ChatComposer({
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const promptPickerRef = useRef<HTMLDivElement | null>(null);
 
-  // Mode and Extras state
-  const [mode, setMode] = useState<'qa' | 'generate'>('qa');
-  const [llmModel, setLlmModel] = useState<LLMModel>('70b');
+  // Mode and Extras state (Fallback to internal state if props are not defined)
+  const [internalMode, setInternalMode] = useState<'qa' | 'generate'>('qa');
+  const [internalLlmModel, setInternalLlmModel] = useState<LLMModel>('70b');
   const [showModelPicker, setShowModelPicker] = useState(false);
   const modelPickerRef = useRef<HTMLDivElement | null>(null);
-  const [extras, setExtras] = useState('');
-  const [showExtras, setShowExtras] = useState(false);
+  const [internalExtras, setInternalExtras] = useState('');
+  const [internalShowExtras, setInternalShowExtras] = useState(false);
+
+  const mode = propMode !== undefined ? propMode : internalMode;
+  const setMode = propOnModeChange !== undefined ? propOnModeChange : setInternalMode;
+
+  const llmModel = propLlmModel !== undefined ? propLlmModel : internalLlmModel;
+  const setLlmModel = propOnLlmModelChange !== undefined ? propOnLlmModelChange : setInternalLlmModel;
+
+  const extras = propExtras !== undefined ? propExtras : internalExtras;
+  const setExtras = propOnExtrasChange !== undefined ? propOnExtrasChange : setInternalExtras;
+
+  const showExtras = propShowExtras !== undefined ? propShowExtras : internalShowExtras;
+  const setShowExtras = propOnShowExtrasChange !== undefined ? propOnShowExtrasChange : setInternalShowExtras;
 
   useEffect(() => {
     valueRef.current = value;
