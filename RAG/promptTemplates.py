@@ -672,6 +672,90 @@ def build_legal_qa_messages(
 # 9. JSON PARSER & VALIDATOR
 # ============================================================
 
+def _strip_json_code_fence(text: str) -> str:
+    """Lấy nội dung fence đầu tiên nếu LLM bọc JSON trong markdown."""
+    fence_match = re.search(r"```(?:json|JSON)?\s*\n?([\s\S]+?)\n?\s*```", text)
+    return fence_match.group(1).strip() if fence_match else text.strip()
+
+
+def _extract_json_object(text: str) -> Optional[str]:
+    """
+    Lấy object JSON từ dấu { đầu tiên đến dấu } cuối cùng.
+    Cách này chịu được text thừa trước/sau JSON.
+    """
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return None
+    return text[start : end + 1].strip()
+
+
+def _escape_raw_newlines_inside_strings(text: str) -> str:
+    """
+    JSON không cho phép newline thật nằm trực tiếp trong string.
+    LLM đôi khi sinh:
+        "field": "dòng 1\n
+        dòng 2"
+    Hàm này chỉ escape newline khi con trỏ đang ở bên trong chuỗi JSON.
+    """
+    out: List[str] = []
+    in_string = False
+    escaped = False
+
+    for ch in text:
+        if in_string:
+            if escaped:
+                out.append(ch)
+                escaped = False
+                continue
+            if ch == "\\":
+                out.append(ch)
+                escaped = True
+                continue
+            if ch == '"':
+                out.append(ch)
+                in_string = False
+                continue
+            if ch == "\n":
+                out.append("\\n")
+                continue
+            if ch == "\r":
+                continue
+            out.append(ch)
+            continue
+
+        out.append(ch)
+        if ch == '"':
+            in_string = True
+
+    return "".join(out)
+
+
+def _repair_json_text(text: str) -> str:
+    """Sửa một số lỗi JSON hay gặp từ LLM nhưng vẫn giữ dữ liệu gốc tối đa."""
+    repaired = text.strip().lstrip("\ufeff")
+    repaired = _escape_raw_newlines_inside_strings(repaired)
+    repaired = re.sub(r",\s*([}\]])", r"\1", repaired)
+    return repaired
+
+
+def _normalize_field_value(value: str) -> str:
+    """Chuẩn hóa text field sau parse: gom dòng trống, bỏ space quanh newline."""
+    text = str(value).replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"[ \t]*\n[ \t]*", "\n", text)
+    text = re.sub(r"\n{2,}", "\n", text)
+    return text.strip()
+
+
+def _try_parse_json_candidate(candidate: str) -> Optional[Dict]:
+    for current in (candidate, _repair_json_text(candidate)):
+        try:
+            return _validate_structure(json.loads(current))
+        except json.JSONDecodeError:
+            continue
+    return None
+
+
 def parse_llm_json(raw: str) -> Dict:
     """
     Parse JSON từ LLM response. Xử lý các trường hợp LLM bọc code fence
@@ -691,37 +775,34 @@ def parse_llm_json(raw: str) -> Dict:
     Raises:
         ValueError nếu không tìm được JSON hợp lệ
     """
+    if not isinstance(raw, str) or not raw.strip():
+        raise ValueError("LLM output rỗng hoặc không phải chuỗi.")
+
     text = raw.strip()
+    candidates: List[str] = []
 
-    # ── Bước 1: Extract content bên trong code fence (```json ... ``` hoặc ``` ... ```) ──
-    # Dùng re.DOTALL để . khớp cả newline; non-greedy để lấy fence đầu tiên
-    fence_match = re.search(r"```(?:json)?\s*\n?([\s\S]+?)\n?\s*```", text)
-    if fence_match:
-        candidate = fence_match.group(1).strip()
-        try:
-            return _validate_structure(json.loads(candidate))
-        except json.JSONDecodeError:
-            pass  # tiếp tục fallback
+    fenced = _strip_json_code_fence(text)
+    candidates.append(fenced)
+    candidates.append(text)
 
-    # ── Bước 2: Parse trực tiếp (LLM trả JSON thuần, không có fence) ──
-    try:
-        return _validate_structure(json.loads(text))
-    except json.JSONDecodeError:
-        pass
+    for source in (fenced, text):
+        extracted = _extract_json_object(source)
+        if extracted:
+            candidates.append(extracted)
 
-    # ── Bước 3: Tìm JSON object lớn nhất — từ { đầu tiên đến } cuối cùng ──
-    # Dùng rfind('}') thay vì greedy regex để tránh cắt sót khi value có ngoặc lồng
-    start = text.find("{")
-    end   = text.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        try:
-            return _validate_structure(json.loads(text[start : end + 1]))
-        except json.JSONDecodeError:
-            pass
+    seen = set()
+    for candidate in candidates:
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+        parsed = _try_parse_json_candidate(candidate)
+        if parsed is not None:
+            return parsed
 
     raise ValueError(
         "Không parse được JSON từ LLM output.\n"
-        f"200 ký tự đầu: {raw[:200]!r}"
+        f"200 ký tự đầu: {raw[:200]!r}\n"
+        f"200 ký tự cuối: {raw[-200:]!r}"
     )
 
 
@@ -765,7 +846,7 @@ def _validate_structure(data: Dict) -> Dict:
 
     # Ép value về string, loại None
     data["fields"] = {
-        k: str(v) if v is not None else ""
+        str(k): _normalize_field_value(v) if v is not None else ""
         for k, v in data["fields"].items()
     }
 
