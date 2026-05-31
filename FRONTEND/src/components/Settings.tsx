@@ -9,6 +9,7 @@ const VALID_DEPARTMENTS = ["BackEnd", "FrontEnd", "AI Engineer", "FullStack", "D
 const DEFAULT_MAX_TOKENS = 8192;
 const MIN_LLM_TOKENS = 1;
 const MAX_LLM_TOKENS = 32768;
+const TOKEN_OPTIONS = [512, 1024, 2048, 4096, 8192];
 
 function isAdminUser(user: any) {
   return String(user?.role || '').toLowerCase() === 'admin';
@@ -244,14 +245,7 @@ export default function Settings() {
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 mt-8">
-                <h4 className="text-xs font-bold text-primary mb-1">Cấu hình Phòng ban</h4>
-                <p className="text-xs text-on-surface-variant leading-relaxed">
-                  Thiết lập phòng ban sẽ giúp hệ thống định tuyến các truy vấn RAG chính xác hơn theo lĩnh vực chuyên môn (Backend/DevOps/AI). Bạn có thể thay đổi bất cứ lúc nào.
-                </p>
-              </div>
-
-              <div className="mt-8 pt-8 border-t border-outline-variant/30 flex justify-end">
+              <div className="mt-2 pt-2 border-t border-outline-variant/30 flex justify-end">
                 <button
                   onClick={handleSave}
                   disabled={saving || department === (profile.department || '')}
@@ -275,46 +269,58 @@ export default function Settings() {
                 Thiết lập Token
               </h3>
 
-              <div className="flex flex-col md:flex-row items-start md:items-end gap-4">
-                <div className="flex-1 w-full space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant pl-1">
-                    SỐ LƯỢNG TOKEN TỐI ĐA
-                  </label>
-                  <input
-                    type="number"
-                    min={MIN_LLM_TOKENS}
-                    max={MAX_LLM_TOKENS}
-                    step={1}
-                    value={maxTokens}
-                    onChange={(e) => setMaxTokens(e.target.value)}
-                    placeholder="Nhập số lượng token ..."
-                    disabled={configLoading || savingConfig}
-                    className="w-full bg-surface-high border border-outline-variant rounded-xl px-4 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                  />
-                  <p className="text-[10px] text-on-surface-variant/70 pl-2">
-                    {configLoading
-                      ? 'Đang tải cấu hình LLM runtime...'
-                      : `Áp dụng ngay cho các request LLM tiếp theo trong RAG service.${llmConfig ? ` Temperature hiện tại: ${llmConfig.temperature}.` : ''}`}
-                  </p>
-                </div>
+              <div className="space-y-2">
+                <div className="flex flex-col md:flex-row items-start md:items-end gap-4">
+                  <div className="flex-1 w-full space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant pl-1">
+                      SỐ LƯỢNG TOKEN TỐI ĐA
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={maxTokens}
+                        onChange={(e) => setMaxTokens(e.target.value)}
+                        disabled={configLoading || savingConfig}
+                        className="w-full bg-surface-high border border-outline-variant rounded-xl pl-4 pr-10 py-3 text-sm text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium appearance-none shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {!TOKEN_OPTIONS.includes(Number(maxTokens)) && maxTokens !== '' && (
+                          <option value={maxTokens}>{maxTokens} (Giá trị hiện tại)</option>
+                        )}
+                        {TOKEN_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt} tokens
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-on-surface-variant">
+                        ▼
+                      </div>
+                    </div>
+                  </div>
 
-                <button
-                  onClick={handleSaveLLMConfig}
-                  disabled={
-                    configLoading ||
-                    savingConfig ||
-                    !isMaxTokensValid ||
-                    isLLMConfigUnchanged
-                  }
-                  className="bg-surface-highest text-on-surface font-extrabold px-8 py-3 rounded-xl text-sm shadow-sm border border-outline-variant hover:bg-surface-container-highest disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shrink-0 h-[46px] w-full md:w-auto"
-                >
-                  {savingConfig ? (
-                    <div className="w-4 h-4 border-2 border-on-surface/30 border-t-on-surface rounded-full animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  Lưu Cấu hình
-                </button>
+                  <button
+                    onClick={handleSaveLLMConfig}
+                    disabled={
+                      configLoading ||
+                      savingConfig ||
+                      !isMaxTokensValid ||
+                      isLLMConfigUnchanged
+                    }
+                    className="bg-surface-highest text-on-surface font-extrabold px-8 py-3 rounded-xl text-sm shadow-sm border border-outline-variant hover:bg-surface-container-highest disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shrink-0 h-[46px] w-full md:w-auto"
+                  >
+                    {savingConfig ? (
+                      <div className="w-4 h-4 border-2 border-on-surface/30 border-t-on-surface rounded-full animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    Lưu Cấu hình
+                  </button>
+                </div>
+                
+                <p className="text-[10px] text-on-surface-variant/70 pl-2">
+                  {configLoading
+                    ? 'Đang tải cấu hình LLM runtime...'
+                    : `Áp dụng ngay cho các request LLM tiếp theo trong RAG service.${llmConfig ? ` Temperature hiện tại: ${llmConfig.temperature}.` : ''}`}
+                </p>
               </div>
             </div>
           )}
