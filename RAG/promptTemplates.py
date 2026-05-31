@@ -672,6 +672,49 @@ def build_legal_qa_messages(
 # 9. JSON PARSER & VALIDATOR
 # ============================================================
 
+def _json_loads_llm_candidate(candidate: str) -> Dict:
+    """
+    Parse một JSON candidate từ LLM.
+
+    Mặc định dùng parser strict để giữ chuẩn RFC 8259. Nếu lỗi chỉ do LLM chèn
+    control character thô trong string (thường là newline/tab trong NOI_DUNG_*),
+    fallback strict=False để thu hồi nội dung mà không nới các lỗi cấu trúc như
+    thiếu dấu phẩy, sai ngoặc hoặc quote không khớp.
+    """
+    try:
+        return json.loads(candidate)
+    except json.JSONDecodeError as strict_error:
+        try:
+            return json.loads(candidate, strict=False)
+        except json.JSONDecodeError as lenient_error:
+            raise lenient_error from strict_error
+
+
+def _iter_llm_json_candidates(text: str) -> List[Tuple[str, str]]:
+    """Tạo danh sách candidate JSON theo thứ tự ưu tiên, tránh parse lặp."""
+    candidates: List[Tuple[str, str]] = []
+    seen = set()
+
+    def add(label: str, value: str) -> None:
+        candidate = value.strip()
+        if candidate and candidate not in seen:
+            candidates.append((label, candidate))
+            seen.add(candidate)
+
+    fence_match = re.search(r"```(?:json)?\s*\n?([\s\S]+?)\n?\s*```", text)
+    if fence_match:
+        add("code_fence", fence_match.group(1))
+
+    add("full_text", text)
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        add("outermost_object", text[start : end + 1])
+
+    return candidates
+
+
 def parse_llm_json(raw: str) -> Dict:
     """
     Parse JSON từ LLM response. Xử lý các trường hợp LLM bọc code fence
@@ -681,6 +724,8 @@ def parse_llm_json(raw: str) -> Dict:
     1. Extract nội dung trong ```json ... ``` hoặc ``` ... ```
     2. Parse trực tiếp toàn bộ text (sau khi strip)
     3. Tìm JSON object lớn nhất trong text (từ { đầu đến } cuối)
+    Mỗi candidate được parse strict trước, sau đó fallback lenient cho lỗi
+    control character thô trong string do LLM sinh ra.
 
     Args:
         raw: Toàn bộ string trả về từ LLM
@@ -693,34 +738,24 @@ def parse_llm_json(raw: str) -> Dict:
     """
     text = raw.strip()
 
-    # ── Bước 1: Extract content bên trong code fence (```json ... ``` hoặc ``` ... ```) ──
-    # Dùng re.DOTALL để . khớp cả newline; non-greedy để lấy fence đầu tiên
-    fence_match = re.search(r"```(?:json)?\s*\n?([\s\S]+?)\n?\s*```", text)
-    if fence_match:
-        candidate = fence_match.group(1).strip()
+    last_error: Optional[json.JSONDecodeError] = None
+    last_label = ""
+    for label, candidate in _iter_llm_json_candidates(text):
         try:
-            return _validate_structure(json.loads(candidate))
-        except json.JSONDecodeError:
-            pass  # tiếp tục fallback
+            return _validate_structure(_json_loads_llm_candidate(candidate))
+        except json.JSONDecodeError as exc:
+            last_error = exc
+            last_label = label
 
-    # ── Bước 2: Parse trực tiếp (LLM trả JSON thuần, không có fence) ──
-    try:
-        return _validate_structure(json.loads(text))
-    except json.JSONDecodeError:
-        pass
-
-    # ── Bước 3: Tìm JSON object lớn nhất — từ { đầu tiên đến } cuối cùng ──
-    # Dùng rfind('}') thay vì greedy regex để tránh cắt sót khi value có ngoặc lồng
-    start = text.find("{")
-    end   = text.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        try:
-            return _validate_structure(json.loads(text[start : end + 1]))
-        except json.JSONDecodeError:
-            pass
-
+    detail = ""
+    if last_error:
+        detail = (
+            f"\nLỗi JSON cuối ({last_label}): {last_error.msg} "
+            f"tại line {last_error.lineno}, column {last_error.colno}."
+        )
     raise ValueError(
         "Không parse được JSON từ LLM output.\n"
+        f"{detail}\n"
         f"200 ký tự đầu: {raw[:200]!r}"
     )
 

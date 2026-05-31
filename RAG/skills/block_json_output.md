@@ -44,6 +44,9 @@ Chỉ được dùng văn bản CÒN HIỆU LỰC từ LEGAL_CONTEXT.
 
 ### Quy tắc 6 — JSON hợp lệ
 JSON phải hợp lệ (RFC 8259): dấu phẩy và ngoặc kép đúng chuẩn.
+Nếu value cần xuống dòng, KHÔNG xuống dòng trực tiếp bên trong chuỗi JSON.
+Phải biểu diễn xuống dòng bằng ký tự escape `\n` hoặc `\n\n`.
+Ví dụ đúng: `"NOI_DUNG_DIEN_BIEN": "1. Nội dung thứ nhất.\n\n2. Nội dung thứ hai."`
 
 ## CHECKLIST TỰ KIỂM TRA TRƯỚC KHI TRẢ VỀ
 - Đã đánh giá hiệu lực từng văn bản pháp luật trong LEGAL_CONTEXT chưa?

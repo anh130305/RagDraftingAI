@@ -244,14 +244,7 @@ export default function Settings() {
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 mt-8">
-                <h4 className="text-xs font-bold text-primary mb-1">Cấu hình Phòng ban</h4>
-                <p className="text-xs text-on-surface-variant leading-relaxed">
-                  Thiết lập phòng ban sẽ giúp hệ thống định tuyến các truy vấn RAG chính xác hơn theo lĩnh vực chuyên môn (Backend/DevOps/AI). Bạn có thể thay đổi bất cứ lúc nào.
-                </p>
-              </div>
-
-              <div className="mt-8 pt-8 border-t border-outline-variant/30 flex justify-end">
+              <div className="mt-4 pt-4 border-t border-outline-variant/30 flex justify-end">
                 <button
                   onClick={handleSave}
                   disabled={saving || department === (profile.department || '')}

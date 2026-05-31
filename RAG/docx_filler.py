@@ -285,6 +285,24 @@ class DocxFiller:
                 t_elem.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
             return new_r
 
+        def _make_multiline_run_with_rpr(rpr, text: str) -> etree._Element:
+            """Tạo một run multiline bằng <w:br/> để tránh paragraph spacing."""
+            new_r = etree.Element(qn('w:r'))
+            if rpr is not None:
+                new_r.append(copy.deepcopy(rpr))
+
+            lines = text.split("\n")
+            for idx, line in enumerate(lines):
+                if idx > 0:
+                    etree.SubElement(new_r, qn('w:br'))
+                if not line:
+                    continue
+                t_elem = etree.SubElement(new_r, qn('w:t'))
+                t_elem.text = line
+                if line[0] == ' ' or line[-1] == ' ':
+                    t_elem.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+            return new_r
+
         def replace_in_paragraph(para) -> None:
             """
             Xử lý một paragraph:
@@ -363,16 +381,13 @@ class DocxFiller:
                 return
 
             # Bước 4: Rebuild w:r elements
-            # is_multiline=True → tách thành nhiều <w:p>, mỗi \n = 1 paragraph mới
+            # is_multiline=True → dùng <w:br/> trong cùng paragraph để tránh
+            # paragraph spacing của template tạo khoảng trắng quá lớn.
             first_run_idx = list(p_elem).index(runs[0])
             for r in runs:
                 p_elem.remove(r)
 
-            parent_elem  = p_elem.getparent()
-            p_insert_idx = list(parent_elem).index(p_elem)
-
             insert_pos  = first_run_idx
-            extra_paras: List[etree._Element] = []
 
             for seg_text, src_run, is_multiline in segments:
                 if not seg_text:
@@ -381,28 +396,10 @@ class DocxFiller:
 
                 if not is_multiline:
                     new_r = _make_run_with_rpr(rpr, seg_text)
-                    p_elem.insert(insert_pos, new_r)
-                    insert_pos += 1
                 else:
-                    lines = seg_text.split("\n")
-                    for line_idx, line in enumerate(lines):
-                        if line_idx == 0:
-                            if line:
-                                new_r = _make_run_with_rpr(rpr, line)
-                                p_elem.insert(insert_pos, new_r)
-                                insert_pos += 1
-                        else:
-                            new_p = etree.Element(qn('w:p'))
-                            pPr   = p_elem.find(qn('w:pPr'))
-                            if pPr is not None:
-                                new_p.append(copy.deepcopy(pPr))
-                            if line:
-                                new_r = _make_run_with_rpr(rpr, line)
-                                new_p.append(new_r)
-                            extra_paras.append(new_p)
-
-            for offset, new_p in enumerate(extra_paras, start=1):
-                parent_elem.insert(p_insert_idx + offset, new_p)
+                    new_r = _make_multiline_run_with_rpr(rpr, seg_text)
+                p_elem.insert(insert_pos, new_r)
+                insert_pos += 1
 
         def _append_text_segments(
             segments: List[Tuple[str, etree._Element]],
